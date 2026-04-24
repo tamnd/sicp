@@ -1,0 +1,649 @@
+@node	4.3.3, 4.4, 4.2, 4.3
+@subsection Hiện Thực Trình Định Giá @code{Amb}
+
+Việc định giá một biểu thức Scheme thông thường có thể trả về một giá trị,
+có thể không bao giờ kết thúc, hoặc có thể báo hiệu lỗi. Trong Scheme không
+tất định, việc định giá một biểu thức ngoài ra có thể dẫn đến việc phát hiện
+ra ngõ cụt, trong trường hợp đó việc định giá phải quay lui đến một điểm lựa
+chọn trước đó. Việc giải thích Scheme không tất định trở nên phức tạp bởi
+trường hợp bổ sung này.
+
+Chúng ta sẽ xây dựng trình định giá @code{amb} cho Scheme không tất định bằng
+cách sửa đổi trình định giá phân tích của @ref{4.1.7}.@footnote{Chúng ta đã
+chọn hiện thực trình định giá lười trong @ref{4.2} như một sửa đổi của trình
+định giá siêu vòng thông thường của @ref{4.1.1}. Ngược lại, chúng ta sẽ dựa
+trình định giá @code{amb} trên trình định giá phân tích của @ref{4.1.7}, vì
+các thủ tục thực thi trong trình định giá đó cung cấp một khung thuận tiện để
+hiện thực quay lui.} Như trong trình định giá phân tích, việc định giá một
+biểu thức được thực hiện bằng cách gọi một thủ tục thực thi được tạo ra bằng
+phân tích biểu thức đó. Sự khác biệt giữa việc giải thích Scheme thông thường
+và việc giải thích Scheme không tất định sẽ hoàn toàn nằm trong các thủ tục
+thực thi.
+
+@subsubheading Các thủ tục thực thi và các tiếp diễn
+
+Nhớ lại rằng các thủ tục thực thi cho trình định giá thông thường nhận một
+đối số: môi trường thực thi. Ngược lại, các thủ tục thực thi trong trình định
+giá @code{amb} nhận ba đối số: môi trường và hai thủ tục gọi là @newterm{các
+thủ tục tiếp diễn}. Việc định giá một biểu thức sẽ kết thúc bằng cách gọi
+một trong hai tiếp diễn này: Nếu việc định giá dẫn đến một giá trị, @newterm{tiếp
+diễn thành công} được gọi với giá trị đó; nếu việc định giá dẫn đến việc phát
+hiện ra ngõ cụt, @newterm{tiếp diễn thất bại} được gọi. Việc xây dựng và gọi
+các tiếp diễn thích hợp là cơ chế mà trình định giá không tất định hiện thực
+quay lui.
+
+Nhiệm vụ của tiếp diễn thành công là nhận một giá trị và tiếp tục với tính
+toán. Cùng với giá trị đó, tiếp diễn thành công được truyền một tiếp diễn
+thất bại khác, sẽ được gọi tiếp theo nếu việc dùng giá trị đó dẫn đến ngõ
+cụt.
+
+Nhiệm vụ của tiếp diễn thất bại là thử một nhánh khác của quá trình không tất
+định. Bản chất của ngôn ngữ không tất định là ở chỗ các biểu thức có thể đại
+diện cho các lựa chọn giữa các lựa chọn thay thế. Việc định giá một biểu thức
+như vậy phải tiến hành với một trong các lựa chọn thay thế được chỉ định, ngay
+cả khi chưa biết trước lựa chọn nào sẽ dẫn đến kết quả chấp nhận được. Để
+đối phó với điều này, trình định giá chọn một trong các lựa chọn thay thế và
+truyền giá trị này cho tiếp diễn thành công. Cùng với giá trị này, trình định
+giá xây dựng và truyền dọc theo một tiếp diễn thất bại có thể được gọi sau
+để chọn một lựa chọn thay thế khác.
+
+Một sự thất bại được kích hoạt trong quá trình định giá (tức là, một tiếp diễn
+thất bại được gọi) khi một chương trình người dùng từ chối rõ ràng dòng tấn
+công hiện tại (ví dụ: một lời gọi đến @code{require} có thể dẫn đến việc thực
+thi @code{(amb)}, một biểu thức luôn thất bại---xem @ref{4.3.1}). Tiếp diễn
+thất bại có trong tay tại điểm đó sẽ khiến điểm lựa chọn gần nhất chọn một
+lựa chọn thay thế khác. Nếu không còn lựa chọn thay thế nào để xem xét tại
+điểm lựa chọn đó, một sự thất bại tại một điểm lựa chọn trước đó sẽ được kích
+hoạt, v.v. Các tiếp diễn thất bại cũng được gọi bởi vòng điều khiển để đáp
+ứng yêu cầu @code{try-again}, để tìm giá trị khác của biểu thức.
+
+Ngoài ra, nếu một phép toán có hiệu ứng phụ (như gán cho một biến) xảy ra
+trên một nhánh của quá trình kết quả từ một lựa chọn, có thể cần thiết, khi
+quá trình tìm thấy ngõ cụt, phải hoàn tác hiệu ứng phụ trước khi thực hiện
+một lựa chọn mới. Điều này được thực hiện bằng cách cho phép toán có hiệu
+ứng phụ tạo ra một tiếp diễn thất bại hoàn tác hiệu ứng phụ và lan truyền
+sự thất bại.
+
+Tóm lại, các tiếp diễn thất bại được xây dựng bởi
+
+@itemize @bullet
+
+@item
+các biểu thức @code{amb}---để cung cấp một cơ chế để thực hiện các lựa chọn
+thay thế nếu lựa chọn hiện tại được thực hiện bởi biểu thức @code{amb} dẫn
+đến ngõ cụt;
+
+@item
+vòng điều khiển cấp cao nhất---để cung cấp một cơ chế để báo cáo thất bại
+khi các lựa chọn đã cạn kiệt;
+
+@item
+các gán---để chặn các thất bại và hoàn tác các gán trong quá trình quay lui.
+
+@end itemize
+
+@noindent
+Các thất bại chỉ được khởi tạo khi gặp ngõ cụt. Điều này xảy ra
+
+@itemize @bullet
+
+@item
+nếu chương trình người dùng thực thi @code{(amb)};
+
+@item
+nếu người dùng gõ @code{try-again} tại vòng điều khiển cấp cao nhất.
+
+@end itemize
+
+@noindent
+Các tiếp diễn thất bại cũng được gọi trong quá trình xử lý một sự thất bại:
+
+@itemize @bullet
+
+@item
+Khi tiếp diễn thất bại được tạo bởi một gán kết thúc việc hoàn tác hiệu ứng
+phụ, nó gọi tiếp diễn thất bại mà nó đã chặn, để lan truyền sự thất bại trở
+lại điểm lựa chọn dẫn đến gán này hoặc về cấp cao nhất.
+
+@item
+Khi tiếp diễn thất bại cho một @code{amb} cạn kiệt các lựa chọn, nó gọi tiếp
+diễn thất bại ban đầu được đưa cho @code{amb}, để lan truyền sự thất bại trở
+lại điểm lựa chọn trước hoặc về cấp cao nhất.
+
+@end itemize
+
+@subsubheading Cấu trúc của trình định giá
+
+Các thủ tục biểu diễn cú pháp và dữ liệu cho trình định giá @code{amb}, và
+cũng thủ tục @code{analyze} cơ bản, giống hệt với những thủ tục trong trình
+định giá của @ref{4.1.7}, ngoại trừ việc chúng ta cần các thủ tục cú pháp bổ
+sung để nhận ra dạng đặc biệt @code{amb}:@footnote{Chúng ta giả sử rằng trình
+định giá hỗ trợ @code{let} (xem @ref{Exercise 4.22}), mà chúng ta đã dùng
+trong các chương trình không tất định của mình.}
+
+@lisp
+(define (amb? exp) (tagged-list? exp 'amb))
+(define (amb-choices exp) (cdr exp))
+@end lisp
+
+@noindent
+Chúng ta cũng phải thêm vào phân phối trong @code{analyze} một mệnh đề sẽ
+nhận ra dạng đặc biệt này và tạo ra một thủ tục thực thi thích hợp:
+
+@lisp
+((amb? exp) (analyze-amb exp))
+@end lisp
+
+@noindent
+Thủ tục cấp cao nhất @code{ambeval} (tương tự với phiên bản của @code{eval}
+được đưa ra trong @ref{4.1.7}) phân tích biểu thức cho trước và áp dụng thủ
+tục thực thi kết quả cho môi trường cho trước, cùng với hai tiếp diễn cho
+trước:
+
+@lisp
+(define (ambeval exp env succeed fail)
+  ((analyze exp) env succeed fail))
+@end lisp
+
+@noindent
+Một tiếp diễn thành công là một thủ tục hai đối số: giá trị vừa thu được và
+một tiếp diễn thất bại khác sẽ được dùng nếu giá trị đó dẫn đến thất bại
+tiếp theo. Một tiếp diễn thất bại là một thủ tục không có đối số. Vì vậy dạng
+tổng quát của một thủ tục thực thi là
+
+@lisp
+(lambda (env succeed fail)
+  @r{;; @code{succeed} là @code{(lambda (value fail) @r{…})}}
+  @r{;; @code{fail} là @code{(lambda () @r{…})}}
+  @r{…})
+@end lisp
+
+@noindent
+Ví dụ, thực thi
+
+@lisp
+(ambeval ⟨@var{exp}⟩
+         the-global-environment
+         (lambda (value fail) value)
+         (lambda () 'failed))
+@end lisp
+
+@noindent
+sẽ cố gắng định giá biểu thức cho trước và sẽ trả về giá trị của biểu thức
+(nếu việc định giá thành công) hoặc ký hiệu @code{failed} (nếu việc định giá
+thất bại). Lời gọi đến @code{ambeval} trong vòng điều khiển được trình bày
+bên dưới dùng các thủ tục tiếp diễn phức tạp hơn nhiều, tiếp tục vòng lặp
+và hỗ trợ yêu cầu @code{try-again}.
+
+Hầu hết độ phức tạp của trình định giá @code{amb} là kết quả từ cơ chế truyền
+các tiếp diễn xung quanh khi các thủ tục thực thi gọi nhau. Khi đi qua mã
+sau, bạn nên so sánh từng thủ tục thực thi với thủ tục tương ứng cho trình
+định giá thông thường được đưa ra trong @ref{4.1.7}.
+
+@subsubheading Các biểu thức đơn giản
+
+Các thủ tục thực thi cho các loại biểu thức đơn giản nhất về cơ bản giống
+với những thủ tục cho trình định giá thông thường, ngoại trừ nhu cầu quản lý
+các tiếp diễn. Các thủ tục thực thi đơn giản thành công với giá trị của biểu
+thức, truyền dọc theo tiếp diễn thất bại được truyền cho chúng.
+
+@lisp
+(define (analyze-self-evaluating exp)
+  (lambda (env succeed fail)
+    (succeed exp fail)))
+
+(define (analyze-quoted exp)
+  (let ((qval (text-of-quotation exp)))
+    (lambda (env succeed fail)
+      (succeed qval fail))))
+
+(define (analyze-variable exp)
+  (lambda (env succeed fail)
+    (succeed (lookup-variable-value exp env)
+             fail)))
+
+(define (analyze-lambda exp)
+  (let ((vars (lambda-parameters exp))
+        (bproc (analyze-sequence
+                (lambda-body exp))))
+    (lambda (env succeed fail)
+      (succeed (make-procedure vars bproc env)
+               fail))))
+@end lisp
+
+@noindent
+Lưu ý rằng việc tra cứu một biến luôn ``thành công.'' Nếu
+@code{lookup-variable-value} không tìm thấy biến, nó báo hiệu lỗi, như
+thường lệ. Một ``thất bại'' như vậy chỉ ra một lỗi chương trình---tham chiếu
+đến một biến chưa được ràng buộc; đó không phải là dấu hiệu cho thấy chúng
+ta nên thử một lựa chọn không tất định khác thay vì lựa chọn đang được thử.
+
+@subsubheading Các điều kiện và dãy
+
+Các điều kiện cũng được xử lý theo cách tương tự như trong trình định giá
+thông thường. Thủ tục thực thi được tạo ra bởi @code{analyze-if} gọi thủ tục
+thực thi vị từ @code{pproc} với một tiếp diễn thành công kiểm tra xem giá trị
+vị từ có đúng không và tiếp tục thực thi hệ quả hoặc lựa chọn thay thế. Nếu
+việc thực thi @code{pproc} thất bại, tiếp diễn thất bại ban đầu cho biểu thức
+@code{if} được gọi.
+
+@lisp
+(define (analyze-if exp)
+  (let ((pproc (analyze (if-predicate exp)))
+        (cproc (analyze (if-consequent exp)))
+        (aproc (analyze (if-alternative exp))))
+    (lambda (env succeed fail)
+      (pproc env
+             @r{;; tiếp diễn thành công cho việc định giá}
+             @r{;; vị từ để lấy @code{pred-value}}
+             (lambda (pred-value fail2)
+               (if (true? pred-value)
+                   (cproc env succeed fail2)
+                   (aproc env succeed fail2)))
+             @r{;; tiếp diễn thất bại cho}
+             @r{;; việc định giá vị từ}
+             fail))))
+@end lisp
+
+@noindent
+Các dãy cũng được xử lý theo cách tương tự như trong trình định giá trước,
+ngoại trừ các phép thao túng trong thủ tục con @code{sequentially} cần thiết
+để truyền các tiếp diễn. Cụ thể, để thực thi tuần tự @code{a} và sau đó
+@code{b}, chúng ta gọi @code{a} với một tiếp diễn thành công gọi @code{b}.
+
+@lisp
+(define (analyze-sequence exps)
+  (define (sequentially a b)
+    (lambda (env succeed fail)
+      (a env
+         @r{;; tiếp diễn thành công cho việc gọi @code{a}}
+         (lambda (a-value fail2)
+           (b env succeed fail2))
+         @r{;; tiếp diễn thất bại cho việc gọi @code{a}}
+         fail)))
+  (define (loop first-proc rest-procs)
+    (if (null? rest-procs)
+        first-proc
+        (loop (sequentially first-proc
+                            (car rest-procs))
+              (cdr rest-procs))))
+  (let ((procs (map analyze exps)))
+    (if (null? procs)
+        (error "Empty sequence: ANALYZE"))
+    (loop (car procs) (cdr procs))))
+@end lisp
+
+@subsubheading Các định nghĩa và gán
+
+Các định nghĩa là một trường hợp khác mà chúng ta phải bỏ công quản lý các
+tiếp diễn, vì cần thiết phải định giá biểu thức giá trị định nghĩa trước khi
+thực sự định nghĩa biến mới. Để thực hiện điều này, thủ tục thực thi giá trị
+định nghĩa @code{vproc} được gọi với môi trường, một tiếp diễn thành công và
+tiếp diễn thất bại. Nếu việc thực thi @code{vproc} thành công, thu được một
+giá trị @code{val} cho biến được định nghĩa, biến được định nghĩa và sự thành
+công được lan truyền:
+
+@lisp
+(define (analyze-definition exp)
+  (let ((var (definition-variable exp))
+        (vproc (analyze
+                (definition-value exp))))
+    (lambda (env succeed fail)
+      (vproc env
+             (lambda (val fail2)
+               (define-variable! var val env)
+               (succeed 'ok fail2))
+             fail))))
+@end lisp
+
+@noindent
+Các gán thú vị hơn. Đây là nơi đầu tiên chúng ta thực sự dùng các tiếp diễn,
+thay vì chỉ truyền chúng xung quanh. Thủ tục thực thi cho các gán bắt đầu
+giống như thủ tục cho các định nghĩa. Đầu tiên nó cố gắng lấy giá trị mới
+được gán cho biến. Nếu việc định giá @code{vproc} này thất bại, gán sẽ thất
+bại.
+
+Tuy nhiên, nếu @code{vproc} thành công và chúng ta tiến hành thực hiện gán,
+chúng ta phải xem xét khả năng nhánh này của tính toán có thể thất bại sau,
+điều này sẽ yêu cầu chúng ta quay lui khỏi gán. Vì vậy, chúng ta phải sắp
+xếp để hoàn tác gán như một phần của quá trình quay lui.@footnote{Chúng ta
+không lo lắng về việc hoàn tác các định nghĩa, vì chúng ta có thể giả sử rằng
+các định nghĩa nội bộ được quét ra (@ref{4.1.6}).}
+
+Điều này được thực hiện bằng cách đưa cho @code{vproc} một tiếp diễn thành
+công (được đánh dấu bằng nhận xét ``*1*'' bên dưới) lưu giá trị cũ của biến
+trước khi gán giá trị mới cho biến và tiến hành từ gán. Tiếp diễn thất bại
+được truyền dọc theo giá trị của gán (được đánh dấu bằng nhận xét ``*2*'' bên
+dưới) khôi phục giá trị cũ của biến trước khi tiếp tục sự thất bại. Tức là,
+một gán thành công cung cấp một tiếp diễn thất bại sẽ chặn một thất bại tiếp
+theo; bất kỳ thất bại nào khác sẽ gọi @code{fail2} thay vào đó gọi thủ tục
+này, để hoàn tác gán trước khi thực sự gọi @code{fail2}.
+
+@lisp
+(define (analyze-assignment exp)
+  (let ((var (assignment-variable exp))
+        (vproc (analyze
+                (assignment-value exp))))
+    (lambda (env succeed fail)
+      (vproc env
+             (lambda (val fail2)    @r{; *1*}
+               (let ((old-value
+                      (lookup-variable-value
+                       var
+                       env)))
+                 (set-variable-value!
+                  var
+                  val
+                  env)
+                 (succeed
+                  'ok
+                  (lambda ()    @r{; *2*}
+                    (set-variable-value!
+                     var
+                     old-value
+                     env)
+                    (fail2)))))
+               fail))))
+@end lisp
+
+@subsubheading Các ứng dụng thủ tục
+
+Thủ tục thực thi cho các ứng dụng không chứa các ý tưởng mới ngoại trừ độ
+phức tạp kỹ thuật của việc quản lý các tiếp diễn. Độ phức tạp này phát sinh
+trong @code{analyze-application}, do nhu cầu theo dõi các tiếp diễn thành
+công và thất bại khi chúng ta định giá các toán hạng. Chúng ta dùng một thủ
+tục @code{get-args} để định giá danh sách các toán hạng, thay vì một
+@code{map} đơn giản như trong trình định giá thông thường.
+
+@lisp
+(define (analyze-application exp)
+  (let ((fproc (analyze (operator exp)))
+        (aprocs (map analyze (operands exp))))
+    (lambda (env succeed fail)
+      (fproc env
+             (lambda (proc fail2)
+               (get-args
+                aprocs
+                env
+                (lambda (args fail3)
+                  (execute-application
+                   proc args succeed fail3))
+                fail2))
+             fail))))
+@end lisp
+
+@noindent
+Trong @code{get-args}, lưu ý cách duyệt danh sách các thủ tục thực thi
+@code{aproc} bằng @code{cdr} và ghép danh sách @code{args} kết quả bằng
+@code{cons} được thực hiện bằng cách gọi từng @code{aproc} trong danh sách
+với một tiếp diễn thành công đệ quy gọi @code{get-args}. Mỗi lần gọi đệ quy
+đến @code{get-args} này có một tiếp diễn thành công có giá trị là @code{cons}
+của đối số mới thu được vào danh sách các đối số đã tích lũy:
+
+@lisp
+(define (get-args aprocs env succeed fail)
+  (if (null? aprocs)
+      (succeed '() fail)
+      ((car aprocs)
+       env
+       ;; @r{tiếp diễn thành công cho @code{aproc} này}
+       (lambda (arg fail2)
+         (get-args
+          (cdr aprocs)
+          env
+          ;; @r{tiếp diễn thành công cho}
+          ;; @r{lời gọi đệ quy đến @code{get-args}}
+          (lambda (args fail3)
+            (succeed (cons arg args)
+                     fail3))
+          fail2))
+       fail)))
+@end lisp
+
+@noindent
+Việc ứng dụng thủ tục thực sự, được thực hiện bởi
+@code{execute-application}, được thực hiện theo cùng cách như cho trình định
+giá thông thường, ngoại trừ nhu cầu quản lý các tiếp diễn.
+
+@lisp
+(define (execute-application
+         proc args succeed fail)
+  (cond ((primitive-procedure? proc)
+         (succeed
+          (apply-primitive-procedure
+           proc args)
+          fail))
+        ((compound-procedure? proc)
+         ((procedure-body proc)
+          (extend-environment
+           (procedure-parameters proc)
+           args
+           (procedure-environment proc))
+          succeed
+          fail))
+        (else (error "Unknown procedure type:
+                      EXECUTE-APPLICATION"
+                     proc))))
+@end lisp
+
+@subsubheading Định giá các biểu thức @code{amb}
+
+Dạng đặc biệt @code{amb} là yếu tố chính trong ngôn ngữ không tất định. Ở
+đây chúng ta thấy bản chất của quá trình giải thích và lý do để theo dõi các
+tiếp diễn. Thủ tục thực thi cho @code{amb} định nghĩa một vòng lặp
+@code{try-next} lặp qua các thủ tục thực thi cho tất cả các giá trị có thể
+của biểu thức @code{amb}. Mỗi thủ tục thực thi được gọi với một tiếp diễn
+thất bại sẽ thử cái tiếp theo. Khi không còn lựa chọn thay thế nào để thử,
+toàn bộ biểu thức @code{amb} thất bại.
+
+@lisp
+(define (analyze-amb exp)
+  (let ((cprocs
+         (map analyze (amb-choices exp))))
+    (lambda (env succeed fail)
+      (define (try-next choices)
+        (if (null? choices)
+            (fail)
+            ((car choices)
+             env
+             succeed
+             (lambda ()
+               (try-next (cdr choices))))))
+      (try-next cprocs))))
+@end lisp
+
+@subsubheading Vòng điều khiển
+
+Vòng điều khiển cho trình định giá @code{amb} phức tạp, do cơ chế cho phép
+người dùng thử lại trong việc định giá một biểu thức. Vòng điều khiển dùng
+một thủ tục gọi là @code{internal-loop}, nhận làm đối số một thủ tục
+@code{try-again}. Ý định là việc gọi @code{try-again} nên tiếp tục đến lựa
+chọn thay thế chưa được thử tiếp theo trong việc định giá không tất định.
+@code{Internal-loop} hoặc gọi @code{try-again} để đáp lại người dùng gõ
+@code{try-again} tại vòng điều khiển, hoặc bắt đầu một đánh giá mới bằng
+cách gọi @code{ambeval}.
+
+Tiếp diễn thất bại cho lời gọi này đến @code{ambeval} thông báo cho người
+dùng rằng không còn giá trị nào và gọi lại vòng điều khiển.
+
+Tiếp diễn thành công cho lời gọi đến @code{ambeval} tinh tế hơn. Chúng ta in
+giá trị thu được và sau đó gọi lại vòng lặp bên trong với một thủ tục
+@code{try-again} sẽ có thể thử lựa chọn thay thế tiếp theo. Thủ tục
+@code{next-alternative} này là đối số thứ hai được truyền cho tiếp diễn thành
+công. Thông thường, chúng ta nghĩ đối số thứ hai này là tiếp diễn thất bại
+được dùng nếu nhánh định giá hiện tại thất bại sau. Tuy nhiên, trong trường
+hợp này, chúng ta đã hoàn thành một định giá thành công, vì vậy chúng ta có
+thể gọi nhánh lựa chọn thay thế ``thất bại'' để tìm kiếm các định giá thành
+công bổ sung.
+
+@lisp
+(define input-prompt  ";;; Amb-Eval input:")
+(define output-prompt ";;; Amb-Eval value:")
+
+(define (driver-loop)
+  (define (internal-loop try-again)
+    (prompt-for-input input-prompt)
+    (let ((input (read)))
+      (if (eq? input 'try-again)
+          (try-again)
+          (begin
+            (newline)
+            (display
+             ";;; Starting a new problem ")
+            (ambeval
+             input
+             the-global-environment
+             @r{;; thành công của @code{ambeval}}
+             (lambda (val next-alternative)
+               (announce-output
+                output-prompt)
+               (user-print val)
+               (internal-loop
+                next-alternative))
+             @r{;; thất bại của @code{ambeval}}
+             (lambda ()
+               (announce-output
+                ";;; There are no
+                 more values of")
+               (user-print input)
+               (driver-loop)))))))
+  (internal-loop
+   (lambda ()
+     (newline)
+     (display
+      ";;; There is no current problem")
+     (driver-loop))))
+@end lisp
+
+@noindent
+Lời gọi ban đầu đến @code{internal-loop} dùng một thủ tục @code{try-again}
+than phiền rằng không có bài toán hiện tại và khởi động lại vòng điều khiển.
+Đây là hành vi sẽ xảy ra nếu người dùng gõ @code{try-again} khi không có
+định giá nào đang tiến hành.
+
+@quotation
+@strong{@anchor{Exercise 4.50}Exercise 4.50:} Hiện thực một dạng đặc biệt mới
+@code{ramb} giống như @code{amb} ngoại trừ nó tìm kiếm các lựa chọn thay thế
+theo thứ tự ngẫu nhiên, thay vì từ trái sang phải. Chỉ ra cách điều này có
+thể giúp ích với vấn đề của Alyssa trong @ref{Exercise 4.49}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.51}Exercise 4.51:} Hiện thực một loại gán mới gọi
+là @code{permanent-set!} không bị hoàn tác khi thất bại. Ví dụ, chúng ta có
+thể chọn hai phần tử phân biệt từ một danh sách và đếm số lần thử cần thiết
+để thực hiện một lựa chọn thành công như sau:
+
+@lisp
+(define count 0)
+(let ((x (an-element-of '(a b c)))
+      (y (an-element-of '(a b c))))
+  (permanent-set! count (+ count 1))
+  (require (not (eq? x y)))
+  (list x y count))
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{(a b 2)}
+
+@i{;;; Amb-Eval input:}
+try-again
+
+@i{;;; Amb-Eval value:}
+@i{(a c 3)}
+@end lisp
+
+Các giá trị nào sẽ được hiển thị nếu chúng ta đã dùng @code{set!} ở đây thay
+vì @code{permanent-set!}?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.52}Exercise 4.52:} Hiện thực một cấu trúc mới gọi
+là @code{if-fail} cho phép người dùng bắt thất bại của một biểu thức.
+@code{If-fail} nhận hai biểu thức. Nó định giá biểu thức đầu tiên như thường
+lệ và trả về như thường lệ nếu việc định giá thành công. Tuy nhiên, nếu việc
+định giá thất bại, giá trị của biểu thức thứ hai được trả về, như trong ví dụ
+sau:
+
+@lisp
+@i{;;; Amb-Eval input:}
+(if-fail
+ (let ((x (an-element-of '(1 3 5))))
+   (require (even? x))
+   x)
+ 'all-odd)
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{all-odd}
+
+@i{;;; Amb-Eval input:}
+(if-fail
+ (let ((x (an-element-of '(1 3 5 8))))
+   (require (even? x))
+   x)
+ 'all-odd)
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{8}
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.53}Exercise 4.53:} Với @code{permanent-set!} như
+được mô tả trong @ref{Exercise 4.51} và @code{if-fail} như trong
+@ref{Exercise 4.52}, kết quả của việc định giá sẽ là gì
+
+@lisp
+(let ((pairs '()))
+  (if-fail
+   (let ((p (prime-sum-pair
+             '(1 3 5 8)
+             '(20 35 110))))
+     (permanent-set! pairs
+                     (cons p pairs))
+     (amb))
+   pairs))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.54}Exercise 4.54:} Nếu chúng ta không nhận ra rằng
+@code{require} có thể được hiện thực như một thủ tục thông thường dùng
+@code{amb}, để được người dùng định nghĩa như một phần của chương trình không
+tất định, chúng ta sẽ phải hiện thực nó như một dạng đặc biệt. Điều này sẽ
+đòi hỏi các thủ tục cú pháp
+
+@lisp
+(define (require? exp)
+  (tagged-list? exp 'require))
+
+(define (require-predicate exp)
+  (cadr exp))
+@end lisp
+
+@noindent
+và một mệnh đề mới trong phân phối trong @code{analyze}
+
+@lisp
+((require? exp) (analyze-require exp))
+@end lisp
+
+@noindent
+cũng như thủ tục @code{analyze-require} xử lý các biểu thức @code{require}.
+Hoàn thành định nghĩa sau của @code{analyze-require}.
+
+@lisp
+(define (analyze-require exp)
+  (let ((pproc (analyze
+                (require-predicate exp))))
+    (lambda (env succeed fail)
+      (pproc env
+             (lambda (pred-value fail2)
+               (if ⟨??⟩
+                   ⟨??⟩
+                   (succeed 'ok fail2)))
+             fail))))
+@end lisp
+@end quotation

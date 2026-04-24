@@ -1,0 +1,499 @@
+@node	4.3.2, 4.3.3, 4.3.1, 4.3
+@subsection Các Ví Dụ về Các Chương Trình Không Tất Định
+
+Phần @ref{4.3.3} mô tả hiện thực của trình định giá @code{amb}. Tuy nhiên,
+trước tiên chúng ta đưa ra một số ví dụ về cách sử dụng nó. Ưu điểm của lập
+trình không tất định là chúng ta có thể ẩn đi các chi tiết về cách thực hiện
+tìm kiếm, từ đó diễn đạt các chương trình của chúng ta ở mức trừu tượng cao
+hơn.
+
+@subsubheading Các câu đố logic
+
+Câu đố sau (lấy từ @ref{Dinesman 1968}) là điển hình của một lớp lớn các câu
+đố logic đơn giản:
+
+@quotation
+Baker, Cooper, Fletcher, Miller và Smith sống ở các tầng khác nhau của một
+tòa nhà chung cư chỉ có năm tầng. Baker không sống ở tầng trên cùng. Cooper
+không sống ở tầng dưới cùng. Fletcher không sống ở tầng trên cùng hay tầng
+dưới cùng. Miller sống ở tầng cao hơn Cooper. Smith không sống ở tầng kề với
+tầng của Fletcher. Fletcher không sống ở tầng kề với tầng của Cooper. Mọi
+người sống ở đâu?
+@end quotation
+
+@noindent
+Chúng ta có thể xác định ai sống ở mỗi tầng một cách đơn giản bằng cách liệt
+kê tất cả các khả năng và áp đặt các hạn chế cho trước:@footnote{Chương trình
+của chúng ta dùng thủ tục sau để xác định xem các phần tử của một danh sách
+có phân biệt không:
+
+@lisp
+(define (distinct? items)
+  (cond ((null? items) true)
+        ((null? (cdr items)) true)
+        ((member (car items) (cdr items)) false)
+        (else (distinct? (cdr items)))))
+@end lisp
+
+@code{Member} giống như @code{memq} ngoại trừ nó dùng @code{equal?} thay vì
+@code{eq?} để kiểm tra bằng nhau.}
+
+@lisp
+(define (multiple-dwelling)
+  (let ((baker (amb 1 2 3 4 5))
+        (cooper (amb 1 2 3 4 5))
+        (fletcher (amb 1 2 3 4 5))
+        (miller (amb 1 2 3 4 5))
+        (smith (amb 1 2 3 4 5)))
+    (require
+     (distinct? (list baker cooper fletcher
+                      miller smith)))
+    (require (not (= baker 5)))
+    (require (not (= cooper 1)))
+    (require (not (= fletcher 5)))
+    (require (not (= fletcher 1)))
+    (require (> miller cooper))
+    (require
+     (not (= (abs (- smith fletcher)) 1)))
+    (require
+     (not (= (abs (- fletcher cooper)) 1)))
+    (list (list 'baker baker)
+          (list 'cooper cooper)
+          (list 'fletcher fletcher)
+          (list 'miller miller)
+          (list 'smith smith))))
+@end lisp
+
+@noindent
+Định giá biểu thức @code{(multiple-dwelling)} tạo ra kết quả
+
+@lisp
+((baker 3) (cooper 2) (fletcher 4)
+ (miller 5) (smith 1))
+@end lisp
+
+@noindent
+Mặc dù thủ tục đơn giản này hoạt động, nhưng nó rất chậm. @ref{Exercise 4.39}
+và @ref{Exercise 4.40} thảo luận về một số cải tiến có thể.
+
+@quotation
+@strong{@anchor{Exercise 4.38}Exercise 4.38:} Sửa đổi thủ tục
+multiple-dwelling để bỏ qua yêu cầu rằng Smith và Fletcher không sống ở các
+tầng kề nhau. Câu đố đã sửa đổi này có bao nhiêu nghiệm?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.39}Exercise 4.39:} Thứ tự của các hạn chế trong
+thủ tục multiple-dwelling có ảnh hưởng đến câu trả lời không? Nó có ảnh hưởng
+đến thời gian để tìm câu trả lời không? Nếu bạn nghĩ rằng điều đó quan trọng,
+hãy chứng minh một chương trình nhanh hơn thu được từ chương trình đã cho bằng
+cách sắp xếp lại các hạn chế. Nếu bạn nghĩ rằng điều đó không quan trọng,
+hãy lập luận trường hợp của bạn.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.40}Exercise 4.40:} Trong bài toán nhiều chỗ ở,
+có bao nhiêu tập hợp gán người cho tầng, cả trước và sau yêu cầu rằng các
+gán tầng phải phân biệt? Sẽ rất không hiệu quả khi tạo ra tất cả các gán có
+thể của người cho tầng rồi để việc quay lui loại bỏ chúng. Ví dụ, hầu hết
+các hạn chế chỉ phụ thuộc vào một hoặc hai biến người-tầng, và do đó có thể
+được áp đặt trước khi các tầng đã được chọn cho tất cả mọi người. Viết và
+chứng minh một thủ tục không tất định hiệu quả hơn nhiều giải quyết bài toán
+này dựa trên việc chỉ tạo ra những khả năng chưa bị loại trừ bởi các hạn chế
+trước đó. (Gợi ý: Điều này sẽ yêu cầu một tổ hợp các biểu thức @code{let}.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.41}Exercise 4.41:} Viết một chương trình Scheme
+thông thường để giải câu đố nhiều chỗ ở.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.42}Exercise 4.42:} Giải câu đố ``Những kẻ nói dối''
+sau đây (từ @ref{Phillips 1934}):
+
+Năm nữ sinh ngồi làm bài kiểm tra. Cha mẹ của họ---theo họ nghĩ---thể hiện
+mức độ quan tâm không đáng có đến kết quả. Vì vậy, họ đồng ý rằng khi viết
+thư về nhà về kỳ thi, mỗi cô gái nên đưa ra một tuyên bố đúng và một tuyên
+bố không đúng. Sau đây là các đoạn liên quan trong thư của họ:
+
+@itemize @bullet
+
+@item
+Betty: ``Kitty đứng thứ hai trong kỳ thi. Tôi chỉ đứng thứ ba.''
+
+@item
+Ethel: ``Bạn sẽ vui khi nghe rằng tôi đứng đầu. Joan đứng thứ hai.''
+
+@item
+Joan: ``Tôi đứng thứ ba, và Ethel tội nghiệp đứng cuối.''
+
+@item
+Kitty: ``Tôi đứng thứ hai. Mary chỉ đứng thứ tư.''
+
+@item
+Mary: ``Tôi đứng thứ tư. Betty giành vị trí đầu.''
+
+@end itemize
+
+Thực tế thứ tự mà năm cô gái được xếp hạng là gì?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.43}Exercise 4.43:} Dùng trình định giá @code{amb}
+để giải câu đố sau:@footnote{Câu đố này được lấy từ một cuốn sách nhỏ gọi là
+``Problematical Recreations,'' được xuất bản vào những năm 1960 bởi Litton
+Industries, trong đó nó được quy cho @cite{Kansas State Engineer}.}
+
+@quotation
+Cha của Mary Ann Moore có một du thuyền và mỗi người trong số bốn người bạn
+của ông cũng vậy: Đại tá Downing, Ông Hall, Ngài Barnacle Hood và Bác sĩ
+Parker. Mỗi người trong số năm người cũng có một con gái và mỗi người đặt
+tên du thuyền của mình theo tên của con gái của một trong những người kia.
+Du thuyền của Ngài Barnacle là Gabrielle, Ông Moore sở hữu chiếc Lorna; Ông
+Hall chiếc Rosalind. Chiếc Melissa, thuộc sở hữu của Đại tá Downing, được đặt
+theo tên con gái của Ngài Barnacle. Cha của Gabrielle sở hữu du thuyền được
+đặt theo tên con gái của Bác sĩ Parker. Cha của Lorna là ai?
+@end quotation
+
+Cố gắng viết chương trình để nó chạy hiệu quả (xem @ref{Exercise 4.40}). Ngoài
+ra, xác định có bao nhiêu nghiệm nếu chúng ta không được thông báo rằng họ
+của Mary Ann là Moore.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.44}Exercise 4.44:} @ref{Exercise 2.42} đã mô tả
+câu đố ``tám quân hậu'' về việc đặt các quân hậu trên bàn cờ để không có
+hai quân nào tấn công nhau. Viết một chương trình không tất định để giải câu
+đố này.
+@end quotation
+
+@subsubheading Phân tích cú pháp ngôn ngữ tự nhiên
+
+Các chương trình được thiết kế để chấp nhận ngôn ngữ tự nhiên làm đầu vào
+thường bắt đầu bằng cách cố gắng @newterm{phân tích cú pháp} đầu vào, tức là,
+khớp đầu vào với một cấu trúc ngữ pháp nào đó. Ví dụ, chúng ta có thể cố
+gắng nhận ra các câu đơn giản bao gồm một mạo từ theo sau là một danh từ theo
+sau là một động từ, như ``The cat eats.'' Để thực hiện phân tích như vậy,
+chúng ta phải có khả năng xác định các thành phần của lời của từng từ. Chúng
+ta có thể bắt đầu với một số danh sách phân loại các từ khác nhau:@footnote{Ở
+đây chúng ta dùng quy ước rằng phần tử đầu tiên của mỗi danh sách chỉ định
+thành phần của lời cho các từ còn lại trong danh sách.}
+
+@lisp
+(define nouns
+  '(noun student professor cat class))
+
+(define verbs
+  '(verb studies lectures eats sleeps))
+
+(define articles '(article the a))
+@end lisp
+
+@noindent
+Chúng ta cũng cần một @newterm{ngữ pháp}, tức là, một tập hợp các quy tắc mô
+tả cách các yếu tố ngữ pháp được tạo thành từ các yếu tố đơn giản hơn. Một
+ngữ pháp rất đơn giản có thể quy định rằng một câu luôn bao gồm hai phần---một
+cụm danh từ theo sau là một động từ---và một cụm danh từ bao gồm một mạo từ
+theo sau là một danh từ. Với ngữ pháp này, câu ``The cat eats'' được phân tích
+cú pháp như sau:
+
+@lisp
+(sentence
+ (noun-phrase (article the) (noun cat))
+ (verb eats))
+@end lisp
+
+@noindent
+Chúng ta có thể tạo ra một phân tích cú pháp như vậy với một chương trình đơn
+giản có các thủ tục riêng biệt cho mỗi quy tắc ngữ pháp. Để phân tích cú
+pháp một câu, chúng ta xác định hai phần cấu thành của nó và trả về danh sách
+của hai phần tử này, được gắn thẻ với ký hiệu @code{sentence}:
+
+@lisp
+(define (parse-sentence)
+  (list 'sentence
+         (parse-noun-phrase)
+         (parse-word verbs)))
+@end lisp
+
+@noindent
+Một cụm danh từ, tương tự như vậy, được phân tích cú pháp bằng cách tìm một
+mạo từ theo sau là một danh từ:
+
+@lisp
+(define (parse-noun-phrase)
+  (list 'noun-phrase
+        (parse-word articles)
+        (parse-word nouns)))
+@end lisp
+
+@noindent
+Ở mức thấp nhất, phân tích cú pháp quy về việc liên tục kiểm tra rằng từ
+tiếp theo chưa được phân tích cú pháp là thành viên của danh sách các từ cho
+thành phần của lời cần thiết. Để hiện thực điều này, chúng ta duy trì một biến
+toàn cục @code{*unparsed*}, là đầu vào chưa được phân tích cú pháp. Mỗi lần
+chúng ta kiểm tra một từ, chúng ta yêu cầu @code{*unparsed*} phải không rỗng
+và nó phải bắt đầu bằng một từ từ danh sách được chỉ định. Nếu vậy, chúng ta
+xóa từ đó khỏi @code{*unparsed*} và trả về từ cùng với thành phần của lời
+của nó (được tìm thấy ở đầu danh sách):@footnote{Lưu ý rằng @code{parse-word}
+dùng @code{set!} để sửa đổi danh sách đầu vào chưa được phân tích cú pháp.
+Để điều này hoạt động, trình định giá @code{amb} của chúng ta phải hoàn tác
+các hiệu ứng của các phép toán @code{set!} khi nó quay lui.}
+
+@lisp
+(define (parse-word word-list)
+  (require (not (null? *unparsed*)))
+  (require (memq (car *unparsed*)
+                 (cdr word-list)))
+  (let ((found-word (car *unparsed*)))
+    (set! *unparsed* (cdr *unparsed*))
+    (list (car word-list) found-word)))
+@end lisp
+
+@noindent
+Để bắt đầu phân tích cú pháp, tất cả những gì chúng ta cần làm là đặt
+@code{*unparsed*} thành toàn bộ đầu vào, cố gắng phân tích cú pháp một câu
+và kiểm tra rằng không còn gì:
+
+@lisp
+(define *unparsed* '())
+(define (parse input)
+  (set! *unparsed* input)
+  (let ((sent (parse-sentence)))
+    (require (null? *unparsed*))
+    sent))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có thể thử bộ phân tích cú pháp và xác minh rằng nó hoạt
+động cho câu kiểm tra đơn giản của chúng ta:
+
+@lisp
+@i{;;; Amb-Eval input:}
+(parse '(the cat eats))
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{(sentence
+ (noun-phrase (article the) (noun cat))
+ (verb eats))}
+@end lisp
+
+@noindent
+Trình định giá @code{amb} hữu ích ở đây vì thuận tiện để diễn đạt các ràng
+buộc phân tích cú pháp với sự trợ giúp của @code{require}. Tuy nhiên, tìm
+kiếm tự động và quay lui thực sự có giá trị khi chúng ta xem xét các ngữ pháp
+phức tạp hơn trong đó có các lựa chọn về cách các đơn vị có thể được phân
+giải.
+
+Hãy thêm vào ngữ pháp của chúng ta một danh sách các giới từ:
+
+@lisp
+(define prepositions
+  '(prep for to in by with))
+@end lisp
+
+@noindent
+và định nghĩa một cụm giới từ (ví dụ: ``for the cat'') là một giới từ theo
+sau là một cụm danh từ:
+
+@lisp
+(define (parse-prepositional-phrase)
+  (list 'prep-phrase
+        (parse-word prepositions)
+        (parse-noun-phrase)))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có thể định nghĩa một câu là một cụm danh từ theo sau là
+một cụm động từ, trong đó một cụm động từ có thể là một động từ hoặc một
+cụm động từ được mở rộng bởi một cụm giới từ:@footnote{Quan sát rằng định
+nghĩa này là đệ quy---một động từ có thể được theo sau bởi bất kỳ số lượng
+cụm giới từ nào.}
+
+@lisp
+(define (parse-sentence)
+  (list 'sentence
+         (parse-noun-phrase)
+         (parse-verb-phrase)))
+
+(define (parse-verb-phrase)
+  (define (maybe-extend verb-phrase)
+    (amb
+     verb-phrase
+     (maybe-extend
+      (list 'verb-phrase
+            verb-phrase
+            (parse-prepositional-phrase)))))
+  (maybe-extend (parse-word verbs)))
+@end lisp
+
+@noindent
+Trong khi chúng ta đang làm, chúng ta cũng có thể mở rộng định nghĩa về cụm
+danh từ để cho phép những thứ như ``a cat in the class.'' Những gì chúng ta
+trước đây gọi là cụm danh từ, bây giờ chúng ta sẽ gọi là cụm danh từ đơn
+giản, và một cụm danh từ bây giờ sẽ là một cụm danh từ đơn giản hoặc một
+cụm danh từ được mở rộng bởi một cụm giới từ:
+
+@lisp
+(define (parse-simple-noun-phrase)
+  (list 'simple-noun-phrase
+        (parse-word articles)
+        (parse-word nouns)))
+
+(define (parse-noun-phrase)
+  (define (maybe-extend noun-phrase)
+    (amb
+     noun-phrase
+     (maybe-extend
+      (list 'noun-phrase
+            noun-phrase
+            (parse-prepositional-phrase)))))
+  (maybe-extend (parse-simple-noun-phrase)))
+@end lisp
+
+@noindent
+Ngữ pháp mới của chúng ta cho phép phân tích cú pháp các câu phức tạp hơn.
+Ví dụ
+
+@lisp
+(parse '(the student with the cat
+         sleeps in the class))
+@end lisp
+
+@noindent
+tạo ra
+
+@lisp
+(sentence
+ (noun-phrase
+  (simple-noun-phrase (article the)
+                      (noun student))
+  (prep-phrase (prep with)
+               (simple-noun-phrase
+                (article the)
+                (noun cat))))
+ (verb-phrase
+  (verb sleeps)
+  (prep-phrase (prep in)
+               (simple-noun-phrase
+                (article the)
+                (noun class)))))
+@end lisp
+
+@noindent
+Quan sát rằng một đầu vào cho trước có thể có nhiều hơn một phân tích cú pháp
+hợp lệ. Trong câu ``The professor lectures to the student with the cat,'' có
+thể là giáo sư đang giảng bài với con mèo, hoặc là sinh viên có con mèo.
+Chương trình không tất định của chúng ta tìm thấy cả hai khả năng:
+
+@lisp
+(parse '(the professor lectures to
+         the student with the cat))
+@end lisp
+
+@noindent
+tạo ra
+
+@lisp
+(sentence
+ (simple-noun-phrase (article the)
+                     (noun professor))
+ (verb-phrase
+  (verb-phrase
+   (verb lectures)
+   (prep-phrase (prep to)
+                (simple-noun-phrase
+                 (article the)
+                 (noun student))))
+  (prep-phrase (prep with)
+               (simple-noun-phrase
+                (article the)
+                (noun cat)))))
+@end lisp
+
+@noindent
+Yêu cầu trình định giá thử lại cho ra
+
+@lisp
+(sentence
+ (simple-noun-phrase (article the)
+                     (noun professor))
+ (verb-phrase (verb lectures)
+              (prep-phrase
+               (prep to)
+               (noun-phrase
+                (simple-noun-phrase
+                 (article the)
+                 (noun student))
+                (prep-phrase
+                 (prep with)
+                 (simple-noun-phrase
+                  (article the)
+                  (noun cat)))))))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.45}Exercise 4.45:} Với ngữ pháp được đưa ra ở
+trên, câu sau có thể được phân tích cú pháp theo năm cách khác nhau: ``The
+professor lectures to the student in the class with the cat.'' Đưa ra năm
+cách phân tích cú pháp và giải thích sự khác biệt về sắc thái nghĩa giữa
+chúng.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.46}Exercise 4.46:} Các trình định giá trong
+@ref{4.1} và @ref{4.2} không xác định thứ tự các toán hạng được định giá.
+Chúng ta sẽ thấy rằng trình định giá @code{amb} định giá chúng từ trái sang
+phải. Giải thích tại sao chương trình phân tích cú pháp của chúng ta sẽ không
+hoạt động nếu các toán hạng được định giá theo một thứ tự nào khác.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.47}Exercise 4.47:} Louis Reasoner đề xuất rằng,
+vì một cụm động từ là một động từ hoặc một cụm động từ theo sau là một cụm
+giới từ, sẽ đơn giản hơn nhiều khi định nghĩa thủ tục @code{parse-verb-phrase}
+như sau (và tương tự cho các cụm danh từ):
+
+@lisp
+(define (parse-verb-phrase)
+  (amb (parse-word verbs)
+       (list
+        'verb-phrase
+        (parse-verb-phrase)
+        (parse-prepositional-phrase))))
+@end lisp
+
+Điều này có hoạt động không? Hành vi của chương trình có thay đổi không nếu
+chúng ta hoán đổi thứ tự của các biểu thức trong @code{amb}?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.48}Exercise 4.48:} Mở rộng ngữ pháp được đưa ra
+ở trên để xử lý các câu phức tạp hơn. Ví dụ, bạn có thể mở rộng các cụm danh
+từ và cụm động từ để bao gồm các tính từ và trạng từ, hoặc bạn có thể xử lý
+các câu ghép.@footnote{Loại ngữ pháp này có thể trở nên tùy ý phức tạp, nhưng
+nó chỉ là đồ chơi về mặt hiểu ngôn ngữ thực sự. Việc hiểu ngôn ngữ tự nhiên
+thực sự bằng máy tính đòi hỏi sự kết hợp phức tạp của phân tích cú pháp và
+diễn giải nghĩa. Mặt khác, ngay cả các bộ phân tích cú pháp đồ chơi cũng có
+thể hữu ích trong việc hỗ trợ các ngôn ngữ lệnh linh hoạt cho các chương
+trình như hệ thống truy xuất thông tin. @ref{Winston 1992} thảo luận về các
+cách tiếp cận tính toán để hiểu ngôn ngữ thực sự và cũng là các ứng dụng của
+ngữ pháp đơn giản cho các ngôn ngữ lệnh.}
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.49}Exercise 4.49:} Alyssa P. Hacker quan tâm hơn
+đến việc tạo ra các câu thú vị hơn là phân tích cú pháp chúng. Cô lập luận
+rằng bằng cách đơn giản thay đổi thủ tục @code{parse-word} để nó bỏ qua
+``câu đầu vào'' và thay vào đó luôn thành công và tạo ra một từ thích hợp,
+chúng ta có thể dùng các chương trình đã xây dựng cho phân tích cú pháp để
+thực hiện tạo sinh thay thế. Hiện thực ý tưởng của Alyssa và chỉ ra một nửa
+tá hoặc hơn các câu được tạo ra đầu tiên.@footnote{Mặc dù ý tưởng của Alyssa
+hoạt động tốt (và đơn giản đáng ngạc nhiên), các câu mà nó tạo ra có phần
+nhàm chán---chúng không lấy mẫu các câu có thể của ngôn ngữ này theo cách
+thú vị lắm. Trên thực tế, ngữ pháp rất đệ quy ở nhiều nơi, và kỹ thuật của
+Alyssa ``rơi vào'' một trong những đệ quy này và bị kẹt. Xem @ref{Exercise 4.50}
+để biết cách xử lý điều này.}
+@end quotation

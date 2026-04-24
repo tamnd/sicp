@@ -1,0 +1,107 @@
+@node	4.3, 4.4, 4.2, Chapter 4
+@section Các Biến Thể trên Scheme --- Tính Toán Không Tất Định
+
+Trong phần này, chúng ta mở rộng trình định giá Scheme để hỗ trợ một mô hình
+lập trình được gọi là @newterm{tính toán không tất định} bằng cách xây dựng
+vào trình định giá một cơ sở để hỗ trợ tìm kiếm tự động. Đây là một thay đổi
+sâu sắc hơn nhiều đối với ngôn ngữ so với việc giới thiệu định giá lười trong
+@ref{4.2}.
+
+Tính toán không tất định, như xử lý luồng, hữu ích cho các ứng dụng ``tạo và
+kiểm tra''. Hãy xem xét nhiệm vụ bắt đầu với hai danh sách số nguyên dương và
+tìm một cặp số nguyên---một từ danh sách đầu tiên và một từ danh sách thứ
+hai---có tổng là số nguyên tố. Chúng ta đã thấy cách xử lý điều này với các
+phép toán dãy hữu hạn trong @ref{2.2.3} và với các luồng vô hạn trong
+@ref{3.5.3}. Cách tiếp cận của chúng ta là tạo ra dãy tất cả các cặp có thể
+và lọc chúng để chọn các cặp có tổng là số nguyên tố. Liệu chúng ta có thực sự
+tạo ra toàn bộ dãy các cặp trước như trong @ref{Chapter 2}, hay xen kẽ việc
+tạo và lọc như trong @ref{Chapter 3}, là không quan trọng đối với hình ảnh cơ
+bản về cách tổ chức tính toán.
+
+Cách tiếp cận không tất định gợi lên một hình ảnh khác. Hãy tưởng tượng đơn
+giản là chúng ta chọn (bằng cách nào đó) một số từ danh sách đầu tiên và một
+số từ danh sách thứ hai và yêu cầu (sử dụng một cơ chế nào đó) rằng tổng của
+chúng là số nguyên tố. Điều này được diễn đạt bởi thủ tục sau:
+
+@lisp
+(define (prime-sum-pair list1 list2)
+  (let ((a (an-element-of list1))
+        (b (an-element-of list2)))
+    (require (prime? (+ a b)))
+    (list a b)))
+@end lisp
+
+@noindent
+Có vẻ như thủ tục này chỉ đơn giản là phát biểu lại bài toán, thay vì chỉ ra
+cách giải nó. Tuy nhiên, đây là một chương trình không tất định hợp lệ.@footnote{Chúng
+ta giả định rằng chúng ta đã định nghĩa trước một thủ tục @code{prime?} kiểm
+tra xem các số có phải là số nguyên tố không. Ngay cả khi @code{prime?} được
+định nghĩa, thủ tục @code{prime-sum-pair} có thể trông đáng ngờ giống như nỗ
+lực ``giả-Lisp'' vô ích để định nghĩa hàm căn bậc hai, mà chúng ta đã mô tả
+ở đầu @ref{1.1.7}. Trên thực tế, một thủ tục căn bậc hai theo dòng đó thực
+sự có thể được công thức hóa như một chương trình không tất định. Bằng cách
+kết hợp một cơ chế tìm kiếm vào trình định giá, chúng ta đang xói mòn ranh
+giới giữa các mô tả khai báo thuần túy và các đặc tả mệnh lệnh về cách tính
+toán câu trả lời. Chúng ta sẽ đi xa hơn theo hướng này trong @ref{4.4}.}
+
+Ý tưởng chính ở đây là các biểu thức trong một ngôn ngữ không tất định có thể
+có nhiều hơn một giá trị có thể. Ví dụ, @code{an-element-of} có thể trả về
+bất kỳ phần tử nào của danh sách cho trước. Trình định giá chương trình không
+tất định của chúng ta sẽ hoạt động bằng cách tự động chọn một giá trị có thể
+và theo dõi lựa chọn. Nếu một yêu cầu tiếp theo không được đáp ứng, trình
+định giá sẽ thử một lựa chọn khác, và sẽ tiếp tục thử các lựa chọn mới cho
+đến khi việc định giá thành công, hoặc cho đến khi chúng ta hết lựa chọn.
+Cũng như trình định giá lười đã giải phóng lập trình viên khỏi các chi tiết
+về cách các giá trị được trì hoãn và ép buộc, trình định giá chương trình
+không tất định sẽ giải phóng lập trình viên khỏi các chi tiết về cách thực
+hiện các lựa chọn.
+
+Thật hữu ích khi tương phản các hình ảnh khác nhau về thời gian được gợi lên
+bởi định giá không tất định và xử lý luồng. Xử lý luồng dùng định giá lười
+để tách rời thời gian khi luồng các câu trả lời có thể được lắp ráp từ thời
+gian khi các phần tử luồng thực sự được tạo ra. Trình định giá hỗ trợ ảo
+giác rằng tất cả các câu trả lời có thể được đặt trước chúng ta trong một dãy
+phi thời gian. Với định giá không tất định, một biểu thức đại diện cho việc
+khám phá một tập hợp các thế giới có thể, mỗi thế giới được xác định bởi một
+tập hợp các lựa chọn. Một số thế giới có thể dẫn đến ngõ cụt, trong khi
+những thế giới khác có các giá trị hữu ích. Trình định giá chương trình không
+tất định hỗ trợ ảo giác rằng thời gian phân nhánh, và rằng các chương trình
+của chúng ta có các lịch sử thực thi có thể khác nhau. Khi chúng ta đến ngõ
+cụt, chúng ta có thể xem lại điểm lựa chọn trước đó và tiến hành theo nhánh
+khác.
+
+Trình định giá chương trình không tất định được hiện thực bên dưới được gọi
+là trình định giá @code{amb} vì nó dựa trên một dạng đặc biệt mới gọi là
+@code{amb}. Chúng ta có thể gõ định nghĩa trên của @code{prime-sum-pair} tại
+vòng điều khiển trình định giá @code{amb} (cùng với các định nghĩa của
+@code{prime?}, @code{an-element-of} và @code{require}) và chạy thủ tục như
+sau:
+
+@lisp
+@i{;;; Amb-Eval input:}
+(prime-sum-pair '(1 3 5 8) '(20 35 110))
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{(3 20)}
+@end lisp
+
+@noindent
+Giá trị được trả về thu được sau khi trình định giá liên tục chọn các phần tử
+từ mỗi danh sách, cho đến khi một lựa chọn thành công được thực hiện.
+
+Phần @ref{4.3.1} giới thiệu @code{amb} và giải thích cách nó hỗ trợ tính
+không tất định thông qua cơ chế tìm kiếm tự động của trình định giá.
+@ref{4.3.2} trình bày các ví dụ về các chương trình không tất định, và
+@ref{4.3.3} đưa ra các chi tiết về cách hiện thực trình định giá @code{amb}
+bằng cách sửa đổi trình định giá Scheme thông thường.
+
+@menu
+* 4.3.1::            Amb và Tìm Kiếm
+* 4.3.2::            Các Ví Dụ về Các Chương Trình Không Tất Định
+* 4.3.3::            Hiện Thực Trình Định Giá @code{Amb}
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi

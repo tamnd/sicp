@@ -1,0 +1,247 @@
+@node	4.3.1, 4.3.2, 4.3, 4.3
+@subsection Amb và Tìm Kiếm
+
+Để mở rộng Scheme để hỗ trợ tính không tất định, chúng ta giới thiệu một dạng
+đặc biệt mới gọi là @code{amb}.@footnote{Ý tưởng về @code{amb} cho lập trình
+không tất định lần đầu tiên được mô tả vào năm 1961 bởi John McCarthy (xem
+@ref{McCarthy 1963}).} Biểu thức
+
+@lisp
+(amb ⟨@var{e₁}⟩ ⟨@var{e₂}⟩ @r{…} ⟨@var{eₙ}⟩)
+@end lisp
+
+@noindent
+trả về giá trị của một trong @math{n} biểu thức @math{{⟨\kern0.03em e_i⟩}}
+``một cách không rõ ràng.'' Ví dụ, biểu thức
+
+@lisp
+(list (amb 1 2 3) (amb 'a 'b))
+@end lisp
+
+@noindent
+có thể có sáu giá trị có thể:
+
+@example
+@code{(1 a)} @code{(1 b)} @code{(2 a)} @code{(2 b)} @code{(3 a)} @code{(3 b)}
+@end example
+
+@noindent
+@code{Amb} với một lựa chọn duy nhất tạo ra một giá trị thông thường (đơn lẻ).
+
+@code{Amb} không có lựa chọn nào---biểu thức @code{(amb)}---là một biểu thức
+không có giá trị chấp nhận được. Về mặt vận hành, chúng ta có thể nghĩ về
+@code{(amb)} như là một biểu thức mà khi được định giá sẽ khiến tính toán
+``thất bại'': Tính toán bị hủy bỏ và không có giá trị nào được tạo ra. Sử
+dụng ý tưởng này, chúng ta có thể diễn đạt yêu cầu rằng một biểu thức vị từ
+cụ thể @code{p} phải đúng như sau:
+
+@lisp
+(define (require p)
+  (if (not p) (amb)))
+@end lisp
+
+@noindent
+Với @code{amb} và @code{require}, chúng ta có thể hiện thực thủ tục
+@code{an-element-of} được dùng ở trên:
+
+@lisp
+(define (an-element-of items)
+  (require (not (null? items)))
+  (amb (car items)
+       (an-element-of (cdr items))))
+@end lisp
+
+@noindent
+@code{An-element-of} thất bại nếu danh sách trống. Ngược lại, nó một cách
+không rõ ràng trả về phần tử đầu tiên của danh sách hoặc một phần tử được
+chọn từ phần còn lại của danh sách.
+
+Chúng ta cũng có thể diễn đạt các phạm vi lựa chọn vô hạn. Thủ tục sau đây
+có khả năng trả về bất kỳ số nguyên nào lớn hơn hoặc bằng một @math{n} nào
+đó:
+
+@lisp
+(define (an-integer-starting-from n)
+  (amb n (an-integer-starting-from (+ n 1))))
+@end lisp
+
+@noindent
+Điều này giống như thủ tục luồng @code{integers-starting-from} được mô tả
+trong @ref{3.5.2}, nhưng với một sự khác biệt quan trọng: Thủ tục luồng trả
+về một đối tượng biểu diễn dãy tất cả các số nguyên bắt đầu từ @math{n},
+trong khi thủ tục @code{amb} trả về một số nguyên duy nhất.@footnote{Trên
+thực tế, sự phân biệt giữa việc không tất định trả về một lựa chọn duy nhất
+và trả về tất cả các lựa chọn phụ thuộc phần nào vào quan điểm của chúng ta.
+Từ góc độ của mã dùng giá trị, lựa chọn không tất định trả về một giá trị
+duy nhất. Từ góc độ của lập trình viên thiết kế mã, lựa chọn không tất định
+có khả năng trả về tất cả các giá trị có thể, và tính toán phân nhánh để mỗi
+giá trị được điều tra riêng biệt.}
+
+Một cách trừu tượng, chúng ta có thể tưởng tượng rằng việc định giá một biểu
+thức @code{amb} khiến thời gian phân chia thành các nhánh, trong đó tính toán
+tiếp tục trên mỗi nhánh với một trong các giá trị có thể của biểu thức. Chúng
+ta nói rằng @code{amb} đại diện cho một @newterm{điểm lựa chọn không tất
+định}. Nếu chúng ta có một máy với số lượng đủ các bộ xử lý có thể được cấp
+phát động, chúng ta có thể hiện thực việc tìm kiếm theo cách đơn giản. Việc
+thực thi sẽ tiến hành như trong một máy tuần tự, cho đến khi gặp một biểu
+thức @code{amb}. Tại điểm này, nhiều bộ xử lý hơn sẽ được cấp phát và khởi
+tạo để tiếp tục tất cả các thực thi song song được ngụ ý bởi lựa chọn. Mỗi
+bộ xử lý sẽ tiến hành tuần tự như thể nó là lựa chọn duy nhất, cho đến khi
+nó kết thúc bằng cách gặp một sự thất bại, hoặc nó chia nhỏ thêm, hoặc nó
+kết thúc.@footnote{Người ta có thể phản đối rằng đây là một cơ chế hoàn toàn
+không hiệu quả. Nó có thể yêu cầu hàng triệu bộ xử lý để giải quyết một số
+bài toán dễ phát biểu theo cách này, và hầu hết thời gian hầu hết các bộ xử
+lý đó sẽ nhàn rỗi. Sự phản đối này nên được đặt trong bối cảnh lịch sử. Bộ
+nhớ từng được coi là một hàng hóa đắt tiền như vậy. Vào năm 1964, một
+megabyte RAM có giá khoảng $400,000. Bây giờ mỗi máy tính cá nhân có nhiều
+megabyte RAM, và hầu hết thời gian hầu hết RAM đó không được dùng. Thật khó
+để đánh giá thấp chi phí của điện tử sản xuất hàng loạt.}
+
+Mặt khác, nếu chúng ta có một máy chỉ có thể thực thi một tiến trình (hoặc
+một vài tiến trình đồng thời), chúng ta phải xem xét các lựa chọn thay thế
+một cách tuần tự. Người ta có thể tưởng tượng việc sửa đổi một trình định giá
+để chọn ngẫu nhiên một nhánh để theo dõi bất cứ khi nào nó gặp một điểm lựa
+chọn. Tuy nhiên, lựa chọn ngẫu nhiên có thể dễ dàng dẫn đến các giá trị thất
+bại. Chúng ta có thể thử chạy trình định giá nhiều lần, thực hiện các lựa
+chọn ngẫu nhiên và hy vọng tìm thấy một giá trị không thất bại, nhưng tốt
+hơn là @newterm{tìm kiếm có hệ thống} tất cả các đường thực thi có thể. Trình
+định giá @code{amb} mà chúng ta sẽ phát triển và làm việc trong phần này hiện
+thực một tìm kiếm có hệ thống như sau: Khi trình định giá gặp một ứng dụng
+của @code{amb}, ban đầu nó chọn lựa chọn đầu tiên. Lựa chọn này tự nó có thể
+dẫn đến một lựa chọn tiếp theo. Trình định giá sẽ luôn luôn ban đầu chọn lựa
+chọn đầu tiên ở mỗi điểm lựa chọn. Nếu một lựa chọn dẫn đến thất bại, thì
+trình định giá automagically@footnote{@anchor{Footnote 250}Automagically: ``Tự
+động, nhưng theo cách mà, vì lý do nào đó (thường là vì nó quá phức tạp, hoặc
+quá xấu, hoặc thậm chí có thể quá tầm thường), người nói không muốn giải
+thích.'' (@ref{Steele et al. 1983}, @ref{Raymond 1993})}
+@newterm{quay lui} đến điểm lựa chọn gần nhất và thử lựa chọn tiếp theo. Nếu
+nó hết các lựa chọn thay thế tại bất kỳ điểm lựa chọn nào, trình định giá sẽ
+quay lại điểm lựa chọn trước và tiếp tục từ đó. Quá trình này dẫn đến một
+chiến lược tìm kiếm được gọi là @newterm{tìm kiếm theo chiều sâu} hoặc
+@newterm{quay lui theo thứ tự thời gian}.@footnote{Việc tích hợp các chiến
+lược tìm kiếm tự động vào ngôn ngữ lập trình có một lịch sử dài và thăng
+trầm. Những đề xuất đầu tiên rằng các thuật toán không tất định có thể được
+mã hóa một cách thanh lịch trong một ngôn ngữ lập trình với tìm kiếm và quay
+lui tự động đến từ Robert @ref{Floyd (1967)}. Carl @ref{Hewitt (1969)} đã
+phát minh ra một ngôn ngữ lập trình gọi là Planner hỗ trợ rõ ràng quay lui
+theo thứ tự thời gian tự động, cung cấp chiến lược tìm kiếm theo chiều sâu
+tích hợp. @ref{Sussman et al. (1971)} đã hiện thực một tập con của ngôn ngữ
+này, gọi là MicroPlanner, được dùng để hỗ trợ công việc giải quyết vấn đề và
+lập kế hoạch robot. Các ý tưởng tương tự, xuất phát từ logic và chứng minh
+định lý, đã dẫn đến sự ra đời ở Edinburgh và Marseille của ngôn ngữ thanh lịch
+Prolog (mà chúng ta sẽ thảo luận trong @ref{4.4}). Sau khi đủ bực bội với tìm
+kiếm tự động, @ref{McDermott and Sussman (1972)} đã phát triển một ngôn ngữ
+gọi là Conniver, bao gồm các cơ chế để đặt chiến lược tìm kiếm dưới sự kiểm
+soát của lập trình viên. Tuy nhiên, điều này tỏ ra cồng kềnh, và @ref{Sussman and Stallman 1975}
+đã tìm thấy một cách tiếp cận dễ xử lý hơn trong khi nghiên cứu các phương
+pháp phân tích ký hiệu cho mạch điện. Họ đã phát triển một sơ đồ quay lui
+không theo thứ tự thời gian dựa trên việc theo dõi các phụ thuộc logic kết
+nối các sự kiện, một kỹ thuật đã được biết đến là @newterm{quay lui theo
+hướng phụ thuộc}. Mặc dù phương pháp của họ phức tạp, nó tạo ra các chương
+trình hiệu quả hợp lý vì nó thực hiện ít tìm kiếm dư thừa. @ref{Doyle (1979)}
+và @ref{McAllester (1978; 1980)} đã tổng quát hóa và làm rõ các phương pháp
+của Stallman và Sussman, phát triển một mô hình mới để công thức hóa tìm kiếm
+hiện được gọi là @newterm{duy trì sự thật}. Các hệ thống giải quyết vấn đề
+hiện đại tất cả đều dùng một số dạng hệ thống duy trì sự thật như một cơ sở.
+Xem @ref{Forbus and deKleer 1993} để thảo luận về các cách thanh lịch để xây
+dựng các hệ thống duy trì sự thật và các ứng dụng sử dụng duy trì sự thật.
+@ref{Zabih et al. 1987} mô tả một phần mở rộng không tất định cho Scheme dựa
+trên @code{amb}; nó tương tự như trình thông dịch được mô tả trong phần này,
+nhưng tinh vi hơn, vì nó dùng quay lui theo hướng phụ thuộc thay vì quay lui
+theo thứ tự thời gian. @ref{Winston 1992} giới thiệu cả hai loại quay lui.}
+
+@subsubheading Vòng điều khiển
+
+Vòng điều khiển cho trình định giá @code{amb} có một số thuộc tính bất thường.
+Nó đọc một biểu thức và in giá trị của lần thực thi không thất bại đầu tiên,
+như trong ví dụ @code{prime-sum-pair} được trình bày ở trên. Nếu chúng ta
+muốn xem giá trị của lần thực thi thành công tiếp theo, chúng ta có thể yêu
+cầu trình thông dịch quay lui và cố gắng tạo ra một lần thực thi không thất
+bại thứ hai. Điều này được báo hiệu bằng cách gõ ký hiệu @code{try-again}.
+Nếu bất kỳ biểu thức nào khác ngoại trừ @code{try-again} được đưa ra, trình
+thông dịch sẽ bắt đầu một bài toán mới, loại bỏ các lựa chọn thay thế chưa
+được khám phá trong bài toán trước. Đây là một tương tác mẫu:
+
+@lisp
+@i{;;; Amb-Eval input:}
+(prime-sum-pair '(1 3 5 8) '(20 35 110))
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{(3 20)}
+
+@i{;;; Amb-Eval input:}
+try-again
+
+@i{;;; Amb-Eval value:}
+@i{(3 110)}
+
+@i{;;; Amb-Eval input:}
+try-again
+
+@i{;;; Amb-Eval value:}
+@i{(8 35)}
+
+@i{;;; Amb-Eval input:}
+try-again
+
+@i{;;; There are no more values of}
+@i{(prime-sum-pair
+ (quote (1 3 5 8))
+ (quote (20 35 110)))}
+
+@i{;;; Amb-Eval input:}
+(prime-sum-pair '(19 27 30) '(11 36 58))
+
+@i{;;; Starting a new problem}
+@i{;;; Amb-Eval value:}
+@i{(30 11)}
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.35}Exercise 4.35:} Viết một thủ tục
+@code{an-integer-between} trả về một số nguyên giữa hai giới hạn cho trước.
+Điều này có thể được dùng để hiện thực một thủ tục tìm các bộ ba Pytago, tức
+là, các bộ ba số nguyên @math{{(i, j, k)}} giữa các giới hạn cho trước sao
+cho @math{{i \le j}} và @math{{i^2 + j^2 = k^2}}, như sau:
+
+@lisp
+(define (a-pythagorean-triple-between low high)
+  (let ((i (an-integer-between low high)))
+    (let ((j (an-integer-between i high)))
+      (let ((k (an-integer-between j high)))
+        (require (= (+ (* i i) (* j j))
+                    (* k k)))
+        (list i j k)))))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.36}Exercise 4.36:} @ref{Exercise 3.69} đã thảo
+luận về cách tạo ra luồng của @emph{tất cả} các bộ ba Pytago, không có giới
+hạn trên về kích thước của các số nguyên cần tìm kiếm. Giải thích tại sao
+đơn giản thay thế @code{an-integer-between} bằng @code{an-integer-starting-from}
+trong thủ tục ở @ref{Exercise 4.35} không phải là cách thỏa đáng để tạo ra
+các bộ ba Pytago tùy ý. Viết một thủ tục thực sự sẽ hoàn thành điều này. (Đó
+là, viết một thủ tục mà khi liên tục gõ @code{try-again} về nguyên tắc cuối
+cùng sẽ tạo ra tất cả các bộ ba Pytago.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.37}Exercise 4.37:} Ben Bitdiddle tuyên bố rằng
+phương pháp sau để tạo các bộ ba Pytago hiệu quả hơn phương pháp trong
+@ref{Exercise 4.35}. Anh ấy có đúng không? (Gợi ý: Hãy xem xét số lượng khả
+năng phải được khám phá.)
+
+@lisp
+(define (a-pythagorean-triple-between low high)
+  (let ((i (an-integer-between low high))
+        (hsq (* high high)))
+    (let ((j (an-integer-between i high)))
+      (let ((ksq (+ (* i i) (* j j))))
+        (require (>= hsq ksq))
+        (let ((k (sqrt ksq)))
+          (require (integer? k))
+          (list i j k))))))
+@end lisp
+@end quotation
