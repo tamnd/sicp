@@ -1,0 +1,72 @@
+@node	3.4, 3.5, 3.3, Chapter 3
+@section Đồng Thời: Thời Gian Là Thiết Yếu
+
+Chúng ta đã thấy sức mạnh của các đối tượng tính toán với trạng thái cục bộ
+như các công cụ để mô hình hóa. Tuy nhiên, như @ref{3.1.3} đã cảnh báo, sức
+mạnh này đòi hỏi một cái giá: mất đi tính trong suốt tham chiếu, dẫn đến một
+mớ câu hỏi về đồng nhất và thay đổi, và nhu cầu từ bỏ mô hình thay thế của
+định giá để chuyển sang mô hình môi trường phức tạp hơn.
+
+Vấn đề trung tâm ẩn giấu bên dưới sự phức tạp của trạng thái, đồng nhất và
+thay đổi là bằng cách đưa vào phép gán, chúng ta bị buộc phải thừa nhận
+@newterm{thời gian} vào các mô hình tính toán của chúng ta. Trước khi chúng ta
+đưa vào phép gán, tất cả các chương trình của chúng ta đều không có thời gian,
+theo nghĩa là bất kỳ biểu thức nào có giá trị luôn có cùng giá trị. Ngược lại,
+hãy nhớ lại ví dụ về mô hình hóa các lần rút tiền từ tài khoản ngân hàng và
+trả về số dư kết quả, được giới thiệu ở đầu @ref{3.1.1}:
+
+@lisp
+(withdraw 25)
+@i{75}
+
+(withdraw 25)
+@i{50}
+@end lisp
+
+@noindent
+Ở đây các định giá liên tiếp của cùng một biểu thức cho ra các giá trị khác
+nhau. Hành vi này xuất phát từ thực tế là việc thực thi các câu lệnh gán (trong
+trường hợp này là các phép gán cho biến @code{balance}) phân định ra các
+@newterm{thời điểm trong thời gian} khi các giá trị thay đổi. Kết quả của việc
+định giá một biểu thức không chỉ phụ thuộc vào bản thân biểu thức, mà còn phụ
+thuộc vào việc định giá xảy ra trước hay sau các thời điểm này. Xây dựng các
+mô hình theo các đối tượng tính toán với trạng thái cục bộ buộc chúng ta phải
+đối mặt với thời gian như một khái niệm thiết yếu trong lập trình.
+
+Chúng ta có thể đi xa hơn trong việc cấu trúc các mô hình tính toán để phù hợp
+với nhận thức của chúng ta về thế giới vật chất. Các đối tượng trong thế giới
+không thay đổi từng cái một theo trình tự. Thay vào đó chúng ta nhận thức chúng
+như đang hoạt động @newterm{đồng thời}---tất cả cùng một lúc. Vì vậy thường
+tự nhiên khi mô hình hóa các hệ thống như các tập hợp các tiến trình tính toán
+thực thi đồng thời. Giống như chúng ta có thể làm cho các chương trình của mình
+có tính mô-đun bằng cách tổ chức các mô hình theo các đối tượng với trạng thái
+cục bộ riêng biệt, thường phù hợp khi chia các mô hình tính toán thành các
+phần phát triển riêng biệt và đồng thời. Ngay cả khi các chương trình được thực
+thi trên một máy tính tuần tự, thực hành viết các chương trình như thể chúng
+sẽ được thực thi đồng thời buộc lập trình viên tránh các ràng buộc thời gian
+không thiết yếu và do đó làm cho các chương trình có tính mô-đun hơn.
+
+Ngoài việc làm cho các chương trình có tính mô-đun hơn, tính toán đồng thời có
+thể cung cấp lợi thế về tốc độ so với tính toán tuần tự. Các máy tính tuần tự
+chỉ thực thi một phép toán tại một thời điểm, vì vậy lượng thời gian cần thiết
+để thực hiện một tác vụ tỷ lệ thuận với tổng số phép toán được thực hiện.@footnote{Hầu hết các bộ xử lý thực tế thực sự thực thi một vài phép toán cùng một
+lúc, theo một chiến lược gọi là @newterm{pipelining}. Mặc dù kỹ thuật này cải
+thiện đáng kể hiệu quả sử dụng phần cứng, nó chỉ được dùng để tăng tốc độ thực
+thi của một luồng lệnh tuần tự, trong khi vẫn giữ nguyên hành vi của chương
+trình tuần tự.} Tuy nhiên, nếu có thể phân rã một vấn đề thành các phần tương
+đối độc lập và chỉ cần giao tiếp hiếm khi, thì có thể phân bổ các phần cho
+các bộ xử lý tính toán riêng biệt, tạo ra lợi thế tốc độ tỷ lệ thuận với số
+lượng bộ xử lý có sẵn.
+
+Thật không may, các phức tạp được giới thiệu bởi phép gán trở nên còn vấn đề
+hơn khi có sự đồng thời. Thực tế của việc thực thi đồng thời, dù là vì thế giới
+hoạt động song song hay vì máy tính của chúng ta làm vậy, đòi hỏi thêm sự phức
+tạp trong sự hiểu biết của chúng ta về thời gian.
+
+@menu
+* 3.4.1::            The Nature of Time in Concurrent Systems
+* 3.4.2::            Mechanisms for Controlling Concurrency
+@end menu
+
+@include ss01.texi
+@include ss02.texi

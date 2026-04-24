@@ -1,0 +1,252 @@
+@node	3.4.1, 3.4.2, 3.4, 3.4
+@subsection Bản Chất của Thời Gian trong Các Hệ Thống Đồng Thời
+
+Trên bề mặt, thời gian có vẻ đơn giản. Nó là một thứ tự được áp đặt lên các
+sự kiện.@footnote{Để trích dẫn một số đôi dòng chữ thấy trên tường của một
+tòa nhà ở Cambridge: ``Thời gian là một thiết bị được phát minh để giữ cho mọi
+thứ không xảy ra cùng một lúc.''} Đối với bất kỳ sự kiện nào @math{A} và
+@math{B}, hoặc @math{A} xảy ra trước @math{B}, @math{A} và @math{B} đồng thời,
+hoặc @math{A} xảy ra sau @math{B}. Ví dụ, quay lại ví dụ tài khoản ngân hàng,
+giả sử rằng Peter rút $10 và Paul rút $25 từ một tài khoản chung ban đầu chứa
+$100, để lại $65 trong tài khoản. Tùy thuộc vào thứ tự của hai lần rút tiền,
+chuỗi số dư trong tài khoản là $100 @math{\to} $90 @math{\to} $65 hoặc $100
+@math{\to} $75 @math{\to} $65. Trong một hiện thực máy tính của hệ thống ngân
+hàng, chuỗi số dư thay đổi này có thể được mô hình hóa bởi các phép gán liên
+tiếp cho một biến @code{balance}.
+
+Tuy nhiên, trong các tình huống phức tạp, quan điểm như vậy có thể gây ra vấn
+đề. Giả sử rằng Peter và Paul, và những người khác nữa, đang truy cập cùng một
+tài khoản ngân hàng thông qua một mạng lưới các máy ngân hàng phân tán trên
+khắp thế giới. Chuỗi số dư thực tế trong tài khoản sẽ phụ thuộc chặt chẽ vào
+thời gian chi tiết của các lần truy cập và các chi tiết của giao tiếp giữa các
+máy.
+
+Sự không xác định này trong thứ tự các sự kiện có thể đặt ra các vấn đề nghiêm
+trọng trong thiết kế các hệ thống đồng thời. Ví dụ, giả sử rằng các lần rút
+tiền của Peter và Paul được hiện thực như hai tiến trình riêng biệt chia sẻ
+một biến chung @code{balance}, mỗi tiến trình được chỉ định bởi thủ tục được
+cho trong @ref{3.1.1}:
+
+@lisp
+(define (withdraw amount)
+  (if (>= balance amount)
+      (begin
+        (set! balance
+              (- balance amount))
+        balance)
+      "Insufficient funds"))
+@end lisp
+
+@noindent
+Nếu hai tiến trình hoạt động độc lập, thì Peter có thể kiểm tra số dư và cố
+gắng rút một số tiền hợp lệ. Tuy nhiên, Paul có thể rút một số tiền trong
+khoảng thời gian Peter kiểm tra số dư và thời gian Peter hoàn tất việc rút
+tiền, do đó làm mất hiệu lực kiểm tra của Peter.
+
+Mọi thứ có thể tệ hơn nữa. Hãy xem xét biểu thức
+
+@lisp
+(set! balance (- balance amount))
+@end lisp
+
+@noindent
+được thực thi như một phần của mỗi tiến trình rút tiền. Điều này bao gồm ba
+bước: (1) truy cập giá trị của biến @code{balance}; (2) tính toán số dư mới;
+(3) đặt @code{balance} thành giá trị mới này. Nếu các lần rút tiền của Peter
+và Paul thực thi câu lệnh này đồng thời, thì hai lần rút tiền có thể xen kẽ
+thứ tự chúng truy cập @code{balance} và đặt nó thành giá trị mới.
+
+@noindent
+Biểu đồ thời gian trong @ref{Figure 3.29} mô tả một thứ tự các sự kiện trong
+đó @code{balance} bắt đầu ở 100, Peter rút 10, Paul rút 25, và tuy nhiên giá
+trị cuối cùng của @code{balance} là 75. Như được hiển thị trong biểu đồ, lý do
+của sự bất thường này là phép gán 75 của Paul cho @code{balance} được thực hiện
+dựa trên giả định rằng giá trị của @code{balance} cần được giảm là 100. Tuy
+nhiên, giả định đó đã trở nên không hợp lệ khi Peter đã thay đổi @code{balance}
+thành 90. Đây là một sự thất bại thảm khốc cho hệ thống ngân hàng, vì tổng số
+tiền trong hệ thống không được bảo toàn. Trước các giao dịch, tổng số tiền là
+$100. Sau đó, Peter có $10, Paul có $25 và ngân hàng có $75.@footnote{Một sự
+thất bại thậm chí tệ hơn cho hệ thống này có thể xảy ra nếu hai phép toán
+@code{set!} cố gắng thay đổi số dư đồng thời, trong trường hợp đó dữ liệu thực
+sự xuất hiện trong bộ nhớ có thể kết thúc là sự kết hợp ngẫu nhiên của thông
+tin đang được viết bởi hai tiến trình. Hầu hết các máy tính có các cơ chế
+khóa liên quan cho các phép toán ghi bộ nhớ nguyên thủy, bảo vệ chống lại truy
+cập đồng thời như vậy. Ngay cả loại bảo vệ có vẻ đơn giản này, tuy nhiên, đặt
+ra những thách thức hiện thực trong thiết kế các máy tính đa xử lý, nơi cần
+các giao thức @newterm{nhất quán bộ đệm} tinh vi để đảm bảo rằng các bộ xử lý
+khác nhau sẽ duy trì một quan điểm nhất quán về nội dung bộ nhớ, mặc dù thực tế
+là dữ liệu có thể được sao chép (``lưu vào bộ đệm'') giữa các bộ xử lý khác
+nhau để tăng tốc độ truy cập bộ nhớ.}
+
+@float
+@anchor{Figure 3.29}
+@ifinfo
+@strong{Figure 3.29:} Timing diagram showing how interleaving the order of events
+in two banking withdrawals can lead to an incorrect final balance.
+
+@example
+ |           Peter              Bank              Paul
+ |                              ____
+ |                             /    \
+ |             .--------------| $100 |-------------.
+ |             |               \____/              |
+ |             V                                   V
+ |  .----------------------.            .----------------------.
+ |  | Access balance: $100 |            | Access balance: $100 |
+ |  `----------+-----------'            `----------+-----------'
+ |             V                                   V
+ |  .----------------------.            .----------------------.
+ |  | new value: 100-10=90 |            | new value: 100-25=75 |
+ |  `----------+-----------'            `----------+-----------'
+ |             V                                   |
+ |  .----------------------.                       |
+ |  | set! balance to $90  |                       |
+ |  `----------+-----------'    ____               |
+ |             |               /    \              |
+ |             `------------->| $ 90 |             V
+ |                             \____/   .----------------------.
+ |                                      | new value: 100-25=75 |
+ |                              ____    `----------+-----------'
+ |                             /    \              |
+ |                            | $ 90 |<------------'
+ V                             \____/
+time
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.29b,147mm,,,.std.svg}
+@caption{@strong{Figure 3.29:} Timing diagram showing how interleaving the order of events in two banking withdrawals can lead to an incorrect final balance.}
+@end iftex
+@end float
+
+Hiện tượng chung được minh họa ở đây là một số tiến trình có thể chia sẻ một
+biến trạng thái chung. Điều làm cho điều này phức tạp là hơn một tiến trình có
+thể đang cố gắng thao tác trạng thái được chia sẻ cùng một lúc. Đối với ví dụ
+tài khoản ngân hàng, trong mỗi giao dịch, mỗi khách hàng nên có thể hành động
+như thể các khách hàng khác không tồn tại. Khi một khách hàng thay đổi số dư
+theo cách phụ thuộc vào số dư, họ phải có thể giả định rằng, ngay trước thời
+điểm thay đổi, số dư vẫn là những gì họ nghĩ.
+
+@subsubheading Correct behavior of concurrent programs
+
+Ví dụ trên tiêu biểu cho các lỗi tinh vi có thể len lỏi vào các chương trình
+đồng thời. Gốc rễ của sự phức tạp này nằm ở các phép gán cho các biến được
+chia sẻ giữa các tiến trình khác nhau. Chúng ta đã biết rằng chúng ta phải cẩn
+thận khi viết các chương trình dùng @code{set!}, vì kết quả của một tính toán
+phụ thuộc vào thứ tự các phép gán xảy ra.@footnote{Chương trình giai thừa trong
+@ref{3.1.3} minh họa điều này cho một tiến trình tuần tự duy nhất.} Với các
+tiến trình đồng thời, chúng ta phải đặc biệt cẩn thận về các phép gán, vì
+chúng ta có thể không kiểm soát được thứ tự của các phép gán được thực hiện
+bởi các tiến trình khác nhau. Nếu một số thay đổi như vậy có thể được thực
+hiện đồng thời (như với hai người gửi tiền truy cập vào một tài khoản chung),
+chúng ta cần một số cách để đảm bảo rằng hệ thống của chúng ta hoạt động đúng.
+Ví dụ, trong trường hợp rút tiền từ một tài khoản ngân hàng chung, chúng ta
+phải đảm bảo rằng tiền được bảo toàn. Để làm cho các chương trình đồng thời
+hoạt động đúng, chúng ta có thể phải đặt một số hạn chế về thực thi đồng thời.
+
+@noindent
+Một hạn chế có thể về đồng thời là không có hai phép toán thay đổi bất kỳ biến
+trạng thái được chia sẻ nào có thể xảy ra cùng một lúc. Đây là một yêu cầu
+cực kỳ nghiêm ngặt. Đối với ngân hàng phân tán, nó sẽ yêu cầu người thiết kế
+hệ thống đảm bảo rằng chỉ một giao dịch có thể tiến hành tại một thời điểm.
+Điều này sẽ vừa không hiệu quả vừa quá thận trọng. @ref{Figure 3.30} hiển thị
+Peter và Paul chia sẻ một tài khoản ngân hàng, trong đó Paul cũng có một tài
+khoản riêng. Biểu đồ minh họa hai lần rút tiền từ tài khoản chung (một bởi
+Peter và một bởi Paul) và một lần gửi tiền vào tài khoản riêng của Paul.@footnote{Các cột hiển thị nội dung ví của Peter, tài khoản chung (ở Bank1), ví
+của Paul và tài khoản riêng của Paul (ở Bank2), trước và sau mỗi lần rút tiền
+(W) và gửi tiền (D). Peter rút $10 từ Bank1; Paul gửi $5 vào Bank2, sau đó rút
+$25 từ Bank1.} Hai lần rút tiền từ tài khoản chung không được đồng thời (vì
+cả hai đều truy cập và cập nhật cùng một tài khoản), và việc gửi và rút tiền
+của Paul không được đồng thời (vì cả hai đều truy cập và cập nhật số tiền
+trong ví của Paul). Nhưng không có vấn đề gì khi cho phép việc gửi tiền của
+Paul vào tài khoản riêng của anh ta tiến hành đồng thời với việc rút tiền của
+Peter từ tài khoản chung.
+
+@float
+@anchor{Figure 3.30}
+@ifinfo
+@strong{Figure 3.30:} Concurrent deposits and withdrawals from a joint account
+in Bank1 and a private account in Bank2.
+
+@example
+ |    Peter          Bank1          Paul           Bank2
+ |    ____           ____           ____           ____
+ |   /    \         /    \         /    \         /    \
+ |  |  $7  |--. .--| $100 |       |  $5  |--. .--| $300 |
+ |   \____/   V V   \____/         \____/   V V   \____/
+ |           +---+                         +---+
+ |           | W |                         | D |
+ |    ____   ++-++   ____           ____   ++-++   ____
+ |   /    \   | |   /    \         /    \   | |   /    \
+ |  | $17  |<-' `->| $90  |--. .--|  $0  |<-' `->| $305 |
+ |   \____/         \____/   V V   \____/         \____/
+ |                          +---+
+ |                          | W |
+ |    ____           ____   ++-++   ____           ____
+ |   /    \         /    \   | |   /    \         /    \
+ |  | $17  |       | $65  |<-' `->| $25  |       | $305 |
+ |   \____/         \____/         \____/         \____/
+ V
+time
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.30c,147mm,,,.std.svg}
+@caption{@strong{Figure 3.30:} Concurrent deposits and withdrawals from a joint account in Bank1 and a private account in Bank2.}
+@end iftex
+@end float
+
+Một hạn chế ít nghiêm ngặt hơn về đồng thời sẽ đảm bảo rằng một hệ thống đồng
+thời tạo ra kết quả tương tự như thể các tiến trình đã chạy tuần tự theo một
+thứ tự nào đó. Có hai khía cạnh quan trọng của yêu cầu này. Thứ nhất, nó không
+yêu cầu các tiến trình thực sự chạy tuần tự, mà chỉ yêu cầu tạo ra kết quả
+giống @emph{như thể} chúng đã chạy tuần tự. Đối với ví dụ trong @ref{Figure 3.30},
+người thiết kế hệ thống tài khoản ngân hàng có thể an toàn cho phép việc gửi
+tiền của Paul và rút tiền của Peter xảy ra đồng thời, vì kết quả ròng sẽ giống
+như thể hai phép toán đã xảy ra tuần tự. Thứ hai, có thể có nhiều hơn một kết
+quả ``đúng'' có thể được tạo ra bởi một chương trình đồng thời, vì chúng ta
+chỉ yêu cầu kết quả giống như đối với @emph{một số} thứ tự tuần tự. Ví dụ,
+giả sử rằng tài khoản chung của Peter và Paul bắt đầu với $100, và Peter gửi
+$40 trong khi Paul đồng thời rút nửa số tiền trong tài khoản. Thì thực thi tuần
+tự có thể dẫn đến số dư tài khoản là $70 hoặc $90 (xem @ref{Exercise 3.38}).@footnote{@anchor{Footnote 167} Một cách chính thức hơn để biểu đạt ý tưởng này
+là nói rằng các chương trình đồng thời vốn dĩ @newterm{không xác định}. Tức là,
+chúng không được mô tả bởi các hàm có giá trị đơn, mà bởi các hàm có kết quả
+là tập hợp các giá trị có thể. Trong @ref{4.3} chúng ta sẽ nghiên cứu một ngôn
+ngữ để biểu thị các tính toán không xác định.}
+
+Vẫn còn những yêu cầu yếu hơn cho việc thực thi đúng đắn các chương trình đồng
+thời. Một chương trình để mô phỏng sự khuếch tán (chẳng hạn, dòng nhiệt trong
+một đối tượng) có thể bao gồm một số lượng lớn các tiến trình, mỗi tiến trình
+đại diện cho một thể tích không gian nhỏ, cập nhật các giá trị của chúng đồng
+thời. Mỗi tiến trình liên tục thay đổi giá trị của nó thành trung bình của giá
+trị của chính nó và các giá trị của các tiến trình lân cận. Thuật toán này hội
+tụ đến câu trả lời đúng bất kể thứ tự thực hiện các phép toán; không cần bất
+kỳ hạn chế nào về việc dùng đồng thời các giá trị được chia sẻ.
+
+@quotation
+@strong{@anchor{Exercise 3.38}Bài tập 3.38:} Giả sử rằng Peter, Paul và Mary
+chia sẻ một tài khoản ngân hàng chung ban đầu chứa $100. Đồng thời, Peter gửi
+$10, Paul rút $20 và Mary rút nửa số tiền trong tài khoản, bằng cách thực thi
+các lệnh sau:
+
+@example
+Peter: (set! balance (+ balance 10))
+Paul:  (set! balance (- balance 20))
+Mary:  (set! balance (- balance
+                        (/ balance 2)))
+@end example
+
+@enumerate a
+
+@item
+Liệt kê tất cả các giá trị có thể khác nhau cho @code{balance} sau khi ba giao
+dịch này đã hoàn thành, giả sử rằng hệ thống ngân hàng buộc ba tiến trình chạy
+tuần tự theo một thứ tự nào đó.
+
+@item
+Những giá trị nào khác có thể được tạo ra nếu hệ thống cho phép các tiến trình
+được xen kẽ? Vẽ các biểu đồ thời gian như trong @ref{Figure 3.29} để giải thích
+cách các giá trị này có thể xảy ra.
+
+@end enumerate
+@end quotation

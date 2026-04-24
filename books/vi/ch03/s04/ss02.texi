@@ -1,0 +1,729 @@
+@node	3.4.2, 3.5, 3.3, 3.4
+@subsection Các Cơ Chế Kiểm Soát Đồng Thời
+
+Chúng ta đã thấy rằng khó khăn trong việc xử lý các tiến trình đồng thời bắt
+nguồn từ nhu cầu xem xét việc xen kẽ thứ tự các sự kiện trong các tiến trình
+khác nhau. Ví dụ, giả sử chúng ta có hai tiến trình, một với ba sự kiện có thứ
+tự @math{{(a, b, c)}} và một với ba sự kiện có thứ tự @math{{(x, y, z)}}. Nếu
+hai tiến trình chạy đồng thời, không có ràng buộc nào về cách thực thi của
+chúng được xen kẽ, thì có 20 thứ tự khác nhau có thể cho các sự kiện nhất quán
+với các thứ tự riêng lẻ cho hai tiến trình:
+
+@example
+(a,b,c,x,y,z)  (a,x,b,y,c,z)  (x,a,b,c,y,z)
+(x,a,y,z,b,c)  (a,b,x,c,y,z)  (a,x,b,y,z,c)
+(x,a,b,y,c,z)  (x,y,a,b,c,z)  (a,b,x,y,c,z)
+(a,x,y,b,c,z)  (x,a,b,y,z,c)  (x,y,a,b,z,c)
+(a,b,x,y,z,c)  (a,x,y,b,z,c)  (x,a,y,b,c,z)
+(x,y,a,z,b,c)  (a,x,b,c,y,z)  (a,x,y,z,b,c)
+(x,a,y,b,z,c)  (x,y,z,a,b,c)
+@end example
+
+@noindent
+Là các lập trình viên thiết kế hệ thống này, chúng ta sẽ phải xem xét tác động
+của mỗi trong số 20 thứ tự này và kiểm tra xem mỗi hành vi có thể chấp nhận
+được không. Cách tiếp cận như vậy nhanh chóng trở nên khó quản lý khi số lượng
+tiến trình và sự kiện tăng lên.
+
+Một cách tiếp cận thực tế hơn để thiết kế các hệ thống đồng thời là tạo ra các
+cơ chế chung cho phép chúng ta ràng buộc việc xen kẽ các tiến trình đồng thời
+để chúng ta có thể đảm bảo rằng hành vi của chương trình là đúng. Nhiều cơ chế
+đã được phát triển cho mục đích này. Trong phần này, chúng ta mô tả một trong
+số đó, @newterm{bộ tuần tự}.
+
+@subsubheading Serializing access to shared state
+
+Tuần tự hóa hiện thực ý tưởng sau: Các tiến trình sẽ thực thi đồng thời, nhưng
+sẽ có các tập hợp thủ tục nhất định không thể được thực thi đồng thời. Cụ thể
+hơn, tuần tự hóa tạo ra các tập hợp thủ tục phân biệt sao cho chỉ một lần thực
+thi của một thủ tục trong mỗi tập hợp được tuần tự hóa được phép xảy ra tại
+một thời điểm. Nếu một thủ tục nào đó trong tập hợp đang được thực thi, thì
+một tiến trình cố gắng thực thi bất kỳ thủ tục nào trong tập hợp sẽ bị buộc
+phải chờ cho đến khi lần thực thi đầu tiên kết thúc.
+
+Chúng ta có thể dùng tuần tự hóa để kiểm soát truy cập đến các biến được chia
+sẻ. Ví dụ, nếu chúng ta muốn cập nhật một biến được chia sẻ dựa trên giá trị
+trước đó của biến đó, chúng ta đặt việc truy cập giá trị trước đó của biến và
+phép gán giá trị mới cho biến vào cùng một thủ tục. Sau đó chúng ta đảm bảo
+rằng không có thủ tục nào khác gán giá trị cho biến có thể chạy đồng thời với
+thủ tục này bằng cách tuần tự hóa tất cả các thủ tục này với cùng một bộ tuần
+tự. Điều này đảm bảo rằng giá trị của biến không thể thay đổi giữa một lần truy
+cập và phép gán tương ứng.
+
+@subsubheading Serializers in Scheme
+
+Để làm cho cơ chế trên cụ thể hơn, giả sử rằng chúng ta đã mở rộng Scheme để
+bao gồm một thủ tục được gọi là @code{parallel-execute}:
+
+@lisp
+(parallel-execute ⟨@var{p₁}⟩
+                  ⟨@var{p₂}⟩
+                  @r{…}
+                  ⟨@var{pₖ}⟩)
+@end lisp
+
+@noindent
+Mỗi @code{⟨}@var{p}@code{⟩} phải là một thủ tục không có đối số.
+@code{Parallel-execute} tạo ra một tiến trình riêng biệt cho mỗi
+@code{⟨}@var{p}@code{⟩}, áp dụng @code{⟨}@var{p}@code{⟩} (không có đối số).
+Các tiến trình này đều chạy đồng thời.@footnote{@code{Parallel-execute} không
+phải là một phần của Scheme chuẩn, nhưng nó có thể được hiện thực trong
+@abbr{MIT} Scheme. Trong hiện thực của chúng ta, các tiến trình đồng thời mới
+cũng chạy đồng thời với tiến trình Scheme gốc. Ngoài ra, trong hiện thực của
+chúng ta, giá trị được trả về bởi @code{parallel-execute} là một đối tượng
+kiểm soát đặc biệt có thể được dùng để dừng các tiến trình mới được tạo ra.}
+
+Là một ví dụ về cách điều này được dùng, hãy xem xét
+
+@lisp
+(define x 10)
+(parallel-execute (lambda () (set! x (* x x)))
+                  (lambda () (set! x (+ x 1))))
+@end lisp
+
+@noindent
+Điều này tạo ra hai tiến trình đồng thời---@math{P_1}, đặt @code{x} thành
+@code{x} nhân @code{x}, và @math{P_2}, tăng @code{x} lên một. Sau khi thực
+thi hoàn tất, @code{x} sẽ được để lại với một trong năm giá trị có thể, tùy
+thuộc vào việc xen kẽ các sự kiện của @math{P_1} và @math{P_2}:
+
+@example
+101: @math{P_1} đặt @code{x} thành 100 và sau đó @math{P_2} tăng
+     @code{x} lên 101.
+121: @math{P_2} tăng @code{x} lên 11 và sau đó @math{P_1} đặt
+     @code{x} thành @code{x} nhân @code{x}.
+110: @math{P_2} thay đổi @code{x} từ 10 lên 11 giữa hai lần
+     @math{P_1} truy cập giá trị của @code{x} trong quá trình
+     định giá @code{(* x x)}.
+ 11: @math{P_2} truy cập @code{x}, sau đó @math{P_1} đặt @code{x} thành 100,
+     sau đó @math{P_2} đặt @code{x}.
+100: @math{P_1} truy cập @code{x} (hai lần), sau đó @math{P_2} đặt
+     @code{x} thành 11, sau đó @math{P_1} đặt @code{x}.
+@end example
+
+@noindent
+Chúng ta có thể ràng buộc đồng thời bằng cách dùng các thủ tục được tuần tự
+hóa, được tạo ra bởi các @newterm{bộ tuần tự}. Các bộ tuần tự được xây dựng
+bởi @code{make-serializer}, mà hiện thực của nó được cho bên dưới. Một bộ tuần
+tự nhận một thủ tục như đối số và trả về một thủ tục được tuần tự hóa hoạt động
+giống như thủ tục gốc. Tất cả các lần gọi đến một bộ tuần tự nhất định trả về
+các thủ tục được tuần tự hóa trong cùng một tập hợp.
+
+Vì vậy, trái với ví dụ trên, thực thi
+
+@lisp
+(define x 10)
+(define s (make-serializer))
+(parallel-execute
+ (s (lambda () (set! x (* x x))))
+ (s (lambda () (set! x (+ x 1)))))
+@end lisp
+
+@noindent
+chỉ có thể tạo ra hai giá trị có thể cho @code{x}, 101 hoặc 121. Các khả năng
+khác bị loại bỏ, vì việc thực thi @math{P_1} và @math{P_2} không thể bị xen kẽ.
+
+Đây là phiên bản của thủ tục @code{make-account} từ @ref{3.1.1}, trong đó các
+khoản gửi và rút tiền đã được tuần tự hóa:
+
+@lisp
+(define (make-account balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (let ((protected (make-serializer)))
+    (define (dispatch m)
+      (cond ((eq? m 'withdraw)
+             (protected withdraw))
+            ((eq? m 'deposit)
+             (protected deposit))
+            ((eq? m 'balance)
+             balance)
+            (else (error "Unknown request:
+                          MAKE-ACCOUNT"
+                         m))))
+    dispatch))
+@end lisp
+
+@noindent
+Với hiện thực này, hai tiến trình không thể đồng thời rút tiền từ hoặc gửi tiền
+vào một tài khoản duy nhất. Điều này loại bỏ nguồn gốc của lỗi được minh họa
+trong @ref{Figure 3.29}, nơi Peter thay đổi số dư tài khoản giữa thời điểm
+Paul truy cập số dư để tính giá trị mới và khi Paul thực sự thực hiện phép gán.
+Mặt khác, mỗi tài khoản có bộ tuần tự riêng của nó, để các khoản gửi và rút
+tiền cho các tài khoản khác nhau có thể tiến hành đồng thời.
+
+@quotation
+@strong{@anchor{Exercise 3.39}Bài tập 3.39:} Những khả năng nào trong số năm
+khả năng trong thực thi song song được hiển thị ở trên còn lại nếu chúng ta
+thay vào đó tuần tự hóa thực thi như sau:
+
+@lisp
+(define x 10)
+(define s (make-serializer))
+(parallel-execute
+  (lambda ()
+    (set! x ((s (lambda () (* x x))))))
+  (s (lambda () (set! x (+ x 1)))))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.40}Bài tập 3.40:} Cho tất cả các giá trị có thể của
+@code{x} có thể là kết quả của việc thực thi
+
+@lisp
+(define x 10)
+(parallel-execute
+ (lambda () (set! x (* x x)))
+ (lambda () (set! x (* x x x))))
+@end lisp
+
+Những khả năng nào trong số này còn lại nếu chúng ta thay vào đó dùng các thủ
+tục được tuần tự hóa:
+
+@lisp
+(define x 10)
+(define s (make-serializer))
+(parallel-execute
+ (s (lambda () (set! x (* x x))))
+ (s (lambda () (set! x (* x x x)))))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.41}Bài tập 3.41:} Ben Bitdiddle lo lắng rằng sẽ tốt
+hơn nếu hiện thực tài khoản ngân hàng như sau (trong đó dòng được chú thích đã
+được thay đổi):
+
+@lisp
+(define (make-account balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin
+          (set! balance
+                (- balance amount))
+          balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (let ((protected (make-serializer)))
+    (define (dispatch m)
+      (cond ((eq? m 'withdraw)
+             (protected withdraw))
+            ((eq? m 'deposit)
+             (protected deposit))
+            ((eq? m 'balance)
+             ((protected
+                (lambda ()
+                  balance)))) @r{; serialized}
+            (else
+             (error
+              "Unknown request:
+               MAKE-ACCOUNT"
+              m))))
+    dispatch))
+@end lisp
+
+@noindent
+vì cho phép truy cập không được tuần tự hóa vào số dư ngân hàng có thể dẫn đến
+hành vi bất thường. Bạn có đồng ý không? Có tình huống nào thể hiện mối lo
+ngại của Ben không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.42}Bài tập 3.42:} Ben Bitdiddle đề xuất rằng đó là
+lãng phí thời gian để tạo ra một thủ tục được tuần tự hóa mới để đáp ứng mỗi
+thông điệp @code{withdraw} và @code{deposit}. Anh ta nói rằng @code{make-account}
+có thể được thay đổi để các lần gọi @code{protected} được thực hiện bên ngoài
+thủ tục @code{dispatch}. Tức là, một tài khoản sẽ trả về cùng một thủ tục được
+tuần tự hóa (được tạo ra cùng lúc với tài khoản) mỗi khi nó được yêu cầu một
+thủ tục rút tiền.
+
+@lisp
+(define (make-account balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (let ((protected (make-serializer)))
+    (let ((protected-withdraw
+           (protected withdraw))
+          (protected-deposit
+           (protected deposit)))
+      (define (dispatch m)
+        (cond ((eq? m 'withdraw)
+               protected-withdraw)
+              ((eq? m 'deposit)
+               protected-deposit)
+              ((eq? m 'balance)
+               balance)
+              (else
+               (error "Unknown request:
+                       MAKE-ACCOUNT"
+                      m))))
+      dispatch)))
+@end lisp
+
+Đây có phải là một thay đổi an toàn không? Cụ thể, có sự khác biệt nào trong
+mức độ đồng thời được cho phép bởi hai phiên bản @code{make-account} này không?
+@end quotation
+
+@subsubheading Complexity of using multiple shared resources
+
+Các bộ tuần tự cung cấp một trừu tượng hóa mạnh mẽ giúp cô lập các phức tạp
+của các chương trình đồng thời để chúng có thể được xử lý cẩn thận và (hy
+vọng) đúng đắn. Tuy nhiên, trong khi dùng các bộ tuần tự là tương đối đơn
+giản khi chỉ có một tài nguyên được chia sẻ duy nhất (như một tài khoản ngân
+hàng duy nhất), lập trình đồng thời có thể cực kỳ khó khăn khi có nhiều tài
+nguyên được chia sẻ.
+
+Để minh họa một trong những khó khăn có thể phát sinh, giả sử chúng ta muốn
+trao đổi số dư trong hai tài khoản ngân hàng. Chúng ta truy cập mỗi tài khoản
+để tìm số dư, tính toán sự khác biệt giữa các số dư, rút sự khác biệt này từ
+một tài khoản và gửi vào tài khoản kia. Chúng ta có thể hiện thực điều này
+như sau:@footnote{Chúng ta đã đơn giản hóa @code{exchange} bằng cách khai thác
+thực tế là thông điệp @code{deposit} của chúng ta chấp nhận các số âm. (Đây là
+một lỗi nghiêm trọng trong hệ thống ngân hàng của chúng ta!)}
+
+@lisp
+(define (exchange account1 account2)
+  (let ((difference (- (account1 'balance)
+                       (account2 'balance))))
+    ((account1 'withdraw) difference)
+    ((account2 'deposit) difference)))
+@end lisp
+
+@noindent
+Thủ tục này hoạt động tốt khi chỉ có một tiến trình duy nhất đang cố gắng thực
+hiện trao đổi. Giả sử, tuy nhiên, rằng Peter và Paul cả hai đều có quyền truy
+cập vào các tài khoản @math{{a1}}, @math{{a2}} và @math{{a3}}, và rằng Peter
+trao đổi @math{{a1}} và @math{{a2}} trong khi Paul đồng thời trao đổi @math{{a1}}
+và @math{{a3}}. Ngay cả khi các khoản gửi và rút tiền của tài khoản được tuần
+tự hóa cho các tài khoản riêng lẻ (như trong thủ tục @code{make-account} được
+hiển thị ở trên trong phần này), @code{exchange} vẫn có thể tạo ra kết quả
+không chính xác. Ví dụ, Peter có thể tính toán sự khác biệt trong các số dư
+cho @math{{a1}} và @math{{a2}}, nhưng sau đó Paul có thể thay đổi số dư trong
+@math{{a1}} trước khi Peter có thể hoàn tất trao đổi.@footnote{Nếu số dư tài
+khoản bắt đầu là $10, $20 và $30, thì sau bất kỳ số lần trao đổi đồng thời nào,
+các số dư vẫn phải là $10, $20 và $30 theo một thứ tự nào đó. Tuần tự hóa các
+khoản gửi cho các tài khoản riêng lẻ không đủ để đảm bảo điều này. Xem
+@ref{Exercise 3.43}.} Để có hành vi đúng đắn, chúng ta phải sắp xếp cho thủ
+tục @code{exchange} khóa bất kỳ truy cập đồng thời nào khác vào các tài khoản
+trong suốt thời gian trao đổi.
+
+Một cách chúng ta có thể thực hiện điều này là dùng cả hai bộ tuần tự của tài
+khoản để tuần tự hóa toàn bộ thủ tục @code{exchange}. Để làm điều này, chúng
+ta sẽ sắp xếp để truy cập vào bộ tuần tự của tài khoản. Lưu ý rằng chúng ta
+đang cố tình phá vỡ tính mô-đun của đối tượng tài khoản ngân hàng bằng cách
+phơi bày bộ tuần tự. Phiên bản @code{make-account} sau đây giống hệt phiên bản
+gốc được cho trong @ref{3.1.1}, ngoại trừ rằng một bộ tuần tự được cung cấp
+để bảo vệ biến số dư, và bộ tuần tự được xuất thông qua truyền thông điệp:
+
+@lisp
+(define (make-account-and-serializer balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin
+          (set! balance (- balance amount))
+          balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (let ((balance-serializer
+         (make-serializer)))
+    (define (dispatch m)
+      (cond ((eq? m 'withdraw) withdraw)
+            ((eq? m 'deposit) deposit)
+            ((eq? m 'balance) balance)
+            ((eq? m 'serializer)
+             balance-serializer)
+            (else (error "Unknown request:
+                          MAKE-ACCOUNT"
+                         m))))
+    dispatch))
+@end lisp
+
+@noindent
+Chúng ta có thể dùng điều này để thực hiện các khoản gửi và rút tiền được tuần
+tự hóa. Tuy nhiên, không giống như tài khoản được tuần tự hóa trước đây của
+chúng ta, bây giờ là trách nhiệm của mỗi người dùng đối tượng tài khoản ngân
+hàng để quản lý rõ ràng việc tuần tự hóa, ví dụ như sau:@footnote{@ref{Exercise 3.45} điều tra lý do tại sao các khoản gửi và rút tiền không còn được tài
+khoản tuần tự hóa tự động.}
+
+@lisp
+(define (deposit account amount)
+  (let ((s (account 'serializer))
+        (d (account 'deposit)))
+    ((s d) amount)))
+@end lisp
+
+@noindent
+Việc xuất bộ tuần tự theo cách này cho chúng ta đủ linh hoạt để hiện thực một
+chương trình trao đổi được tuần tự hóa. Chúng ta chỉ cần tuần tự hóa thủ tục
+@code{exchange} gốc với các bộ tuần tự cho cả hai tài khoản:
+
+@lisp
+(define (serialized-exchange account1 account2)
+  (let ((serializer1 (account1 'serializer))
+        (serializer2 (account2 'serializer)))
+    ((serializer1 (serializer2 exchange))
+     account1
+     account2)))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 3.43}Bài tập 3.43:} Giả sử rằng số dư trong ba tài
+khoản bắt đầu là $10, $20 và $30, và rằng nhiều tiến trình chạy, trao đổi số
+dư trong các tài khoản. Lập luận rằng nếu các tiến trình được chạy tuần tự,
+sau bất kỳ số lần trao đổi đồng thời nào, số dư tài khoản phải là $10, $20 và
+$30 theo một thứ tự nào đó. Vẽ một biểu đồ thời gian như trong @ref{Figure 3.29}
+để hiển thị cách điều kiện này có thể bị vi phạm nếu các trao đổi được hiện thực
+dùng phiên bản đầu tiên của chương trình trao đổi tài khoản trong phần này. Mặt
+khác, lập luận rằng ngay cả với chương trình @code{exchange} này, tổng các số
+dư trong các tài khoản sẽ được bảo toàn. Vẽ một biểu đồ thời gian để hiển thị
+cách ngay cả điều kiện này cũng sẽ bị vi phạm nếu chúng ta không tuần tự hóa
+các giao dịch trên các tài khoản riêng lẻ.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.44}Bài tập 3.44:} Hãy xem xét vấn đề chuyển một
+số tiền từ một tài khoản sang tài khoản khác. Ben Bitdiddle khẳng định rằng
+điều này có thể được thực hiện với thủ tục sau, ngay cả khi có nhiều người đồng
+thời chuyển tiền giữa nhiều tài khoản, dùng bất kỳ cơ chế tài khoản nào tuần
+tự hóa các giao dịch gửi và rút tiền, ví dụ, phiên bản @code{make-account}
+trong văn bản trên.
+
+@lisp
+(define
+  (transfer from-account to-account amount)
+  ((from-account 'withdraw) amount)
+  ((to-account 'deposit) amount))
+@end lisp
+
+Louis Reasoner khẳng định rằng có một vấn đề ở đây, và rằng chúng ta cần dùng
+một phương pháp tinh vi hơn, chẳng hạn như phương pháp cần thiết để xử lý vấn
+đề trao đổi. Louis có đúng không? Nếu không, sự khác biệt thiết yếu giữa vấn
+đề chuyển tiền và vấn đề trao đổi là gì? (Bạn nên giả định rằng số dư trong
+@code{from-account} ít nhất là @code{amount}.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.45}Bài tập 3.45:} Louis Reasoner nghĩ rằng hệ thống
+tài khoản ngân hàng của chúng ta không cần thiết phức tạp và dễ xảy ra lỗi bây
+giờ khi các khoản gửi và rút tiền không được tuần tự hóa tự động. Anh ta đề
+xuất rằng @code{make-account-and-serializer} nên đã xuất bộ tuần tự (để dùng
+bởi các thủ tục như @code{serialized-exchange}) ngoài (thay vì thay thế) việc
+dùng nó để tuần tự hóa tài khoản và gửi tiền như @code{make-account} đã làm.
+Anh ta đề xuất định nghĩa lại các tài khoản như sau:
+
+@lisp
+(define
+  (make-account-and-serializer balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (let ((balance-serializer
+         (make-serializer)))
+    (define (dispatch m)
+      (cond ((eq? m 'withdraw)
+             (balance-serializer withdraw))
+            ((eq? m 'deposit)
+             (balance-serializer deposit))
+            ((eq? m 'balance)
+             balance)
+            ((eq? m 'serializer)
+             balance-serializer)
+            (else (error "Unknown request:
+                          MAKE-ACCOUNT"
+                         m))))
+    dispatch))
+@end lisp
+
+Sau đó các khoản gửi tiền được xử lý như với @code{make-account} gốc:
+
+@lisp
+(define (deposit account amount)
+  ((account 'deposit) amount))
+@end lisp
+
+Hãy giải thích điều gì sai trong lập luận của Louis. Cụ thể, hãy xem xét điều
+gì xảy ra khi @code{serialized-exchange} được gọi.
+@end quotation
+
+@subsubheading Implementing serializers
+
+Chúng ta hiện thực các bộ tuần tự theo một cơ chế đồng bộ hóa nguyên thủy hơn
+gọi là @newterm{mutex}. Một mutex là một đối tượng hỗ trợ hai phép toán---mutex
+có thể được @newterm{chiếm đoạt}, và mutex có thể được @newterm{giải phóng}.
+Một khi một mutex đã được chiếm đoạt, không có phép toán chiếm đoạt nào khác
+trên mutex đó có thể tiến hành cho đến khi mutex được giải phóng.@footnote{Thuật
+ngữ ``mutex'' là viết tắt của @newterm{loại trừ lẫn nhau}. Vấn đề chung về việc
+sắp xếp một cơ chế cho phép các tiến trình đồng thời chia sẻ tài nguyên an toàn
+được gọi là bài toán loại trừ lẫn nhau. Mutex của chúng ta là một biến thể đơn
+giản của cơ chế @newterm{semaphore} (xem @ref{Exercise 3.47}), được giới thiệu
+trong Hệ thống Lập trình Đa nhiệm ``THE'' được phát triển tại Đại học Công nghệ
+Eindhoven và được đặt theo tên viết tắt của trường đại học bằng tiếng Hà Lan
+(@ref{Dijkstra 1968a}). Các phép toán chiếm đoạt và giải phóng ban đầu được gọi
+là P và V, từ các từ tiếng Hà Lan @emph{passeren} (đi qua) và @emph{vrijgeven}
+(giải phóng), với ý nghĩa là các đèn hiệu được dùng trên các hệ thống đường
+sắt. Bài trình bày kinh điển của Dijkstra (@ref{1968b}) là một trong những bài
+đầu tiên trình bày rõ ràng các vấn đề kiểm soát đồng thời, và chỉ ra cách dùng
+semaphore để xử lý nhiều vấn đề đồng thời.} Trong hiện thực của chúng ta, mỗi
+bộ tuần tự có một mutex liên quan. Cho một thủ tục @code{p}, bộ tuần tự trả về
+một thủ tục chiếm đoạt mutex, chạy @code{p}, và sau đó giải phóng mutex. Điều
+này đảm bảo rằng chỉ một trong các thủ tục do bộ tuần tự tạo ra có thể chạy
+cùng một lúc, đó chính xác là thuộc tính tuần tự hóa mà chúng ta cần đảm bảo.
+
+@lisp
+(define (make-serializer)
+  (let ((mutex (make-mutex)))
+    (lambda (p)
+      (define (serialized-p . args)
+        (mutex 'acquire)
+        (let ((val (apply p args)))
+          (mutex 'release)
+          val))
+      serialized-p)))
+@end lisp
+
+@noindent
+Mutex là một đối tượng có thể thay đổi (ở đây chúng ta sẽ dùng một danh sách
+một phần tử, mà chúng ta sẽ gọi là @newterm{ô}) có thể giữ giá trị true hoặc
+false. Khi giá trị là false, mutex có sẵn để được chiếm đoạt. Khi giá trị là
+true, mutex không có sẵn, và bất kỳ tiến trình nào cố gắng chiếm đoạt mutex
+phải chờ.
+
+Bộ khởi tạo mutex @code{make-mutex} của chúng ta bắt đầu bằng cách khởi tạo
+nội dung ô thành false. Để chiếm đoạt mutex, chúng ta kiểm tra ô. Nếu mutex
+có sẵn, chúng ta đặt nội dung ô thành true và tiến hành. Ngược lại, chúng ta
+chờ trong một vòng lặp, cố gắng chiếm đoạt nhiều lần, cho đến khi chúng ta
+thấy rằng mutex có sẵn.@footnote{Trong hầu hết các hệ điều hành chia sẻ thời
+gian, các tiến trình bị chặn bởi một mutex không lãng phí thời gian ``bận chờ''
+như trên. Thay vào đó, hệ thống lên lịch cho một tiến trình khác chạy trong
+khi tiến trình đầu tiên đang chờ, và tiến trình bị chặn được đánh thức khi
+mutex trở nên có sẵn.} Để giải phóng mutex, chúng ta đặt nội dung ô thành false.
+
+@lisp
+(define (make-mutex)
+  (let ((cell (list false)))
+    (define (the-mutex m)
+      (cond ((eq? m 'acquire)
+             (if (test-and-set! cell)
+                 (the-mutex 'acquire))) @r{; retry}
+            ((eq? m 'release) (clear! cell))))
+    the-mutex))
+(define (clear! cell) (set-car! cell false))
+@end lisp
+
+@noindent
+@code{Test-and-set!} kiểm tra ô và trả về kết quả của kiểm tra. Ngoài ra, nếu
+kiểm tra là false, @code{test-and-set!} đặt nội dung ô thành true trước khi
+trả về false. Chúng ta có thể biểu đạt hành vi này như thủ tục sau:
+
+@lisp
+(define (test-and-set! cell)
+  (if (car cell)
+      true
+      (begin (set-car! cell true)
+             false)))
+@end lisp
+
+@noindent
+Tuy nhiên, hiện thực của @code{test-and-set!} này không đủ như hiện tại. Có
+một sự tinh tế quan trọng ở đây, đây là nơi thiết yếu mà kiểm soát đồng thời
+đi vào hệ thống: Phép toán @code{test-and-set!} phải được thực hiện
+@newterm{nguyên tử}. Tức là, chúng ta phải đảm bảo rằng, một khi một tiến trình
+đã kiểm tra ô và thấy nó là false, nội dung ô sẽ thực sự được đặt thành true
+trước khi bất kỳ tiến trình nào khác có thể kiểm tra ô. Nếu chúng ta không thực
+hiện đảm bảo này, thì mutex có thể thất bại theo cách tương tự như sự thất bại
+của tài khoản ngân hàng trong @ref{Figure 3.29}. (Xem @ref{Exercise 3.46}.)
+
+Hiện thực thực tế của @code{test-and-set!} phụ thuộc vào các chi tiết về cách
+hệ thống của chúng ta chạy các tiến trình đồng thời. Ví dụ, chúng ta có thể
+đang thực thi các tiến trình đồng thời trên một bộ xử lý tuần tự dùng cơ chế
+chia sẻ thời gian tuần hoàn qua các tiến trình, cho phép mỗi tiến trình chạy
+trong một thời gian ngắn trước khi ngắt nó và chuyển sang tiến trình tiếp theo.
+Trong trường hợp đó, @code{test-and-set!} có thể hoạt động bằng cách vô hiệu
+hóa việc chia sẻ thời gian trong quá trình kiểm tra và đặt.@footnote{Trong
+@abbr{MIT} Scheme cho một bộ xử lý duy nhất, dùng mô hình chia sẻ thời gian,
+@code{test-and-set!} có thể được hiện thực như sau:
+
+@lisp
+(define (test-and-set! cell)
+  (without-interrupts
+   (lambda ()
+     (if (car cell)
+         true
+         (begin (set-car! cell true)
+                false)))))
+@end lisp
+
+@code{Without-interrupts} vô hiệu hóa các ngắt chia sẻ thời gian trong khi
+đối số thủ tục của nó đang được thực thi.} Thay thế, các máy tính đa xử lý
+cung cấp các lệnh hỗ trợ các phép toán nguyên tử trực tiếp trong phần
+cứng.@footnote{Có nhiều biến thể của các lệnh như vậy---bao gồm test-and-set,
+test-and-clear, swap, compare-and-exchange, load-reserve và store-conditional---
+mà thiết kế phải được phù hợp cẩn thận với giao diện bộ xử lý-bộ nhớ của máy.
+Một vấn đề nảy sinh ở đây là xác định điều gì xảy ra nếu hai tiến trình cố gắng
+chiếm đoạt cùng một tài nguyên cùng một lúc bằng cách dùng lệnh như vậy. Điều
+này đòi hỏi một số cơ chế để đưa ra quyết định về tiến trình nào được kiểm soát.
+Cơ chế như vậy được gọi là @newterm{bộ phân xử}. Các bộ phân xử thường quy về
+một số loại thiết bị phần cứng. Thật không may, có thể chứng minh rằng người
+ta không thể tạo ra một bộ phân xử công bằng hoạt động 100% thời gian về mặt
+vật lý trừ khi người ta cho phép bộ phân xử một khoảng thời gian tùy ý dài để
+đưa ra quyết định. Hiện tượng cơ bản ở đây ban đầu được quan sát bởi triết gia
+người Pháp thế kỷ 14 Jean Buridan trong bình luận của ông về @i{De caelo} của
+Aristotle. Buridan lập luận rằng một con chó hoàn toàn lý trí được đặt giữa
+hai nguồn thức ăn hấp dẫn như nhau sẽ chết đói, vì nó không thể quyết định
+đến cái nào trước.}
+
+@quotation
+@strong{@anchor{Exercise 3.46}Bài tập 3.46:} Giả sử rằng chúng ta hiện thực
+@code{test-and-set!} dùng một thủ tục thông thường như được hiển thị trong văn
+bản, mà không cố gắng làm cho phép toán nguyên tử. Vẽ một biểu đồ thời gian
+như trong @ref{Figure 3.29} để minh họa cách hiện thực mutex có thể thất bại
+bằng cách cho phép hai tiến trình chiếm đoạt mutex cùng một lúc.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.47}Bài tập 3.47:} Một semaphore (kích thước @math{n})
+là một sự tổng quát hóa của mutex. Giống như một mutex, một semaphore hỗ trợ
+các phép toán chiếm đoạt và giải phóng, nhưng nó tổng quát hơn ở chỗ tối đa
+@math{n} tiến trình có thể chiếm đoạt nó đồng thời. Các tiến trình bổ sung cố
+gắng chiếm đoạt semaphore phải chờ phép toán giải phóng. Cho các hiện thực của
+semaphore
+
+@enumerate a
+
+@item
+theo mutex
+
+@item
+theo các phép toán @code{test-and-set!} nguyên tử.
+
+@end enumerate
+@end quotation
+
+@subsubheading Deadlock
+
+Bây giờ chúng ta đã thấy cách hiện thực các bộ tuần tự, chúng ta có thể thấy
+rằng việc trao đổi tài khoản vẫn có một vấn đề, ngay cả với thủ tục
+@code{serialized-exchange} ở trên. Hãy tưởng tượng rằng Peter cố gắng trao đổi
+@math{{a1}} với @math{{a2}} trong khi Paul đồng thời cố gắng trao đổi @math{{a2}}
+với @math{{a1}}. Giả sử rằng tiến trình của Peter đến điểm mà nó đã vào một thủ
+tục được tuần tự hóa bảo vệ @math{{a1}} và, ngay sau đó, tiến trình của Paul vào
+một thủ tục được tuần tự hóa bảo vệ @math{{a2}}. Bây giờ Peter không thể tiến
+hành (để vào một thủ tục được tuần tự hóa bảo vệ @math{{a2}}) cho đến khi Paul
+thoát khỏi thủ tục được tuần tự hóa bảo vệ @math{{a2}}. Tương tự, Paul không
+thể tiến hành cho đến khi Peter thoát khỏi thủ tục được tuần tự hóa bảo vệ
+@math{{a1}}. Mỗi tiến trình bị dừng mãi mãi, chờ tiến trình kia. Tình huống
+này được gọi là @newterm{bế tắc}. Bế tắc luôn là một nguy hiểm trong các hệ
+thống cung cấp truy cập đồng thời đến nhiều tài nguyên được chia sẻ.
+
+Một cách để tránh bế tắc trong tình huống này là đặt cho mỗi tài khoản một số
+nhận dạng duy nhất và viết lại @code{serialized-exchange} sao cho một tiến trình
+sẽ luôn cố gắng vào một thủ tục bảo vệ tài khoản có số nhỏ nhất trước. Mặc dù
+phương pháp này hoạt động tốt cho vấn đề trao đổi, có những tình huống khác đòi
+hỏi các kỹ thuật tránh bế tắc tinh vi hơn, hoặc nơi bế tắc không thể tránh khỏi
+hoàn toàn. (Xem @ref{Exercise 3.48} và @ref{Exercise 3.49}.)@footnote{Kỹ thuật
+chung để tránh bế tắc bằng cách đánh số các tài nguyên được chia sẻ và chiếm
+đoạt chúng theo thứ tự là do @ref{Havender (1968)}. Các tình huống mà bế tắc
+không thể tránh khỏi đòi hỏi các phương pháp @newterm{phục hồi bế tắc}, đòi
+hỏi các tiến trình ``rút lui'' khỏi trạng thái bế tắc và thử lại. Các cơ chế
+phục hồi bế tắc được sử dụng rộng rãi trong các hệ thống quản lý cơ sở dữ liệu,
+một chủ đề được xử lý chi tiết trong @ref{Gray and Reuter 1993}.}
+
+@quotation
+@strong{@anchor{Exercise 3.48}Bài tập 3.48:} Hãy giải thích chi tiết tại sao
+phương pháp tránh bế tắc được mô tả ở trên, (tức là, các tài khoản được đánh
+số, và mỗi tiến trình cố gắng chiếm đoạt tài khoản có số nhỏ hơn trước) tránh
+bế tắc trong vấn đề trao đổi. Viết lại @code{serialized-exchange} để kết hợp
+ý tưởng này. (Bạn cũng sẽ cần sửa đổi @code{make-account} để mỗi tài khoản
+được tạo với một số, có thể được truy cập bằng cách gửi một thông điệp thích
+hợp.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.49}Bài tập 3.49:} Cho một tình huống mà cơ chế tránh
+bế tắc được mô tả ở trên không hoạt động. (Gợi ý: Trong vấn đề trao đổi, mỗi
+tiến trình biết trước những tài khoản nào nó sẽ cần truy cập. Hãy xem xét một
+tình huống mà một tiến trình phải có quyền truy cập đến một số tài nguyên được
+chia sẻ trước khi nó có thể biết những tài nguyên được chia sẻ bổ sung nào mà
+nó sẽ cần.)
+@end quotation
+
+@subsubheading Concurrency, time, and communication
+
+Chúng ta đã thấy cách lập trình các hệ thống đồng thời đòi hỏi kiểm soát thứ
+tự các sự kiện khi các tiến trình khác nhau truy cập trạng thái được chia sẻ,
+và chúng ta đã thấy cách đạt được kiểm soát này thông qua việc dùng hợp lý các
+bộ tuần tự. Nhưng các vấn đề của đồng thời nằm sâu hơn điều này, vì, từ quan
+điểm cơ bản, không phải lúc nào cũng rõ ràng ý nghĩa của ``trạng thái được chia
+sẻ''.
+
+Các cơ chế như @code{test-and-set!} yêu cầu các tiến trình kiểm tra một cờ
+được chia sẻ toàn cục vào những thời điểm tùy ý. Điều này vừa khó khăn vừa không
+hiệu quả khi hiện thực trong các bộ xử lý tốc độ cao hiện đại, nơi do các kỹ
+thuật tối ưu hóa như pipelining và bộ nhớ đệm, nội dung bộ nhớ có thể không ở
+trạng thái nhất quán tại mọi thời điểm. Do đó, trong các hệ thống đa xử lý hiện
+đại, mô hình bộ tuần tự đang được thay thế bởi các cách tiếp cận mới về kiểm
+soát đồng thời.@footnote{Một giải pháp thay thế cho tuần tự hóa như vậy được
+gọi là @newterm{đồng bộ hóa rào cản}. Lập trình viên cho phép các tiến trình
+đồng thời thực thi tùy ý, nhưng thiết lập các điểm đồng bộ hóa nhất định
+(``rào cản'') mà không có tiến trình nào có thể tiến qua cho đến khi tất cả các
+tiến trình đã đến rào cản. Các bộ xử lý hiện đại cung cấp các lệnh máy cho
+phép lập trình viên thiết lập các điểm đồng bộ hóa tại các nơi cần nhất quán.
+@abbr{PowerPC}, ví dụ, bao gồm cho mục đích này hai lệnh được gọi là @abbr{SYNC}
+và @abbr{EIEIO} (Enforced In-order Execution of Input/Output).}
+
+Các khía cạnh có vấn đề của trạng thái được chia sẻ cũng phát sinh trong các
+hệ thống lớn, phân tán. Ví dụ, hãy tưởng tượng một hệ thống ngân hàng phân
+tán nơi các chi nhánh ngân hàng riêng lẻ duy trì các giá trị cục bộ cho số dư
+ngân hàng và định kỳ so sánh chúng với các giá trị được duy trì bởi các chi
+nhánh khác. Trong một hệ thống như vậy, giá trị của ``số dư tài khoản'' sẽ
+không xác định, ngoại trừ ngay sau khi đồng bộ hóa. Nếu Peter gửi tiền vào
+một tài khoản mà anh ta giữ chung với Paul, khi nào chúng ta nói rằng số dư
+tài khoản đã thay đổi---khi số dư trong chi nhánh địa phương thay đổi, hay cho
+đến sau khi đồng bộ hóa? Và nếu Paul truy cập tài khoản từ một chi nhánh khác,
+những ràng buộc hợp lý nào cần đặt ra cho hệ thống ngân hàng sao cho hành vi
+là ``đúng''? Điều duy nhất có thể quan trọng cho tính đúng đắn là hành vi được
+quan sát bởi Peter và Paul riêng lẻ và ``trạng thái'' của tài khoản ngay sau
+khi đồng bộ hóa. Các câu hỏi về số dư tài khoản ``thực'' hay thứ tự các sự
+kiện giữa các lần đồng bộ hóa có thể không liên quan hoặc vô nghĩa.@footnote{Điều này có vẻ là một quan điểm lạ, nhưng có những hệ thống hoạt động theo
+cách này. Các khoản phí quốc tế vào tài khoản thẻ tín dụng, ví dụ, thường được
+thanh lý theo từng quốc gia, và các khoản phí phát sinh ở các quốc gia khác nhau
+được định kỳ đối soát. Vì vậy số dư tài khoản có thể khác nhau ở các quốc gia
+khác nhau.}
+
+Hiện tượng cơ bản ở đây là việc đồng bộ hóa các tiến trình khác nhau, thiết
+lập trạng thái được chia sẻ, hoặc áp đặt một thứ tự lên các sự kiện đòi hỏi
+giao tiếp giữa các tiến trình. Về bản chất, bất kỳ khái niệm nào về thời gian
+trong kiểm soát đồng thời phải được liên kết chặt chẽ với giao tiếp.@footnote{Đối với các hệ thống phân tán, quan điểm này được theo đuổi bởi @ref{Lamport (1978)},
+người đã chỉ ra cách dùng giao tiếp để thiết lập ``đồng hồ toàn cục'' có thể
+được dùng để thiết lập thứ tự trên các sự kiện trong các hệ thống phân tán.}
+Thật thú vị khi mối liên hệ tương tự giữa thời gian và giao tiếp cũng xuất
+hiện trong Thuyết Tương Đối, nơi tốc độ ánh sáng (tín hiệu nhanh nhất có thể
+được dùng để đồng bộ hóa các sự kiện) là một hằng số cơ bản liên quan đến thời
+gian và không gian. Các phức tạp mà chúng ta gặp phải khi xử lý thời gian và
+trạng thái trong các mô hình tính toán của chúng ta có thể thực sự phản ánh một
+sự phức tạp cơ bản của vũ trụ vật chất.
