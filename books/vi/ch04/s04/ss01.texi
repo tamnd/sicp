@@ -1,0 +1,811 @@
+@node	4.4.1, 4.4.2, 4.4, 4.4
+@subsection Truy Xuất Thông Tin Suy Diễn
+
+Lập trình logic xuất sắc trong việc cung cấp giao diện đến cơ sở dữ liệu để
+truy xuất thông tin. Ngôn ngữ truy vấn chúng ta sẽ hiện thực trong chương
+này được thiết kế để được dùng theo cách này.
+
+Để minh họa những gì hệ thống truy vấn làm, chúng ta sẽ chỉ ra cách nó có thể
+được dùng để quản lý cơ sở dữ liệu hồ sơ nhân sự của Microshaft, một công ty
+công nghệ cao phát triển ở khu vực Boston. Ngôn ngữ cung cấp quyền truy cập
+hướng mẫu vào thông tin nhân sự và cũng có thể tận dụng các quy tắc tổng quát
+để thực hiện suy luận logic.
+
+@subsubheading Cơ sở dữ liệu mẫu
+
+Cơ sở dữ liệu nhân sự của Microshaft chứa các @newterm{khẳng định} về nhân
+viên công ty. Đây là thông tin về Ben Bitdiddle, phù thủy máy tính thường trú:
+
+@lisp
+(address (Bitdiddle Ben)
+         (Slumerville (Ridge Road) 10))
+(job (Bitdiddle Ben) (computer wizard))
+(salary (Bitdiddle Ben) 60000)
+@end lisp
+
+@noindent
+Mỗi khẳng định là một danh sách (trong trường hợp này là bộ ba) có các phần
+tử tự nó có thể là danh sách.
+
+Là phù thủy thường trú, Ben chịu trách nhiệm về bộ phận máy tính của công ty,
+và anh giám sát hai lập trình viên và một kỹ thuật viên. Đây là thông tin về
+họ:
+
+@lisp
+(address (Hacker Alyssa P)
+         (Cambridge (Mass Ave) 78))
+(job (Hacker Alyssa P) (computer programmer))
+(salary (Hacker Alyssa P) 40000)
+(supervisor (Hacker Alyssa P) (Bitdiddle Ben))
+
+(address (Fect Cy D)
+         (Cambridge (Ames Street) 3))
+(job (Fect Cy D) (computer programmer))
+(salary (Fect Cy D) 35000)
+(supervisor (Fect Cy D) (Bitdiddle Ben))
+
+(address (Tweakit Lem E)
+         (Boston (Bay State Road) 22))
+(job (Tweakit Lem E) (computer technician))
+(salary (Tweakit Lem E) 25000)
+(supervisor (Tweakit Lem E) (Bitdiddle Ben))
+@end lisp
+
+@noindent
+Ngoài ra còn có một thực tập sinh lập trình viên, được Alyssa giám sát:
+
+@lisp
+(address (Reasoner Louis)
+         (Slumerville (Pine Tree Road) 80))
+(job (Reasoner Louis)
+     (computer programmer trainee))
+(salary (Reasoner Louis) 30000)
+(supervisor (Reasoner Louis)
+            (Hacker Alyssa P))
+@end lisp
+
+@noindent
+Tất cả những người này đều ở trong bộ phận máy tính, như được chỉ ra bởi từ
+@code{computer} là mục đầu tiên trong mô tả công việc của họ.
+
+Ben là nhân viên cấp cao. Người giám sát của anh ấy là nhân vật lớn nhất của
+công ty:
+
+@lisp
+(supervisor (Bitdiddle Ben) (Warbucks Oliver))
+(address (Warbucks Oliver)
+         (Swellesley (Top Heap Road)))
+(job (Warbucks Oliver)
+     (administration big wheel))
+(salary (Warbucks Oliver) 150000)
+@end lisp
+
+@noindent
+Ngoài bộ phận máy tính do Ben giám sát, công ty có một bộ phận kế toán, bao
+gồm một kế toán trưởng và trợ lý của ông:
+
+@lisp
+(address (Scrooge Eben)
+         (Weston (Shady Lane) 10))
+(job (Scrooge Eben)
+     (accounting chief accountant))
+(salary (Scrooge Eben) 75000)
+(supervisor (Scrooge Eben) (Warbucks Oliver))
+
+(address (Cratchet Robert)
+         (Allston (N Harvard Street) 16))
+(job (Cratchet Robert) (accounting scrivener))
+(salary (Cratchet Robert) 18000)
+(supervisor (Cratchet Robert) (Scrooge Eben))
+@end lisp
+
+@noindent
+Ngoài ra còn có một thư ký cho nhân vật lớn:
+
+@lisp
+(address (Aull DeWitt)
+         (Slumerville (Onion Square) 5))
+(job (Aull DeWitt) (administration secretary))
+(salary (Aull DeWitt) 25000)
+(supervisor (Aull DeWitt) (Warbucks Oliver))
+@end lisp
+
+@noindent
+Cơ sở dữ liệu cũng chứa các khẳng định về loại công việc nào có thể được thực
+hiện bởi người giữ các loại công việc khác. Ví dụ, một phù thủy máy tính có
+thể làm cả công việc của lập trình viên máy tính và kỹ thuật viên máy tính:
+
+@lisp
+(can-do-job (computer wizard)
+            (computer programmer))
+
+(can-do-job (computer wizard)
+            (computer technician))
+@end lisp
+
+@noindent
+Một lập trình viên máy tính có thể thay thế cho một thực tập sinh:
+
+@lisp
+(can-do-job (computer programmer)
+            (computer programmer trainee))
+@end lisp
+
+@noindent
+Ngoài ra, như mọi người đều biết,
+
+@lisp
+(can-do-job (administration secretary)
+            (administration big wheel))
+@end lisp
+
+@subsubheading Các truy vấn đơn giản
+
+Ngôn ngữ truy vấn cho phép người dùng truy xuất thông tin từ cơ sở dữ liệu
+bằng cách đặt các truy vấn để đáp lại lời nhắc của hệ thống. Ví dụ, để tìm
+tất cả các lập trình viên máy tính, người ta có thể nói
+
+@lisp
+@i{;;; Query input:}
+(job ?x (computer programmer))
+@end lisp
+
+@noindent
+Hệ thống sẽ đáp lại với các mục sau:
+
+@lisp
+@i{;;; Query results:}
+(job (Hacker Alyssa P) (computer programmer))
+(job (Fect Cy D) (computer programmer))
+@end lisp
+
+@noindent
+Truy vấn đầu vào chỉ định rằng chúng ta đang tìm kiếm các mục trong cơ sở
+dữ liệu khớp với một @newterm{mẫu} nhất định. Trong ví dụ này, mẫu chỉ định
+các mục bao gồm ba phần tử, trong đó cái đầu tiên là ký hiệu chữ @code{job},
+cái thứ hai có thể là bất cứ thứ gì, và cái thứ ba là danh sách chữ
+@code{(computer programmer)}. ``Bất cứ thứ gì'' có thể là phần tử thứ hai
+trong danh sách khớp được chỉ định bởi một @newterm{biến mẫu}, @code{?x}. Dạng
+tổng quát của một biến mẫu là một ký hiệu, được coi là tên của biến, đứng
+trước bởi dấu hỏi. Chúng ta sẽ thấy bên dưới tại sao lại hữu ích khi chỉ định
+tên cho các biến mẫu thay vì chỉ đặt @code{?} vào các mẫu để đại diện cho
+``bất cứ thứ gì.'' Hệ thống đáp lại một truy vấn đơn giản bằng cách hiển thị
+tất cả các mục trong cơ sở dữ liệu khớp với mẫu được chỉ định.
+
+Một mẫu có thể có nhiều hơn một biến. Ví dụ, truy vấn
+
+@lisp
+(address ?x ?y)
+@end lisp
+
+@noindent
+sẽ liệt kê tất cả địa chỉ của nhân viên.
+
+Một mẫu có thể không có biến, trong trường hợp đó truy vấn đơn giản xác định
+xem mẫu đó có phải là một mục trong cơ sở dữ liệu không. Nếu có, sẽ có một
+kết quả khớp; nếu không, sẽ không có kết quả khớp nào.
+
+Cùng một biến mẫu có thể xuất hiện nhiều hơn một lần trong một truy vấn, chỉ
+định rằng cùng một ``bất cứ thứ gì'' phải xuất hiện ở mỗi vị trí. Đó là lý
+do tại sao các biến có tên. Ví dụ,
+
+@lisp
+(supervisor ?x ?x)
+@end lisp
+
+@noindent
+tìm tất cả những người tự giám sát mình (mặc dù không có khẳng định như vậy
+trong cơ sở dữ liệu mẫu của chúng ta).
+
+Truy vấn
+
+@lisp
+(job ?x (computer ?type))
+@end lisp
+
+@noindent
+khớp tất cả các mục công việc có phần tử thứ ba là danh sách hai phần tử có
+phần tử đầu tiên là @code{computer}:
+
+@lisp
+(job (Bitdiddle Ben) (computer wizard))
+(job (Hacker Alyssa P) (computer programmer))
+(job (Fect Cy D) (computer programmer))
+(job (Tweakit Lem E) (computer technician))
+@end lisp
+
+@noindent
+Cùng mẫu này @emph{không} khớp
+
+@lisp
+(job (Reasoner Louis)
+     (computer programmer trainee))
+@end lisp
+
+@noindent
+vì phần tử thứ ba trong mục là danh sách ba phần tử, và phần tử thứ ba của
+mẫu chỉ định rằng nên có hai phần tử. Nếu chúng ta muốn thay đổi mẫu để
+phần tử thứ ba có thể là bất kỳ danh sách nào bắt đầu bằng @code{computer},
+chúng ta có thể chỉ định@footnote{Điều này dùng ký hiệu đuôi chấm được giới
+thiệu trong @ref{Exercise 2.20}.}
+
+@lisp
+(job ?x (computer . ?type))
+@end lisp
+
+@noindent
+Ví dụ,
+
+@lisp
+(computer . ?type)
+@end lisp
+
+@noindent
+khớp dữ liệu
+
+@lisp
+(computer programmer trainee)
+@end lisp
+
+@noindent
+với @code{?type} là danh sách @code{(programmer trainee)}. Nó cũng khớp dữ
+liệu
+
+@lisp
+(computer programmer)
+@end lisp
+
+@noindent
+với @code{?type} là danh sách @code{(programmer)}, và khớp dữ liệu
+
+@lisp
+(computer)
+@end lisp
+
+@noindent
+với @code{?type} là danh sách rỗng @code{()}.
+
+Chúng ta có thể mô tả quá trình xử lý của ngôn ngữ truy vấn các truy vấn đơn
+giản như sau:
+
+@itemize @bullet
+
+@item
+Hệ thống tìm tất cả các gán cho các biến trong mẫu truy vấn @newterm{thỏa
+mãn} mẫu---đó là, tất cả các tập giá trị cho các biến sao cho nếu các biến
+mẫu được @newterm{khởi tạo với} (thay thế bởi) các giá trị, kết quả nằm trong
+cơ sở dữ liệu.
+
+@item
+Hệ thống đáp lại truy vấn bằng cách liệt kê tất cả các khởi tạo của mẫu truy
+vấn với các gán biến thỏa mãn nó.
+
+@end itemize
+
+@noindent
+Lưu ý rằng nếu mẫu không có biến, truy vấn giảm xuống thành việc xác định
+xem mẫu đó có trong cơ sở dữ liệu không. Nếu có, gán rỗng, không gán giá trị
+cho các biến, thỏa mãn mẫu đó cho cơ sở dữ liệu đó.
+
+@quotation
+@strong{@anchor{Exercise 4.55}Exercise 4.55:} Đưa ra các truy vấn đơn giản
+truy xuất thông tin sau từ cơ sở dữ liệu:
+
+@enumerate
+
+@item
+tất cả mọi người được giám sát bởi Ben Bitdiddle;
+
+@item
+tên và công việc của tất cả mọi người trong bộ phận kế toán;
+
+@item
+tên và địa chỉ của tất cả những người sống ở Slumerville.
+
+@end enumerate
+@end quotation
+
+@subsubheading Các truy vấn ghép
+
+Các truy vấn đơn giản tạo thành các phép toán nguyên thủy của ngôn ngữ truy
+vấn. Để tạo thành các phép toán ghép, ngôn ngữ truy vấn cung cấp các phương
+tiện kết hợp. Một điều làm cho ngôn ngữ truy vấn trở thành một ngôn ngữ lập
+trình logic là các phương tiện kết hợp phản ánh các phương tiện kết hợp được
+dùng trong việc tạo thành các biểu thức logic: @code{and}, @code{or} và
+@code{not}. (Ở đây @code{and}, @code{or} và @code{not} không phải là các
+nguyên thủy Lisp, mà là các phép toán được xây dựng vào ngôn ngữ truy vấn.)
+
+Chúng ta có thể dùng @code{and} như sau để tìm địa chỉ của tất cả các lập
+trình viên máy tính:
+
+@lisp
+(and (job ?person (computer programmer))
+     (address ?person ?where))
+@end lisp
+
+@noindent
+Đầu ra kết quả là
+
+@lisp
+(and (job (Hacker Alyssa P)
+          (computer programmer))
+     (address (Hacker Alyssa P)
+              (Cambridge (Mass Ave) 78)))
+
+(and (job (Fect Cy D) (computer programmer))
+     (address (Fect Cy D)
+              (Cambridge (Ames Street) 3)))
+@end lisp
+
+@noindent
+Nói chung,
+
+@lisp
+(and ⟨@var{query₁}⟩ ⟨@var{query₂}⟩ @r{…} ⟨@var{queryₙ}⟩)
+@end lisp
+
+@noindent
+được thỏa mãn bởi tất cả các tập giá trị cho các biến mẫu đồng thời thỏa mãn
+@math{{⟨\kern0.1em query_1⟩}} @r{…} @math{{⟨\kern0.1em query_n⟩}}.
+
+Với các truy vấn đơn giản, hệ thống xử lý một truy vấn ghép bằng cách tìm
+tất cả các gán cho các biến mẫu thỏa mãn truy vấn, sau đó hiển thị các khởi
+tạo của truy vấn với các giá trị đó.
+
+Một phương tiện khác để xây dựng các truy vấn ghép là thông qua @code{or}. Ví
+dụ,
+
+@lisp
+(or (supervisor ?x (Bitdiddle Ben))
+    (supervisor ?x (Hacker Alyssa P)))
+@end lisp
+
+@noindent
+sẽ tìm tất cả nhân viên được giám sát bởi Ben Bitdiddle hoặc Alyssa P. Hacker:
+
+@lisp
+(or (supervisor (Hacker Alyssa P)
+                (Bitdiddle Ben))
+    (supervisor (Hacker Alyssa P)
+                (Hacker Alyssa P)))
+
+(or (supervisor (Fect Cy D)
+                (Bitdiddle Ben))
+    (supervisor (Fect Cy D)
+                (Hacker Alyssa P)))
+
+(or (supervisor (Tweakit Lem E)
+                (Bitdiddle Ben))
+    (supervisor (Tweakit Lem E)
+                (Hacker Alyssa P)))
+
+(or (supervisor (Reasoner Louis)
+                (Bitdiddle Ben))
+    (supervisor (Reasoner Louis)
+                (Hacker Alyssa P)))
+@end lisp
+
+@noindent
+Nói chung,
+
+@lisp
+(or ⟨@var{query₁}⟩ ⟨@var{query₂}⟩ @r{…} ⟨@var{queryₙ}⟩)
+@end lisp
+
+@noindent
+được thỏa mãn bởi tất cả các tập giá trị cho các biến mẫu thỏa mãn ít nhất
+một trong @math{{⟨\kern0.1em query_1⟩}} @r{…} @math{{⟨\kern0.1em query_n⟩}}.
+
+Các truy vấn ghép cũng có thể được tạo thành với @code{not}. Ví dụ,
+
+@lisp
+(and (supervisor ?x (Bitdiddle Ben))
+     (not (job ?x (computer programmer))))
+@end lisp
+
+@noindent
+tìm tất cả những người được giám sát bởi Ben Bitdiddle không phải là lập trình
+viên máy tính. Nói chung,
+
+@lisp
+(not ⟨@var{query₁}⟩)
+@end lisp
+
+@noindent
+được thỏa mãn bởi tất cả các gán cho các biến mẫu không thỏa mãn
+@math{{⟨\kern0.1em query_1⟩}}.@footnote{Thực ra, mô tả về @code{not} này chỉ
+hợp lệ cho các trường hợp đơn giản. Hành vi thực sự của @code{not} phức tạp
+hơn. Chúng ta sẽ xem xét những đặc điểm kỳ lạ của @code{not} trong
+@ref{4.4.2} và @ref{4.4.3}.}
+
+Dạng kết hợp cuối cùng được gọi là @code{lisp-value}. Khi @code{lisp-value}
+là phần tử đầu tiên của một mẫu, nó chỉ định rằng phần tử tiếp theo là một
+vị từ Lisp được áp dụng cho các phần tử còn lại (đã được khởi tạo) làm đối
+số. Nói chung,
+
+@lisp
+(lisp-value ⟨@var{predicate}⟩ ⟨@var{arg₁}⟩ @r{…} ⟨@var{argₙ}⟩)
+@end lisp
+
+@noindent
+sẽ được thỏa mãn bởi các gán cho các biến mẫu mà @code{⟨}@var{predicate}@code{⟩}
+áp dụng cho @math{{⟨\kern0.1em arg_1⟩}} @r{…} @math{{⟨\kern0.1em arg_n⟩}} đã
+khởi tạo là đúng. Ví dụ, để tìm tất cả những người có lương lớn hơn $30,000
+chúng ta có thể viết@footnote{@code{Lisp-value} chỉ nên được dùng để thực
+hiện một phép toán không được cung cấp trong ngôn ngữ truy vấn. Đặc biệt, nó
+không nên được dùng để kiểm tra bằng nhau (vì đó là mục đích của việc khớp
+trong ngôn ngữ truy vấn) hay bất bằng (vì điều đó có thể được thực hiện với
+quy tắc @code{same} được trình bày bên dưới).}
+
+@lisp
+(and (salary ?person ?amount)
+     (lisp-value > ?amount 30000))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.56}Exercise 4.56:} Công thức hóa các truy vấn ghép
+truy xuất thông tin sau:
+
+@enumerate a
+
+@item
+tên của tất cả những người được giám sát bởi Ben Bitdiddle, cùng với địa chỉ
+của họ;
+
+@item
+tất cả những người có lương thấp hơn Ben Bitdiddle, cùng với lương của họ và
+lương của Ben Bitdiddle;
+
+@item
+tất cả những người được giám sát bởi người không thuộc bộ phận máy tính, cùng
+với tên và công việc của người giám sát.
+
+@end enumerate
+@end quotation
+
+@subsubheading Các quy tắc
+
+Ngoài các truy vấn nguyên thủy và truy vấn ghép, ngôn ngữ truy vấn cung cấp
+các phương tiện để trừu tượng hóa các truy vấn. Chúng được đưa ra bởi các
+@newterm{quy tắc}. Quy tắc
+
+@lisp
+(rule (lives-near ?person-1 ?person-2)
+      (and (address ?person-1
+                    (?town . ?rest-1))
+           (address ?person-2
+                    (?town . ?rest-2))
+           (not (same ?person-1 ?person-2))))
+@end lisp
+
+@noindent
+chỉ định rằng hai người sống gần nhau nếu họ sống trong cùng một thị trấn.
+Mệnh đề @code{not} cuối cùng ngăn quy tắc nói rằng tất cả mọi người đều sống
+gần chính họ. Quan hệ @code{same} được định nghĩa bởi một quy tắc rất đơn
+giản:@footnote{Lưu ý rằng chúng ta không cần @code{same} để làm cho hai thứ
+giống nhau: Chúng ta chỉ cần dùng cùng biến mẫu cho mỗi cái---về mặt hiệu
+quả, chúng ta có một thứ thay vì hai thứ ngay từ đầu. Ví dụ, xem @code{?town}
+trong quy tắc @code{lives-near} và @code{?middle-manager} trong quy tắc
+@code{wheel} bên dưới. @code{Same} hữu ích khi chúng ta muốn buộc hai thứ
+khác nhau, như @code{?person-1} và @code{?person-2} trong quy tắc
+@code{lives-near}. Mặc dù việc dùng cùng biến mẫu trong hai phần của một
+truy vấn buộc cùng giá trị xuất hiện ở cả hai nơi, việc dùng các biến mẫu
+khác nhau không buộc các giá trị khác nhau xuất hiện. (Các giá trị được gán
+cho các biến mẫu khác nhau có thể giống hoặc khác nhau.)}
+
+@lisp
+(rule (same ?x ?x))
+@end lisp
+
+@noindent
+Quy tắc sau khai báo rằng một người là một ``bánh xe'' trong một tổ chức nếu
+anh ta giám sát người là giám sát viên:
+
+@lisp
+(rule (wheel ?person)
+      (and (supervisor ?middle-manager
+                       ?person)
+           (supervisor ?x ?middle-manager)))
+@end lisp
+
+@noindent
+Dạng tổng quát của một quy tắc là
+
+@lisp
+(rule ⟨@var{conclusion}⟩ ⟨@var{body}⟩)
+@end lisp
+
+@noindent
+trong đó @code{⟨}@var{conclusion}@code{⟩} là một mẫu và @code{⟨}@var{body}@code{⟩}
+là bất kỳ truy vấn nào.@footnote{Chúng ta cũng sẽ cho phép các quy tắc không
+có thân, như trong @code{same}, và chúng ta sẽ giải thích quy tắc như vậy có
+nghĩa là kết luận quy tắc được thỏa mãn bởi bất kỳ giá trị nào của các biến.}
+Chúng ta có thể nghĩ về một quy tắc như đại diện cho một tập hợp lớn (thậm
+chí vô hạn) các khẳng định, cụ thể là tất cả các khởi tạo của kết luận quy
+tắc với các gán biến thỏa mãn thân quy tắc. Khi chúng ta mô tả các truy vấn
+đơn giản (mẫu), chúng ta đã nói rằng một gán cho các biến thỏa mãn một mẫu
+nếu mẫu đã khởi tạo nằm trong cơ sở dữ liệu. Nhưng mẫu không cần phải rõ
+ràng trong cơ sở dữ liệu như một khẳng định. Nó có thể là một khẳng định ẩn
+được ngụ ý bởi một quy tắc. Ví dụ, truy vấn
+
+@lisp
+(lives-near ?x (Bitdiddle Ben))
+@end lisp
+
+@noindent
+cho kết quả
+
+@lisp
+(lives-near (Reasoner Louis) (Bitdiddle Ben))
+(lives-near (Aull DeWitt) (Bitdiddle Ben))
+@end lisp
+
+@noindent
+Để tìm tất cả các lập trình viên máy tính sống gần Ben Bitdiddle, chúng ta có
+thể hỏi
+
+@lisp
+(and (job ?x (computer programmer))
+     (lives-near ?x (Bitdiddle Ben)))
+@end lisp
+
+@noindent
+Như trong trường hợp các thủ tục ghép, các quy tắc có thể được dùng như các
+phần của các quy tắc khác (như chúng ta đã thấy với quy tắc @code{lives-near}
+ở trên) hoặc thậm chí được định nghĩa đệ quy. Ví dụ, quy tắc
+
+@lisp
+(rule (outranked-by ?staff-person ?boss)
+      (or (supervisor ?staff-person ?boss)
+          (and (supervisor ?staff-person
+                           ?middle-manager)
+               (outranked-by ?middle-manager
+                             ?boss))))
+@end lisp
+
+@noindent
+nói rằng một nhân viên bị xếp hạng thấp hơn một ông chủ trong tổ chức nếu
+ông chủ là người giám sát của nhân viên hoặc (đệ quy) nếu người giám sát của
+nhân viên bị xếp hạng thấp hơn ông chủ.
+
+@quotation
+@strong{@anchor{Exercise 4.57}Exercise 4.57:} Định nghĩa một quy tắc nói rằng
+người 1 có thể thay thế người 2 nếu người 1 làm cùng công việc như người 2
+hoặc ai đó làm công việc của người 1 cũng có thể làm công việc của người 2,
+và nếu người 1 và người 2 không phải là cùng một người. Sử dụng quy tắc của
+bạn, đưa ra các truy vấn tìm những điều sau:
+
+@enumerate a
+
+@item
+tất cả những người có thể thay thế Cy D. Fect;
+
+@item
+tất cả những người có thể thay thế ai đó đang được trả lương cao hơn họ,
+cùng với hai mức lương.
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.58}Exercise 4.58:} Định nghĩa một quy tắc nói rằng
+một người là ``nhân vật lớn'' trong một bộ phận nếu người đó làm việc trong
+bộ phận nhưng không có người giám sát làm việc trong bộ phận.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.59}Exercise 4.59:} Ben Bitdiddle đã bỏ lỡ quá
+nhiều cuộc họp. Sợ rằng thói quen quên họp của mình có thể làm mất việc, Ben
+quyết định làm điều gì đó về nó. Anh thêm tất cả các cuộc họp hàng tuần của
+công ty vào cơ sở dữ liệu Microshaft bằng cách khẳng định những điều sau:
+
+@lisp
+(meeting accounting (Monday 9am))
+(meeting administration (Monday 10am))
+(meeting computer (Wednesday 3pm))
+(meeting administration (Friday 1pm))
+@end lisp
+
+Mỗi khẳng định trên là cho một cuộc họp của toàn bộ bộ phận. Ben cũng thêm
+một mục cho cuộc họp toàn công ty bao gồm tất cả các bộ phận. Tất cả nhân viên
+của công ty đều tham dự cuộc họp này.
+
+@lisp
+(meeting whole-company (Wednesday 4pm))
+@end lisp
+
+@enumerate a
+
+@item
+Vào sáng thứ Sáu, Ben muốn truy vấn cơ sở dữ liệu để tìm tất cả các cuộc
+họp xảy ra hôm đó. Anh nên dùng truy vấn nào?
+
+@item
+Alyssa P. Hacker không ấn tượng. Cô nghĩ sẽ hữu ích hơn nhiều nếu có thể hỏi
+về các cuộc họp của mình bằng cách chỉ định tên của mình. Vì vậy, cô thiết
+kế một quy tắc nói rằng các cuộc họp của một người bao gồm tất cả các cuộc
+họp @code{whole-company} cộng với tất cả các cuộc họp của bộ phận của người
+đó. Điền vào thân của quy tắc của Alyssa.
+
+@lisp
+(rule (meeting-time ?person ?day-and-time)
+      ⟨@var{rule-body}⟩)
+@end lisp
+
+@item
+Alyssa đến cơ quan vào sáng thứ Tư và tự hỏi mình phải tham dự những cuộc họp
+nào hôm đó. Sau khi đã định nghĩa quy tắc trên, cô nên thực hiện truy vấn nào
+để tìm hiểu điều này?
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.60}Exercise 4.60:} Bằng cách đưa ra truy vấn
+
+@lisp
+(lives-near ?person (Hacker Alyssa P))
+@end lisp
+
+Alyssa P. Hacker có thể tìm thấy những người sống gần cô, người mà cô có thể
+đi làm cùng. Mặt khác, khi cô cố gắng tìm tất cả các cặp người sống gần nhau
+bằng cách truy vấn
+
+@lisp
+(lives-near ?person-1 ?person-2)
+@end lisp
+
+@noindent
+cô nhận thấy rằng mỗi cặp người sống gần nhau được liệt kê hai lần; ví dụ,
+
+@lisp
+(lives-near (Hacker Alyssa P) (Fect Cy D))
+(lives-near (Fect Cy D) (Hacker Alyssa P))
+@end lisp
+
+Tại sao điều này xảy ra? Có cách nào để tìm danh sách những người sống gần
+nhau, trong đó mỗi cặp chỉ xuất hiện một lần không? Giải thích.
+@end quotation
+
+@subsubheading Logic như các chương trình
+
+Chúng ta có thể coi một quy tắc như một loại hàm kéo theo logic: @emph{Nếu}
+một gán giá trị cho các biến mẫu thỏa mãn thân, @emph{thì} nó thỏa mãn kết
+luận. Kết quả là, chúng ta có thể coi ngôn ngữ truy vấn có khả năng thực hiện
+các @newterm{suy luận logic} dựa trên các quy tắc. Như một ví dụ, hãy xem xét
+phép toán @code{append} được mô tả ở đầu @ref{4.4}. Như chúng ta đã nói,
+@code{append} có thể được đặc trưng bởi hai quy tắc sau:
+
+@itemize @bullet
+
+@item
+Với bất kỳ danh sách @code{y} nào, danh sách rỗng và @code{y} @code{append}
+để tạo thành @code{y}.
+
+@item
+Với bất kỳ @code{u}, @code{v}, @code{y} và @code{z} nào, @code{(cons u v)}
+và @code{y} @code{append} để tạo thành @code{(cons u z)} nếu @code{v} và
+@code{y} @code{append} để tạo thành @code{z}.
+
+@end itemize
+
+@noindent
+Để diễn đạt điều này trong ngôn ngữ truy vấn của chúng ta, chúng ta định nghĩa
+hai quy tắc cho một quan hệ
+
+@lisp
+(append-to-form x y z)
+@end lisp
+
+@noindent
+mà chúng ta có thể giải thích có nghĩa là ``@code{x} và @code{y} @code{append}
+để tạo thành @code{z}'':
+
+@lisp
+(rule (append-to-form () ?y ?y))
+(rule (append-to-form (?u . ?v) ?y (?u . ?z))
+      (append-to-form ?v ?y ?z))
+@end lisp
+
+@noindent
+Quy tắc đầu tiên không có thân, có nghĩa là kết luận đúng với bất kỳ giá trị
+nào của @code{?y}. Lưu ý cách quy tắc thứ hai sử dụng ký hiệu đuôi chấm để
+đặt tên @code{car} và @code{cdr} của một danh sách.
+
+Cho hai quy tắc này, chúng ta có thể công thức hóa các truy vấn tính toán
+@code{append} của hai danh sách:
+
+@lisp
+@i{;;; Query input:}
+(append-to-form (a b) (c d) ?z)
+
+@i{;;; Query results:}
+(append-to-form (a b) (c d) (a b c d))
+@end lisp
+
+@noindent
+Điều ấn tượng hơn là chúng ta có thể dùng cùng các quy tắc để hỏi câu hỏi
+``Danh sách nào, khi @code{append}ed với @code{(a b)}, tạo ra @code{(a b c d)}?''
+Điều này được thực hiện như sau:
+
+@lisp
+@i{;;; Query input:}
+(append-to-form (a b) ?y (a b c d))
+
+@i{;;; Query results:}
+(append-to-form (a b) (c d) (a b c d))
+@end lisp
+
+@noindent
+Chúng ta cũng có thể hỏi tất cả các cặp danh sách @code{append} để tạo thành
+@code{(a b c d)}:
+
+@lisp
+@i{;;; Query input:}
+(append-to-form ?x ?y (a b c d))
+
+@i{;;; Query results:}
+(append-to-form () (a b c d) (a b c d))
+(append-to-form (a) (b c d) (a b c d))
+(append-to-form (a b) (c d) (a b c d))
+(append-to-form (a b c) (d) (a b c d))
+(append-to-form (a b c d) () (a b c d))
+@end lisp
+
+@noindent
+Hệ thống truy vấn có vẻ thể hiện khá nhiều trí thông minh trong việc dùng các
+quy tắc để suy ra câu trả lời cho các truy vấn ở trên. Thực ra, như chúng ta
+sẽ thấy trong phần tiếp theo, hệ thống đang tuân theo một thuật toán được xác
+định rõ trong việc giải quyết các quy tắc. Thật không may, mặc dù hệ thống
+hoạt động ấn tượng trong trường hợp @code{append}, các phương pháp tổng quát
+có thể phá vỡ trong các trường hợp phức tạp hơn, như chúng ta sẽ thấy trong
+@ref{4.4.3}.
+
+@quotation
+@strong{@anchor{Exercise 4.61}Exercise 4.61:} Các quy tắc sau hiện thực một
+quan hệ @code{next-to} tìm các phần tử kề nhau của một danh sách:
+
+@lisp
+(rule (?x next-to ?y in (?x ?y . ?u)))
+(rule (?x next-to ?y in (?v . ?z))
+      (?x next-to ?y in ?z))
+@end lisp
+
+Phản hồi với các truy vấn sau sẽ là gì?
+
+@lisp
+(?x next-to ?y in (1 (2 3) 4))
+(?x next-to 1 in (2 1 3 1))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.62}Exercise 4.62:} Định nghĩa các quy tắc để hiện
+thực phép toán @code{last-pair} của @ref{Exercise 2.17}, trả về một danh sách
+chứa phần tử cuối cùng của một danh sách không rỗng. Kiểm tra các quy tắc của
+bạn trên các truy vấn như @code{(last-pair (3) ?x)}, @code{(last-pair (1 2 3) ?x)}
+và @code{(last-pair (2 ?x) (3))}. Các quy tắc của bạn có hoạt động chính xác
+trên các truy vấn như @code{(last-pair ?x (3))} không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.63}Exercise 4.63:} Cơ sở dữ liệu sau (xem Genesis
+4) theo dõi phả hệ của các hậu duệ của Ada trở lại Adam, thông qua Cain:
+
+@lisp
+(son Adam Cain) (son Cain Enoch)
+(son Enoch Irad) (son Irad Mehujael)
+(son Mehujael Methushael)
+(son Methushael Lamech)
+(wife Lamech Ada) (son Ada Jabal)
+(son Ada Jubal)
+@end lisp
+
+Công thức hóa các quy tắc như ``Nếu @math{S} là con trai của @math{f}, và
+@math{f} là con trai của @math{G}, thì @math{S} là cháu nội của @math{G}'' và
+``Nếu @math{W} là vợ của @math{M}, và @math{S} là con trai của @math{W}, thì
+@math{S} là con trai của @math{M}'' (điều này được cho là đúng hơn trong thời
+Kinh Thánh so với ngày nay) để hệ thống truy vấn có thể tìm cháu nội của Cain;
+các con trai của Lamech; các cháu nội của Methushael. (Xem @ref{Exercise 4.69}
+để biết một số quy tắc để suy ra các mối quan hệ phức tạp hơn.)
+@end quotation

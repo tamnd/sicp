@@ -1,0 +1,168 @@
+@node 4.4.4.8, Chapter 5, 4.3, 4.4.4
+@subsubsection Các Khung và Ràng Buộc
+
+Các khung được biểu diễn như là các danh sách ràng buộc, là các cặp biến-giá trị:
+
+@lisp
+(define (make-binding variable value)
+  (cons variable value))
+
+(define (binding-variable binding)
+  (car binding))
+
+(define (binding-value binding)
+  (cdr binding))
+
+(define (binding-in-frame variable frame)
+  (assoc variable frame))
+
+(define (extend variable value frame)
+  (cons (make-binding variable value) frame))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.71}Bài tập 4.71:} Louis Reasoner tự hỏi tại sao các thủ tục @code{simple-query} và @code{disjoin} (@ref{4.4.4.2}) được hiện thực hóa sử dụng các phép toán @code{delay} rõ ràng, thay vì được định nghĩa như sau:
+
+@lisp
+(define (simple-query
+         query-pattern frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (stream-append
+      (find-assertions query-pattern frame)
+      (apply-rules query-pattern frame)))
+   frame-stream))
+
+(define (disjoin disjuncts frame-stream)
+  (if (empty-disjunction? disjuncts)
+      the-empty-stream
+      (interleave
+       (qeval (first-disjunct disjuncts)
+              frame-stream)
+       (disjoin (rest-disjuncts disjuncts)
+                frame-stream))))
+@end lisp
+
+Bạn có thể đưa ra ví dụ về các truy vấn mà các định nghĩa đơn giản hơn này sẽ dẫn đến hành vi không mong muốn không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.72}Bài tập 4.72:} Tại sao @code{disjoin} và @code{stream-flatmap} xen kẽ các luồng thay vì chỉ đơn giản là nối chúng? Đưa ra các ví dụ minh họa tại sao xen kẽ hoạt động tốt hơn. (Gợi ý: Tại sao ta đã dùng @code{interleave} trong @ref{3.5.3}?)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.73}Bài tập 4.73:} Tại sao @code{flatten-stream} sử dụng @code{delay} một cách rõ ràng? Điều gì sẽ sai khi định nghĩa nó như sau:
+
+@lisp
+(define (flatten-stream stream)
+  (if (stream-null? stream)
+      the-empty-stream
+      (interleave (stream-car stream)
+                  (flatten-stream
+                   (stream-cdr stream)))))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.74}Bài tập 4.74:} Alyssa P. Hacker đề xuất sử dụng một phiên bản đơn giản hơn của @code{stream-flatmap} trong @code{negate}, @code{lisp-value}, và @code{find-assertions}. Cô ấy nhận thấy rằng thủ tục được ánh xạ qua luồng khung trong các trường hợp này luôn tạo ra một luồng rỗng hoặc một luồng singleton, vì vậy không cần xen kẽ khi kết hợp các luồng này.
+
+@enumerate a
+
+@item
+Điền vào các biểu thức còn thiếu trong chương trình của Alyssa.
+
+@lisp
+(define (simple-stream-flatmap proc s)
+  (simple-flatten (stream-map proc s)))
+
+(define (simple-flatten stream)
+  (stream-map ⟨??⟩
+              (stream-filter ⟨??⟩
+                             stream)))
+@end lisp
+
+@item
+Hành vi của hệ thống truy vấn có thay đổi không nếu ta thay đổi nó theo cách này?
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.75}Bài tập 4.75:} Hiện thực hóa cho ngôn ngữ truy vấn một dạng đặc biệt mới gọi là @code{unique}. @code{Unique} nên thành công nếu chỉ có chính xác một mục trong cơ sở dữ liệu thỏa mãn một truy vấn được chỉ định. Ví dụ,
+
+@lisp
+(unique (job ?x (computer wizard)))
+@end lisp
+
+@noindent
+nên in luồng một phần tử
+
+@lisp
+(unique (job (Bitdiddle Ben)
+             (computer wizard)))
+@end lisp
+
+@noindent
+vì Ben là phù thủy máy tính duy nhất, và
+
+@lisp
+(unique (job ?x (computer programmer)))
+@end lisp
+
+@noindent
+nên in luồng rỗng, vì có nhiều hơn một lập trình viên máy tính. Hơn nữa,
+
+@lisp
+(and (job ?x ?j)
+     (unique (job ?anyone ?j)))
+@end lisp
+
+@noindent
+nên liệt kê tất cả các công việc chỉ được điền bởi một người, và những người điền vào chúng.
+
+Có hai phần để hiện thực hóa @code{unique}. Phần đầu tiên là viết một thủ tục xử lý dạng đặc biệt này, và phần thứ hai là làm cho @code{qeval} phân phối đến thủ tục đó. Phần thứ hai là đơn giản, vì @code{qeval} thực hiện phân phối của nó theo hướng dữ liệu. Nếu thủ tục của bạn được gọi là @code{uniquely-asserted}, tất cả những gì bạn cần làm là
+
+@lisp
+(put 'unique 'qeval uniquely-asserted)
+@end lisp
+
+@noindent
+và @code{qeval} sẽ phân phối đến thủ tục này cho mọi truy vấn có @code{type} (@code{car}) là ký hiệu @code{unique}.
+
+Vấn đề thực sự là viết thủ tục @code{uniquely-asserted}. Điều này nên nhận làm đầu vào @code{contents} (@code{cdr}) của truy vấn @code{unique}, cùng với một luồng các khung. Với mỗi khung trong luồng, nó nên sử dụng @code{qeval} để tìm luồng của tất cả các mở rộng đến khung thỏa mãn truy vấn đã cho. Bất kỳ luồng nào không có chính xác một mục trong nó nên bị loại bỏ. Các luồng còn lại nên được truyền lại để tích lũy thành một luồng lớn là kết quả của truy vấn @code{unique}. Điều này tương tự với việc hiện thực hóa dạng đặc biệt @code{not}.
+
+Kiểm tra việc hiện thực hóa của bạn bằng cách tạo một truy vấn liệt kê tất cả những người giám sát chính xác một người.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.76}Bài tập 4.76:} Cách hiện thực hóa @code{and} của ta như một kết hợp nối tiếp các truy vấn (@ref{Figure 4.5}) là thanh lịch, nhưng nó kém hiệu quả vì trong quá trình xử lý truy vấn thứ hai của @code{and} ta phải quét cơ sở dữ liệu cho mỗi khung được tạo ra bởi truy vấn đầu tiên. Nếu cơ sở dữ liệu có @math{n} phần tử, và một truy vấn điển hình tạo ra một số lượng khung đầu ra tỷ lệ với @math{n} (giả sử @math{{n \,/\, k}}), thì việc quét cơ sở dữ liệu cho mỗi khung được tạo ra bởi truy vấn đầu tiên sẽ đòi hỏi @math{{n^2 /\, k}} cuộc gọi đến bộ khớp mẫu. Một cách tiếp cận khác là xử lý hai mệnh đề của @code{and} riêng biệt, sau đó tìm kiếm tất cả các cặp khung đầu ra tương thích. Nếu mỗi truy vấn tạo ra @math{{n \,/\, k}} khung đầu ra, thì điều này có nghĩa là ta phải thực hiện @math{{n^2 /\, k^2}} kiểm tra tương thích---ít hơn @math{k} lần so với số lần khớp cần thiết trong phương pháp hiện tại của ta.
+
+Hãy nghĩ ra một hiện thực hóa của @code{and} sử dụng chiến lược này. Bạn phải hiện thực hóa một thủ tục nhận hai khung làm đầu vào, kiểm tra xem các ràng buộc trong các khung có tương thích không, và nếu có, tạo ra một khung hợp nhất hai tập ràng buộc. Phép toán này tương tự với hợp nhất.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.77}Bài tập 4.77:} Trong @ref{4.4.3} ta thấy rằng @code{not} và @code{lisp-value} có thể khiến ngôn ngữ truy vấn đưa ra câu trả lời ``sai'' nếu các phép lọc này được áp dụng cho các khung trong đó các biến chưa được gán. Hãy nghĩ ra một cách để khắc phục sự thiếu hụt này. Một ý tưởng là thực hiện lọc theo cách ``bị trễ'' bằng cách thêm vào khung một ``lời hứa'' để lọc chỉ được thực hiện khi đủ các biến đã được gán để làm cho phép toán có thể. Ta có thể đợi để thực hiện lọc cho đến khi tất cả các phép toán khác đã được thực hiện. Tuy nhiên, để hiệu quả, ta muốn thực hiện lọc càng sớm càng tốt để giảm số lượng khung trung gian được tạo ra.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.78}Bài tập 4.78:} Thiết kế lại ngôn ngữ truy vấn như một chương trình không tất định để được hiện thực hóa bằng cách sử dụng trình định giá của @ref{4.3}, thay vì như một quy trình luồng. Trong cách tiếp cận này, mỗi truy vấn sẽ tạo ra một câu trả lời duy nhất (thay vì luồng tất cả các câu trả lời) và người dùng có thể nhập @code{try-again} để xem thêm câu trả lời. Bạn sẽ thấy rằng nhiều cơ chế ta xây dựng trong phần này được thay thế bởi tìm kiếm không tất định và quay lui. Tuy nhiên, bạn có thể cũng thấy rằng ngôn ngữ truy vấn mới của bạn có những khác biệt tinh tế trong hành vi so với ngôn ngữ được hiện thực hóa ở đây. Bạn có thể tìm thấy các ví dụ minh họa sự khác biệt này không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.79}Bài tập 4.79:} Khi ta hiện thực hóa trình định giá Lisp trong @ref{4.1}, ta thấy cách sử dụng các môi trường cục bộ để tránh xung đột tên giữa các tham số của các thủ tục. Ví dụ, khi định giá
+
+@lisp
+(define (square x)
+  (* x x))
+
+(define (sum-of-squares x y)
+  (+ (square x) (square y)))
+
+(sum-of-squares 3 4)
+@end lisp
+
+@noindent
+không có sự nhầm lẫn giữa @code{x} trong @code{square} và @code{x} trong @code{sum-of-squares}, vì ta định giá thân của mỗi thủ tục trong một môi trường được xây dựng đặc biệt để chứa các ràng buộc cho các biến cục bộ. Trong hệ thống truy vấn, ta đã dùng một chiến lược khác để tránh xung đột tên khi áp dụng các quy tắc. Mỗi khi ta áp dụng một quy tắc ta đổi tên các biến bằng các tên mới được đảm bảo là duy nhất. Chiến lược tương tự cho trình định giá Lisp sẽ là loại bỏ các môi trường cục bộ và chỉ đơn giản là đổi tên các biến trong thân của một thủ tục mỗi khi ta áp dụng thủ tục.
+
+Hiện thực hóa cho ngôn ngữ truy vấn một phương pháp áp dụng quy tắc sử dụng các môi trường thay vì đổi tên. Xem liệu bạn có thể xây dựng trên cấu trúc môi trường của mình để tạo ra các cấu trúc trong ngôn ngữ truy vấn để xử lý các hệ thống lớn, chẳng hạn như phần tương tự quy tắc của các thủ tục có cấu trúc khối. Bạn có thể liên kết bất kỳ điều gì trong số này với vấn đề thực hiện suy luận trong một bối cảnh (ví dụ: ``Nếu tôi giả sử rằng @math{P} là đúng, thì tôi có thể suy luận ra @math{A} và @math{B}.'') như là một phương pháp giải quyết vấn đề? (Bài toán này là mở. Một câu trả lời tốt có thể đáng giá bằng tiến sĩ.)
+@end quotation

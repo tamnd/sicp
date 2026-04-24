@@ -1,0 +1,63 @@
+@node 4.4.4.1, 4.4.4.2, 4.4.4, 4.4.4
+@subsubsection Vòng Lặp Điều Khiển và Khởi Tạo
+
+Vòng lặp điều khiển của hệ thống truy vấn đọc lặp đi lặp lại các biểu thức đầu vào. Nếu biểu thức là một quy tắc hoặc khẳng định cần được thêm vào cơ sở dữ liệu, thì thông tin được thêm vào. Nếu không, biểu thức được coi là một truy vấn. Vòng lặp điều khiển truyền truy vấn này cho trình định giá @code{qeval} cùng với một luồng khung ban đầu bao gồm một khung trống duy nhất. Kết quả của phép định giá là một luồng các khung được tạo ra bằng cách thỏa mãn truy vấn với các giá trị biến được tìm thấy trong cơ sở dữ liệu. Các khung này được dùng để tạo thành một luồng mới bao gồm các bản sao của truy vấn gốc trong đó các biến được khởi tạo bằng các giá trị được cung cấp bởi luồng các khung, và luồng cuối cùng này được in tại terminal:
+
+@lisp
+(define input-prompt  ";;; Query input:")
+(define output-prompt ";;; Query results:")
+
+(define (query-driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((q (query-syntax-process (read))))
+    (cond ((assertion-to-be-added? q)
+           (add-rule-or-assertion!
+            (add-assertion-body q))
+           (newline)
+           (display
+            "Assertion added to data base.")
+           (query-driver-loop))
+          (else
+           (newline)
+           (display output-prompt)
+           (display-stream
+            (stream-map
+             (lambda (frame)
+               (instantiate
+                q
+                frame
+                (lambda (v f)
+                  (contract-question-mark v))))
+             (qeval q (singleton-stream '()))))
+           (query-driver-loop)))))
+@end lisp
+
+@noindent
+Ở đây, như trong các trình định giá khác trong chương này, ta sử dụng cú pháp trừu tượng cho các biểu thức của ngôn ngữ truy vấn. Việc hiện thực hóa cú pháp biểu thức, bao gồm vị từ @code{assertion-to-be-added?} và bộ chọn @code{add-assertion-body}, được trình bày trong @ref{4.4.4.7}. @code{Add-rule-or-assertion!} được định nghĩa trong @ref{4.4.4.5}.
+
+Trước khi thực hiện bất kỳ xử lý nào trên một biểu thức đầu vào, vòng lặp điều khiển biến đổi nó về mặt cú pháp thành một dạng giúp quá trình xử lý hiệu quả hơn. Điều này liên quan đến việc thay đổi cách biểu diễn các biến mẫu. Khi truy vấn được khởi tạo, bất kỳ biến nào vẫn chưa được gán đều được biến đổi ngược lại thành dạng đầu vào trước khi in. Các phép biến đổi này được thực hiện bởi hai thủ tục @code{query-syntax-process} và @code{contract-question-mark} (@ref{4.4.4.7}).
+
+Để khởi tạo một biểu thức, ta sao chép nó, thay thế bất kỳ biến nào trong biểu thức bằng các giá trị của chúng trong một khung cho trước. Các giá trị tự chúng được khởi tạo, vì chúng có thể chứa các biến (ví dụ, nếu @code{?x} trong @code{exp} được gán với @code{?y} như là kết quả của hợp nhất và @code{?y} đến lượt mình được gán với 5). Hành động cần thực hiện nếu một biến không thể khởi tạo được được cung cấp bởi một đối số thủ tục cho @code{instantiate}.
+
+@lisp
+(define (instantiate
+         exp frame unbound-var-handler)
+  (define (copy exp)
+    (cond ((var? exp)
+           (let ((binding
+                  (binding-in-frame
+                   exp frame)))
+             (if binding
+                 (copy
+                  (binding-value binding))
+                 (unbound-var-handler
+                  exp frame))))
+          ((pair? exp)
+           (cons (copy (car exp))
+                 (copy (cdr exp))))
+          (else exp)))
+  (copy exp))
+@end lisp
+
+@noindent
+Các thủ tục thao túng ràng buộc được định nghĩa trong @ref{4.4.4.8}.

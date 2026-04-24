@@ -1,0 +1,142 @@
+@node 4.4.4.5, 4.4.4.6, 4.4.4.4, 4.4.4
+@subsubsection Duy Trì Cơ Sở Dữ Liệu
+
+Một vấn đề quan trọng trong việc thiết kế các ngôn ngữ lập trình logic là sắp xếp mọi thứ sao cho càng ít mục cơ sở dữ liệu không liên quan càng tốt sẽ được kiểm tra khi kiểm tra một mẫu đã cho. Trong hệ thống của ta, ngoài việc lưu trữ tất cả các khẳng định trong một luồng lớn, ta lưu trữ tất cả các khẳng định có @code{car} là các ký hiệu hằng trong các luồng riêng biệt, trong một bảng được lập chỉ mục theo ký hiệu. Để tìm nạp một khẳng định có thể khớp với một mẫu, trước tiên ta kiểm tra xem @code{car} của mẫu có phải là một ký hiệu hằng không. Nếu có, ta trả về (để được kiểm tra bằng bộ khớp) tất cả các khẳng định được lưu trữ có cùng @code{car}. Nếu @code{car} của mẫu không phải là ký hiệu hằng, ta trả về tất cả các khẳng định được lưu trữ. Các phương pháp thông minh hơn cũng có thể tận dụng thông tin trong khung, hoặc cũng cố gắng tối ưu hóa trường hợp @code{car} của mẫu không phải là ký hiệu hằng. Ta tránh đưa các tiêu chí lập chỉ mục của mình (sử dụng @code{car}, chỉ xử lý trường hợp của các ký hiệu hằng) vào chương trình; thay vào đó ta gọi trên các vị từ và bộ chọn thể hiện các tiêu chí của ta.
+
+@lisp
+(define THE-ASSERTIONS the-empty-stream)
+
+(define (fetch-assertions pattern frame)
+  (if (use-index? pattern)
+      (get-indexed-assertions pattern)
+      (get-all-assertions)))
+
+(define (get-all-assertions) THE-ASSERTIONS)
+
+(define (get-indexed-assertions pattern)
+  (get-stream (index-key-of pattern)
+              'assertion-stream))
+@end lisp
+
+@noindent
+@code{Get-stream} tra cứu một luồng trong bảng và trả về một luồng rỗng nếu không có gì được lưu trữ ở đó.
+
+@lisp
+(define (get-stream key1 key2)
+  (let ((s (get key1 key2)))
+    (if s s the-empty-stream)))
+@end lisp
+
+@noindent
+Các quy tắc được lưu trữ tương tự, sử dụng @code{car} của kết luận quy tắc. Tuy nhiên, các kết luận quy tắc là các mẫu tùy ý, vì vậy chúng khác với các khẳng định ở chỗ chúng có thể chứa các biến. Một mẫu có @code{car} là ký hiệu hằng có thể khớp với các quy tắc có kết luận bắt đầu bằng một biến cũng như các quy tắc có kết luận có cùng @code{car}. Do đó, khi tìm nạp các quy tắc có thể khớp với một mẫu có @code{car} là ký hiệu hằng, ta tìm nạp tất cả các quy tắc có kết luận bắt đầu bằng một biến cũng như những quy tắc có kết luận có cùng @code{car} với mẫu. Với mục đích này ta lưu trữ tất cả các quy tắc có kết luận bắt đầu bằng một biến trong một luồng riêng biệt trong bảng của ta, được lập chỉ mục theo ký hiệu @code{?}.
+
+@lisp
+(define THE-RULES the-empty-stream)
+
+(define (fetch-rules pattern frame)
+  (if (use-index? pattern)
+      (get-indexed-rules pattern)
+      (get-all-rules)))
+
+(define (get-all-rules) THE-RULES)
+
+(define (get-indexed-rules pattern)
+  (stream-append
+   (get-stream (index-key-of pattern)
+               'rule-stream)
+   (get-stream '? 'rule-stream)))
+@end lisp
+
+@noindent
+@code{Add-rule-or-assertion!} được dùng bởi @code{query-driver-loop} để thêm các khẳng định và quy tắc vào cơ sở dữ liệu. Mỗi mục được lưu trữ trong chỉ mục, nếu phù hợp, và trong một luồng tất cả các khẳng định hoặc quy tắc trong cơ sở dữ liệu.
+
+@lisp
+(define (add-rule-or-assertion! assertion)
+  (if (rule? assertion)
+      (add-rule! assertion)
+      (add-assertion! assertion)))
+
+(define (add-assertion! assertion)
+  (store-assertion-in-index assertion)
+  (let ((old-assertions THE-ASSERTIONS))
+    (set! THE-ASSERTIONS
+          (cons-stream assertion
+                       old-assertions))
+    'ok))
+
+(define (add-rule! rule)
+  (store-rule-in-index rule)
+  (let ((old-rules THE-RULES))
+    (set! THE-RULES
+          (cons-stream rule old-rules))
+    'ok))
+@end lisp
+
+@noindent
+Để thực sự lưu trữ một khẳng định hoặc một quy tắc, ta kiểm tra xem nó có thể được lập chỉ mục không. Nếu có, ta lưu trữ nó trong luồng phù hợp.
+
+@lisp
+(define (store-assertion-in-index assertion)
+  (if (indexable? assertion)
+      (let ((key (index-key-of assertion)))
+        (let ((current-assertion-stream
+               (get-stream
+                key 'assertion-stream)))
+          (put key
+               'assertion-stream
+               (cons-stream
+                assertion
+                current-assertion-stream))))))
+
+(define (store-rule-in-index rule)
+  (let ((pattern (conclusion rule)))
+    (if (indexable? pattern)
+        (let ((key (index-key-of pattern)))
+          (let ((current-rule-stream
+                 (get-stream
+                  key 'rule-stream)))
+            (put key
+                 'rule-stream
+                 (cons-stream
+                  rule
+                  current-rule-stream)))))))
+@end lisp
+
+@noindent
+Các thủ tục sau định nghĩa cách chỉ mục cơ sở dữ liệu được sử dụng. Một mẫu (một khẳng định hoặc kết luận quy tắc) sẽ được lưu trữ trong bảng nếu nó bắt đầu bằng một biến hoặc một ký hiệu hằng.
+
+@lisp
+(define (indexable? pat)
+  (or (constant-symbol? (car pat))
+      (var? (car pat))))
+@end lisp
+
+@noindent
+Khóa mà một mẫu được lưu trữ trong bảng là @code{?} (nếu nó bắt đầu bằng một biến) hoặc ký hiệu hằng mà nó bắt đầu.
+
+@lisp
+(define (index-key-of pat)
+  (let ((key (car pat)))
+    (if (var? key) '? key)))
+@end lisp
+
+@noindent
+Chỉ mục sẽ được dùng để lấy các mục có thể khớp với một mẫu nếu mẫu bắt đầu bằng một ký hiệu hằng.
+
+@lisp
+(define (use-index? pat)
+  (constant-symbol? (car pat)))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.70}Bài tập 4.70:} Mục đích của các ràng buộc @code{let} trong các thủ tục @code{add-assertion!} và @code{add-rule!} là gì? Điều gì sẽ sai với hiện thực hóa sau đây của @code{add-assertion!}? Gợi ý: Hãy nhớ lại định nghĩa về luồng vô hạn các số 1 trong @ref{3.5.2}: @code{(define ones (cons-stream 1 ones))}.
+
+@lisp
+(define (add-assertion! assertion)
+  (store-assertion-in-index assertion)
+  (set! THE-ASSERTIONS
+        (cons-stream assertion
+                     THE-ASSERTIONS))
+  'ok)
+@end lisp
+@end quotation

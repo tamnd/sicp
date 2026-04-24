@@ -1,0 +1,513 @@
+@node	4.4.2, 4.4.3, 4.4.1, 4.4
+@subsection Hệ Thống Truy Vấn Hoạt Động Như Thế Nào
+
+Trong phần @ref{4.4.4} chúng ta sẽ trình bày một hiện thực của trình thông
+dịch truy vấn như một tập hợp các thủ tục. Trong phần này chúng ta đưa ra một
+tổng quan giải thích cấu trúc tổng quát của hệ thống độc lập với các chi tiết
+hiện thực cấp thấp. Sau khi mô tả hiện thực của trình thông dịch, chúng ta sẽ
+có thể hiểu một số hạn chế của nó và một số cách tinh tế mà các phép toán logic
+của ngôn ngữ truy vấn khác với các phép toán của logic toán học.
+
+Rõ ràng là trình định giá truy vấn phải thực hiện một số loại tìm kiếm để khớp
+các truy vấn với các sự kiện và quy tắc trong cơ sở dữ liệu. Một cách để làm
+điều này là hiện thực hệ thống truy vấn như một chương trình không tất định,
+sử dụng trình định giá @code{amb} của @ref{4.3} (xem @ref{Exercise 4.78}).
+Một khả năng khác là quản lý việc tìm kiếm với sự trợ giúp của các luồng.
+Hiện thực của chúng ta theo cách tiếp cận thứ hai này.
+
+Hệ thống truy vấn được tổ chức xung quanh hai phép toán trung tâm gọi là
+@newterm{khớp mẫu} và @newterm{hợp nhất}. Chúng ta trước tiên mô tả khớp mẫu
+và giải thích cách phép toán này, cùng với việc tổ chức thông tin theo các
+luồng khung, cho phép chúng ta hiện thực cả các truy vấn đơn giản và phức hợp.
+Chúng ta tiếp theo thảo luận về hợp nhất, một tổng quát hóa của khớp mẫu cần
+thiết để hiện thực các quy tắc. Cuối cùng, chúng ta chỉ ra cách toàn bộ trình
+thông dịch truy vấn khớp với nhau thông qua một thủ tục phân loại các biểu
+thức theo cách tương tự như cách @code{eval} phân loại các biểu thức cho trình
+thông dịch được mô tả trong @ref{4.1}.
+
+@subsubheading Khớp mẫu
+
+Một @newterm{bộ khớp mẫu} là một chương trình kiểm tra xem một dữ liệu nào đó
+có khớp với một mẫu được chỉ định không. Ví dụ, danh sách dữ liệu
+@code{((a b) c (a b))} khớp với mẫu @code{(?x c ?x)} với biến mẫu @code{?x}
+được ràng buộc với @code{(a b)}. Cùng danh sách dữ liệu đó khớp với mẫu
+@code{(?x ?y ?z)} với @code{?x} và @code{?z} đều được ràng buộc với @code{(a b)}
+và @code{?y} được ràng buộc với @code{c}. Nó cũng khớp với mẫu
+@code{((?x ?y) c (?x ?y))} với @code{?x} được ràng buộc với @code{a} và
+@code{?y} được ràng buộc với @code{b}. Tuy nhiên, nó không khớp với mẫu
+@code{(?x a ?y)}, vì mẫu đó chỉ định một danh sách có phần tử thứ hai là ký
+hiệu @code{a}.
+
+Bộ khớp mẫu được dùng bởi hệ thống truy vấn nhận làm đầu vào một mẫu, một
+dữ liệu và một @newterm{khung} chỉ định các ràng buộc cho các biến mẫu khác
+nhau. Nó kiểm tra xem dữ liệu có khớp với mẫu theo cách nhất quán với các
+ràng buộc đã có trong khung không. Nếu vậy, nó trả về khung đã cho được bổ
+sung bởi bất kỳ ràng buộc nào có thể đã được xác định bởi trận đấu. Nếu
+không, nó chỉ ra rằng trận đấu đã thất bại.
+
+Ví dụ, sử dụng mẫu @code{(?x ?y ?x)} để khớp @code{(a b a)} với một khung
+rỗng sẽ trả về một khung chỉ định rằng @code{?x} được ràng buộc với @code{a}
+và @code{?y} được ràng buộc với @code{b}. Thử trận đấu với cùng mẫu, cùng
+dữ liệu và một khung chỉ định rằng @code{?y} được ràng buộc với @code{a} sẽ
+thất bại. Thử trận đấu với cùng mẫu, cùng dữ liệu và một khung trong đó
+@code{?y} được ràng buộc với @code{b} và @code{?x} chưa được ràng buộc sẽ
+trả về khung đã cho được bổ sung bởi ràng buộc của @code{?x} với @code{a}.
+
+Bộ khớp mẫu là tất cả cơ chế cần thiết để xử lý các truy vấn đơn giản không
+liên quan đến các quy tắc. Ví dụ, để xử lý truy vấn
+
+@lisp
+(job ?x (computer programmer))
+@end lisp
+
+@noindent
+chúng ta quét qua tất cả các khẳng định trong cơ sở dữ liệu và chọn những
+cái khớp với mẫu theo một khung ban đầu rỗng. Với mỗi trận đấu chúng ta tìm
+thấy, chúng ta dùng khung được trả về bởi trận đấu để khởi tạo mẫu với một
+giá trị cho @code{?x}.
+
+@subsubheading Các luồng khung
+
+Việc kiểm tra các mẫu với các khung được tổ chức thông qua việc sử dụng các
+luồng. Cho một khung duy nhất, quá trình khớp chạy qua các mục cơ sở dữ liệu
+từng cái một. Với mỗi mục cơ sở dữ liệu, bộ khớp tạo ra một ký hiệu đặc biệt
+chỉ ra rằng trận đấu đã thất bại hoặc một phần mở rộng của khung. Các kết quả
+cho tất cả các mục cơ sở dữ liệu được thu thập thành một luồng, được truyền
+qua một bộ lọc để loại bỏ các thất bại. Kết quả là một luồng của tất cả các
+khung mở rộng khung đã cho thông qua một trận đấu với một khẳng định nào đó
+trong cơ sở dữ liệu.@footnote{Vì khớp thường rất tốn kém, chúng ta muốn tránh
+áp dụng bộ khớp đầy đủ cho mọi phần tử của cơ sở dữ liệu. Điều này thường
+được sắp xếp bằng cách chia quá trình thành một trận đấu thô nhanh và trận
+đấu cuối cùng. Trận đấu thô lọc cơ sở dữ liệu để tạo ra một tập nhỏ các ứng
+viên cho trận đấu cuối cùng. Với sự cẩn thận, chúng ta có thể sắp xếp cơ sở
+dữ liệu của mình để một số công việc khớp thô có thể được thực hiện khi cơ sở
+dữ liệu được xây dựng thay vì khi chúng ta muốn chọn các ứng viên. Đây được
+gọi là @newterm{chỉ mục hóa} cơ sở dữ liệu. Có một công nghệ rộng lớn được
+xây dựng xung quanh các sơ đồ chỉ mục hóa cơ sở dữ liệu. Hiện thực của chúng
+ta, được mô tả trong @ref{4.4.4}, chứa một dạng tối ưu hóa đơn giản như vậy.}
+
+Trong hệ thống của chúng ta, một truy vấn lấy một luồng đầu vào các khung và
+thực hiện phép toán khớp ở trên cho mọi khung trong luồng, như được chỉ ra
+trong @ref{Figure 4.4}. Tức là, với mỗi khung trong luồng đầu vào, truy vấn
+tạo ra một luồng mới bao gồm tất cả các phần mở rộng của khung đó bằng cách
+khớp với các khẳng định trong cơ sở dữ liệu. Tất cả các luồng này sau đó được
+kết hợp để tạo thành một luồng lớn, chứa tất cả các phần mở rộng có thể của
+mỗi khung trong luồng đầu vào. Luồng này là đầu ra của truy vấn.
+
+@float
+@anchor{Figure 4.4}
+@ifinfo
+@strong{Figure 4.4:} A query processes a stream of frames.
+
+@example
+                                  output stream
+  input stream   +-------------+  of frames,
+  of frames      |    query    |  filtered and extended
+---------------->|             +------------------------->
+                 | (job ?x ?y) |
+                 +-------------+
+                        ^
+                        |
+               stream of assertions
+                  from data base
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap4/Fig4.4a,147mm,,,.std.svg}
+@caption{@strong{Figure 4.4:} A query processes a stream of frames.}
+@end iftex
+@end float
+
+@noindent
+Để trả lời một truy vấn đơn giản, chúng ta dùng truy vấn với một luồng đầu
+vào bao gồm một khung rỗng duy nhất. Luồng đầu ra kết quả chứa tất cả các
+phần mở rộng của khung rỗng (tức là, tất cả các câu trả lời cho truy vấn của
+chúng ta). Luồng các khung này sau đó được dùng để tạo ra một luồng các bản
+sao của mẫu truy vấn gốc với các biến được khởi tạo bởi các giá trị trong mỗi
+khung, và đây là luồng cuối cùng được in.
+
+@subsubheading Các truy vấn ghép
+
+Sự thanh lịch thực sự của hiện thực luồng-các-khung trở nên rõ ràng khi chúng
+ta xử lý các truy vấn ghép. Việc xử lý các truy vấn ghép sử dụng khả năng của
+bộ khớp của chúng ta để yêu cầu một trận đấu nhất quán với một khung được chỉ
+định. Ví dụ, để xử lý @code{and} của hai truy vấn, như
+
+@lisp
+(and (can-do-job
+      ?x
+      (computer programmer trainee))
+     (job ?person ?x))
+@end lisp
+
+@noindent
+(không chính thức, ``Tìm tất cả những người có thể làm công việc của thực tập
+sinh lập trình viên máy tính''), chúng ta trước tiên tìm tất cả các mục khớp
+với mẫu
+
+@lisp
+(can-do-job ?x (computer programmer trainee))
+@end lisp
+
+@noindent
+Điều này tạo ra một luồng các khung, mỗi khung chứa một ràng buộc cho
+@code{?x}. Sau đó với mỗi khung trong luồng, chúng ta tìm tất cả các mục
+khớp
+
+@lisp
+(job ?person ?x)
+@end lisp
+
+@noindent
+theo cách nhất quán với ràng buộc đã cho cho @code{?x}. Mỗi trận đấu như vậy
+sẽ tạo ra một khung chứa các ràng buộc cho @code{?x} và @code{?person}.
+@code{And} của hai truy vấn có thể được coi là một kết hợp nối tiếp của hai
+truy vấn thành phần, như được trình bày trong @ref{Figure 4.5}. Các khung đi
+qua bộ lọc truy vấn đầu tiên được lọc và mở rộng thêm bởi truy vấn thứ hai.
+
+@float
+@anchor{Figure 4.5}
+@ifinfo
+@strong{Figure 4.5:} The @code{and} combination of two queries is produced
+by operating on the stream of frames in series.
+
+@example
+                +----------------------+
+                |       (and A B)      |
+  input stream  |                      |  output stream
+  of frames     |   +---+       +---+  |  of frames
+------------------->| A +------>| B +-------------------->
+                |   +---+       +---+  |
+                |     ^           ^    |
+                |     |           |    |
+                |     +-----*-----+    |
+                +-----------|----------+
+                            |
+                        data base
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap4/Fig4.5a,143mm,,,.std.svg}
+@caption{@strong{Figure 4.5:} The @code{and} combination of two queries is produced by operating on the stream of frames in series.}
+@end iftex
+@end float
+
+@noindent
+@ref{Figure 4.6} chỉ ra phương pháp tương tự để tính @code{or} của hai truy
+vấn như một kết hợp song song của hai truy vấn thành phần. Luồng đầu vào các
+khung được mở rộng riêng biệt bởi mỗi truy vấn. Hai luồng kết quả sau đó
+được gộp để tạo ra luồng đầu ra cuối cùng.
+
+@float
+@anchor{Figure 4.6}
+@ifinfo
+@strong{Figure 4.6:} The @code{or} combination of two queries is produced
+by operating on the stream of frames in parallel and merging the results.
+
+@example
+           +---------------------------+
+           |          (or A B)         |
+           |    +---+                  |
+input      | +->| A |------------+     |  output
+stream of  | |  +---+            V     |  stream of
+frames     | |    ^          +-------+ |  frames
+-------------*    |          | merge +--------------->
+           | |    |          +-------+ |
+           | |    |              ^     |
+           | |    |   +---+      |     |
+           | +------->| B +------+     |
+           |      |   +---+            |
+           |      |     ^              |
+           |      |     |              |
+           |      +--*--+              |
+           +---------|-----------------+
+                     |
+                 data base
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap4/Fig4.6a,147mm,,,.std.svg}
+@caption{@strong{Figure 4.6:} The @code{or} combination of two queries is produced by operating on the stream of frames in parallel and merging the results.}
+@end iftex
+@end float
+
+Ngay cả từ mô tả cấp cao này, rõ ràng là việc xử lý các truy vấn ghép có thể
+chậm. Ví dụ, vì một truy vấn có thể tạo ra nhiều hơn một khung đầu ra cho mỗi
+khung đầu vào, và mỗi truy vấn trong một @code{and} nhận khung đầu vào từ
+truy vấn trước, một truy vấn @code{and} có thể, trong trường hợp tệ nhất, phải
+thực hiện số lượng trận đấu là hàm mũ theo số truy vấn (xem @ref{Exercise 4.76}).@footnote{Nhưng
+loại bùng nổ hàm mũ này không phổ biến trong các truy vấn @code{and} vì các
+điều kiện được thêm vào có xu hướng giảm thay vì mở rộng số khung được tạo ra.}
+Mặc dù các hệ thống để xử lý chỉ các truy vấn đơn giản là khá thực tế, việc
+xử lý các truy vấn phức tạp là cực kỳ khó.@footnote{Có một tài liệu lớn về
+các hệ thống quản lý cơ sở dữ liệu liên quan đến cách xử lý các truy vấn phức
+tạp một cách hiệu quả.}
+
+@noindent
+Từ góc độ luồng-các-khung, @code{not} của một số truy vấn hoạt động như một
+bộ lọc loại bỏ tất cả các khung mà truy vấn có thể được thỏa mãn. Ví dụ, cho
+mẫu
+
+@lisp
+(not (job ?x (computer programmer)))
+@end lisp
+
+@noindent
+chúng ta cố gắng, với mỗi khung trong luồng đầu vào, tạo ra các khung mở rộng
+thỏa mãn @code{(job ?x (computer programmer))}. Chúng ta xóa khỏi luồng đầu
+vào tất cả các khung mà các phần mở rộng như vậy tồn tại. Kết quả là một luồng
+chỉ bao gồm các khung trong đó ràng buộc cho @code{?x} không thỏa mãn
+@code{(job ?x (computer programmer))}. Ví dụ, trong việc xử lý truy vấn
+
+@lisp
+(and (supervisor ?x ?y)
+     (not (job ?x (computer programmer))))
+@end lisp
+
+@noindent
+mệnh đề đầu tiên sẽ tạo ra các khung với các ràng buộc cho @code{?x} và
+@code{?y}. Mệnh đề @code{not} sau đó sẽ lọc chúng bằng cách xóa tất cả các
+khung trong đó ràng buộc cho @code{?x} thỏa mãn hạn chế rằng @code{?x} là
+một lập trình viên máy tính.@footnote{Có một sự khác biệt tinh tế giữa hiện
+thực bộ lọc này của @code{not} và ý nghĩa thông thường của @code{not} trong
+logic toán học. Xem @ref{4.4.3}.}
+
+Dạng đặc biệt @code{lisp-value} được hiện thực như một bộ lọc tương tự trên
+các luồng khung. Chúng ta dùng mỗi khung trong luồng để khởi tạo bất kỳ biến
+nào trong mẫu, sau đó áp dụng vị từ Lisp. Chúng ta xóa khỏi luồng đầu vào
+tất cả các khung mà vị từ thất bại.
+
+@subsubheading Hợp nhất
+
+Để xử lý các quy tắc trong ngôn ngữ truy vấn, chúng ta phải có khả năng tìm
+các quy tắc có kết luận khớp với một mẫu truy vấn cho trước. Kết luận quy tắc
+giống như các khẳng định ngoại trừ chúng có thể chứa các biến, vì vậy chúng
+ta sẽ cần một tổng quát hóa của khớp mẫu---được gọi là @newterm{hợp nhất}---trong
+đó cả ``mẫu'' và ``dữ liệu'' đều có thể chứa các biến.
+
+Một bộ hợp nhất nhận hai mẫu, mỗi mẫu chứa hằng số và biến, và xác định xem
+có thể gán giá trị cho các biến sẽ làm cho hai mẫu bằng nhau không. Nếu vậy,
+nó trả về một khung chứa các ràng buộc này. Ví dụ, hợp nhất @code{(?x a ?y)}
+và @code{(?y ?z a)} sẽ chỉ định một khung trong đó @code{?x}, @code{?y} và
+@code{?z} đều phải được ràng buộc với @code{a}. Mặt khác, hợp nhất
+@code{(?x ?y a)} và @code{(?x b ?y)} sẽ thất bại, vì không có giá trị nào
+cho @code{?y} có thể làm cho hai mẫu bằng nhau. (Để các phần tử thứ hai của
+các mẫu bằng nhau, @code{?y} phải là @code{b}; tuy nhiên, để các phần tử thứ
+ba bằng nhau, @code{?y} phải là @code{a}.) Bộ hợp nhất được dùng trong hệ
+thống truy vấn, giống như bộ khớp mẫu, nhận một khung làm đầu vào và thực
+hiện các hợp nhất nhất quán với khung này.
+
+Thuật toán hợp nhất là phần kỹ thuật khó nhất của hệ thống truy vấn. Với các
+mẫu phức tạp, việc thực hiện hợp nhất có thể có vẻ đòi hỏi suy luận. Để hợp
+nhất @code{(?x ?x)} và @code{((a ?y c) (a b ?z))}, ví dụ, thuật toán phải suy
+ra rằng @code{?x} phải là @code{(a b c)}, @code{?y} phải là @code{b} và
+@code{?z} phải là @code{c}. Chúng ta có thể nghĩ về quá trình này như việc giải
+một tập hợp các phương trình trong số các thành phần mẫu. Nói chung, đây là
+các phương trình đồng thời, có thể đòi hỏi thao tác đáng kể để giải.@footnote{Trong
+khớp mẫu một chiều, tất cả các phương trình chứa các biến mẫu là rõ ràng và
+đã được giải cho ẩn số (biến mẫu).} Ví dụ, việc hợp nhất @code{(?x ?x)} và
+@code{((a ?y c) (a b ?z))} có thể được nghĩ như chỉ định các phương trình đồng
+thời
+
+@lisp
+?x = (a ?y c)
+?x = (a b ?z)
+@end lisp
+
+@noindent
+Các phương trình này ngụ ý rằng
+
+@lisp
+(a ?y c) = (a b ?z)
+@end lisp
+
+@noindent
+đến lượt ngụ ý rằng
+
+@lisp
+a = a, ?y = b, c = ?z,
+@end lisp
+
+@noindent
+và do đó
+
+@lisp
+?x = (a b c)
+@end lisp
+
+@noindent
+Trong một trận đấu mẫu thành công, tất cả các biến mẫu đều bị ràng buộc, và
+các giá trị mà chúng được ràng buộc chỉ chứa hằng số. Điều này cũng đúng với
+tất cả các ví dụ hợp nhất chúng ta đã thấy cho đến nay. Tuy nhiên, nói chung,
+một hợp nhất thành công có thể không xác định hoàn toàn các giá trị biến; một
+số biến có thể vẫn chưa được ràng buộc và những biến khác có thể được ràng
+buộc với các giá trị chứa biến.
+
+Hãy xem xét việc hợp nhất @code{(?x a)} và @code{((b ?y) ?z)}. Chúng ta có
+thể suy ra rằng @code{?x = (b ?y)} và @code{a = ?z}, nhưng chúng ta không thể
+giải thêm cho @code{?x} hoặc @code{?y}. Hợp nhất không thất bại, vì chắc
+chắn có thể làm cho hai mẫu bằng nhau bằng cách gán giá trị cho @code{?x} và
+@code{?y}. Vì trận đấu này không hạn chế các giá trị @code{?y} có thể có,
+không có ràng buộc nào cho @code{?y} được đặt vào khung kết quả. Tuy nhiên,
+trận đấu hạn chế giá trị của @code{?x}. Dù @code{?y} có giá trị gì, @code{?x}
+phải là @code{(b ?y)}. Do đó, ràng buộc của @code{?x} với mẫu @code{(b ?y)}
+được đặt vào khung. Nếu một giá trị cho @code{?y} sau này được xác định và
+thêm vào khung (bởi một trận đấu mẫu hoặc hợp nhất cần nhất quán với khung
+này), @code{?x} đã được ràng buộc trước đó sẽ tham chiếu đến giá trị này.@footnote{Một
+cách khác để nghĩ về hợp nhất là nó tạo ra mẫu tổng quát nhất là một chuyên
+biệt hóa của hai mẫu đầu vào. Tức là, hợp nhất của @code{(?x a)} và
+@code{((b ?y) ?z)} là @code{((b ?y) a)}, và hợp nhất của @code{(?x a ?y)} và
+@code{(?y ?z a)}, được thảo luận ở trên, là @code{(a a a)}. Đối với hiện thực
+của chúng ta, thuận tiện hơn khi nghĩ về kết quả của hợp nhất như một khung
+hơn là một mẫu.}
+
+@subsubheading Áp dụng các quy tắc
+
+Hợp nhất là chìa khóa cho thành phần của hệ thống truy vấn thực hiện suy luận
+từ các quy tắc. Để xem cách điều này được thực hiện, hãy xem xét việc xử lý
+một truy vấn liên quan đến việc áp dụng một quy tắc, như
+
+@lisp
+(lives-near ?x (Hacker Alyssa P))
+@end lisp
+
+@noindent
+Để xử lý truy vấn này, trước tiên chúng ta dùng thủ tục khớp mẫu thông thường
+được mô tả ở trên để xem liệu có bất kỳ khẳng định nào trong cơ sở dữ liệu
+khớp với mẫu này không. (Sẽ không có trong trường hợp này, vì cơ sở dữ liệu
+của chúng ta không bao gồm các khẳng định trực tiếp về ai sống gần ai.) Bước
+tiếp theo là cố gắng hợp nhất mẫu truy vấn với kết luận của mỗi quy tắc.
+Chúng ta thấy rằng mẫu hợp nhất với kết luận của quy tắc
+
+@lisp
+(rule (lives-near ?person-1 ?person-2)
+      (and (address ?person-1
+                    (?town . ?rest-1))
+           (address ?person-2
+                    (?town . ?rest-2))
+           (not (same ?person-1 ?person-2))))
+@end lisp
+
+@noindent
+cho kết quả là một khung chỉ định rằng @code{?person-2} được ràng buộc với
+@code{(Hacker Alyssa P)} và rằng @code{?x} phải được ràng buộc với (có cùng
+giá trị như) @code{?person-1}. Bây giờ, tương đối với khung này, chúng ta định
+giá truy vấn ghép được đưa ra bởi thân của quy tắc. Các trận đấu thành công
+sẽ mở rộng khung này bằng cách cung cấp một ràng buộc cho @code{?person-1},
+và do đó một giá trị cho @code{?x}, mà chúng ta có thể dùng để khởi tạo mẫu
+truy vấn gốc.
+
+Nói chung, trình định giá truy vấn dùng phương pháp sau để áp dụng một quy
+tắc khi cố gắng thiết lập một mẫu truy vấn trong một khung chỉ định các ràng
+buộc cho một số biến mẫu:
+
+@itemize @bullet
+
+@item
+Hợp nhất truy vấn với kết luận của quy tắc để tạo ra, nếu thành công, một
+phần mở rộng của khung gốc.
+
+@item
+Tương đối với khung mở rộng, định giá truy vấn được tạo thành bởi thân của
+quy tắc.
+
+@end itemize
+
+@noindent
+Lưu ý sự tương tự của điều này với phương pháp áp dụng một thủ tục trong
+trình định giá @code{eval}/@code{apply} cho Lisp:
+
+@itemize @bullet
+
+@item
+Ràng buộc các tham số của thủ tục với các đối số của nó để tạo thành một khung
+mở rộng môi trường thủ tục gốc.
+
+@item
+Tương đối với môi trường mở rộng, định giá biểu thức được tạo thành bởi thân
+của thủ tục.
+
+@end itemize
+
+@noindent
+Sự tương tự giữa hai trình định giá không nên gây ngạc nhiên. Cũng như các
+định nghĩa thủ tục là phương tiện trừu tượng hóa trong Lisp, các định nghĩa
+quy tắc là phương tiện trừu tượng hóa trong ngôn ngữ truy vấn. Trong mỗi
+trường hợp, chúng ta tháo gỡ trừu tượng hóa bằng cách tạo ra các ràng buộc
+thích hợp và định giá thân quy tắc hoặc thủ tục tương đối với chúng.
+
+@subsubheading Các truy vấn đơn giản
+
+Chúng ta đã thấy trước đó trong phần này cách định giá các truy vấn đơn giản
+khi không có quy tắc. Bây giờ chúng ta đã thấy cách áp dụng các quy tắc, chúng
+ta có thể mô tả cách định giá các truy vấn đơn giản bằng cách sử dụng cả quy
+tắc lẫn khẳng định.
+
+Cho mẫu truy vấn và một luồng các khung, chúng ta tạo ra, với mỗi khung trong
+luồng đầu vào, hai luồng:
+
+@itemize @bullet
+
+@item
+một luồng các khung mở rộng thu được bằng cách khớp mẫu với tất cả các khẳng
+định trong cơ sở dữ liệu (sử dụng bộ khớp mẫu), và
+
+@item
+một luồng các khung mở rộng thu được bằng cách áp dụng tất cả các quy tắc có
+thể (sử dụng bộ hợp nhất).@footnote{Vì hợp nhất là tổng quát hóa của khớp,
+chúng ta có thể đơn giản hóa hệ thống bằng cách sử dụng bộ hợp nhất để tạo
+ra cả hai luồng. Tuy nhiên, việc xử lý trường hợp dễ với bộ khớp đơn giản
+minh họa cách khớp (trái ngược với hợp nhất hoàn toàn) có thể hữu ích theo
+đúng nghĩa của nó.}
+
+@end itemize
+
+@noindent
+Ghép hai luồng này tạo ra một luồng bao gồm tất cả các cách mà mẫu cho trước
+có thể được thỏa mãn nhất quán với khung gốc. Các luồng này (một cho mỗi khung
+trong luồng đầu vào) bây giờ được kết hợp để tạo thành một luồng lớn, do đó
+bao gồm tất cả các cách mà bất kỳ khung nào trong luồng đầu vào gốc có thể
+được mở rộng để tạo ra một trận đấu với mẫu cho trước.
+
+@subsubheading Trình định giá truy vấn và vòng điều khiển
+
+Mặc dù độ phức tạp của các phép toán khớp cơ bản, hệ thống được tổ chức giống
+như một trình định giá cho bất kỳ ngôn ngữ nào. Thủ tục điều phối các phép
+toán khớp được gọi là @code{qeval}, và nó đóng vai trò tương tự như thủ tục
+@code{eval} cho Lisp. @code{Qeval} nhận làm đầu vào một truy vấn và một luồng
+các khung. Đầu ra của nó là một luồng các khung, tương ứng với các trận đấu
+thành công với mẫu truy vấn, mở rộng một số khung trong luồng đầu vào, như
+được chỉ ra trong @ref{Figure 4.4}. Giống như @code{eval}, @code{qeval} phân
+loại các loại biểu thức (truy vấn) khác nhau và gửi đến một thủ tục thích hợp
+cho mỗi loại. Có một thủ tục cho mỗi dạng đặc biệt (@code{and}, @code{or},
+@code{not} và @code{lisp-value}) và một cho các truy vấn đơn giản.
+
+Vòng điều khiển, tương tự như thủ tục @code{driver-loop} cho các trình định
+giá khác trong chương này, đọc các truy vấn từ thiết bị đầu cuối. Với mỗi
+truy vấn, nó gọi @code{qeval} với truy vấn và một luồng bao gồm một khung rỗng
+duy nhất. Điều này sẽ tạo ra luồng của tất cả các trận đấu có thể (tất cả các
+phần mở rộng có thể của khung rỗng). Với mỗi khung trong luồng kết quả, nó
+khởi tạo truy vấn gốc bằng cách sử dụng các giá trị của các biến được tìm
+thấy trong khung. Luồng các truy vấn đã khởi tạo này sau đó được in.@footnote{Lý
+do chúng ta dùng các luồng (thay vì danh sách) các khung là việc áp dụng đệ
+quy các quy tắc có thể tạo ra số lượng vô hạn các giá trị thỏa mãn một truy
+vấn. Định giá trì hoãn được thể hiện trong các luồng là rất quan trọng ở đây:
+Hệ thống sẽ in các phản hồi từng cái một khi chúng được tạo ra, bất kể có hữu
+hạn hay vô hạn số phản hồi.}
+
+Vòng điều khiển cũng kiểm tra lệnh đặc biệt @code{assert!}, báo hiệu rằng đầu
+vào không phải là một truy vấn mà là một khẳng định hoặc quy tắc cần được thêm
+vào cơ sở dữ liệu. Ví dụ,
+
+@lisp
+(assert!
+ (job (Bitdiddle Ben)
+      (computer wizard)))
+
+(assert!
+ (rule (wheel ?person)
+       (and (supervisor
+             ?middle-manager ?person)
+            (supervisor
+             ?x ?middle-manager))))
+@end lisp

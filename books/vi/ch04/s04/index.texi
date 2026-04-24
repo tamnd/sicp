@@ -1,0 +1,184 @@
+@node	4.4, Chapter 5, 4.3, Chapter 4
+@section Lập Trình Logic
+
+Trong @ref{Chapter 1} chúng ta đã nhấn mạnh rằng khoa học máy tính liên quan
+đến kiến thức mệnh lệnh (how to), trong khi toán học liên quan đến kiến thức
+khai báo (what is). Thật vậy, các ngôn ngữ lập trình yêu cầu lập trình viên
+diễn đạt kiến thức theo một dạng cho biết các phương pháp từng bước để giải
+quyết các bài toán cụ thể. Mặt khác, các ngôn ngữ cấp cao cung cấp, như một
+phần của hiện thực ngôn ngữ, một lượng đáng kể kiến thức phương pháp luận giải
+phóng người dùng khỏi mối lo ngại về nhiều chi tiết về cách một tính toán cụ
+thể sẽ tiến hành.
+
+Hầu hết các ngôn ngữ lập trình, bao gồm Lisp, được tổ chức xung quanh việc
+tính toán các giá trị của các hàm toán học. Các ngôn ngữ hướng biểu thức (như
+Lisp, Fortran và Algol) khai thác ``sự chơi chữ'' rằng một biểu thức mô tả
+giá trị của một hàm cũng có thể được giải thích là một phương tiện để tính
+toán giá trị đó. Vì điều này, hầu hết các ngôn ngữ lập trình đều bị thiên về
+mạnh về các tính toán một chiều (tính toán với đầu vào và đầu ra được xác định
+rõ). Tuy nhiên, có các ngôn ngữ lập trình hoàn toàn khác loại bỏ sự thiên
+vị này. Chúng ta đã thấy một ví dụ như vậy trong @ref{3.3.5}, nơi các đối
+tượng của tính toán là các ràng buộc số học. Trong một hệ thống ràng buộc,
+hướng và thứ tự tính toán không được chỉ định rõ ràng; trong việc thực hiện
+một tính toán, hệ thống vì vậy phải cung cấp kiến thức ``how to'' chi tiết
+hơn so với trường hợp tính toán số học thông thường. Tuy nhiên, điều này không
+có nghĩa là người dùng được giải phóng hoàn toàn khỏi trách nhiệm cung cấp
+kiến thức mệnh lệnh. Có nhiều mạng ràng buộc hiện thực cùng một tập hợp các
+ràng buộc, và người dùng phải chọn từ tập hợp các mạng tương đương toán học
+một mạng phù hợp để chỉ định một tính toán cụ thể.
+
+Trình định giá chương trình không tất định của @ref{4.3} cũng rời xa quan điểm
+rằng lập trình là về việc xây dựng các thuật toán để tính toán các hàm một
+chiều. Trong một ngôn ngữ không tất định, các biểu thức có thể có nhiều hơn
+một giá trị, và kết quả là tính toán đang xử lý các quan hệ thay vì các hàm
+một giá trị. Lập trình logic mở rộng ý tưởng này bằng cách kết hợp tầm nhìn
+quan hệ về lập trình với một loại khớp mẫu ký hiệu mạnh mẽ gọi là
+@newterm{hợp nhất}.@footnote{Lập trình logic đã phát triển từ một lịch sử
+nghiên cứu dài về chứng minh định lý tự động. Các chương trình chứng minh
+định lý ban đầu chỉ có thể hoàn thành rất ít, vì chúng tìm kiếm toàn diện
+không gian các chứng minh có thể. Bước đột phá lớn làm cho việc tìm kiếm như
+vậy trở nên khả thi là việc phát hiện vào đầu những năm 1960 về @newterm{thuật
+toán hợp nhất} và @newterm{nguyên lý giải} (@ref{Robinson 1965}). Giải được
+dùng, ví dụ, bởi @ref{Green and Raphael (1968)} (xem thêm @ref{Green 1969})
+làm cơ sở cho một hệ thống trả lời câu hỏi suy diễn. Trong hầu hết thời gian
+này, các nhà nghiên cứu tập trung vào các thuật toán được đảm bảo tìm thấy một
+chứng minh nếu có một. Các thuật toán như vậy khó kiểm soát và hướng đến một
+chứng minh. @ref{Hewitt (1969)} nhận ra khả năng hợp nhất cấu trúc điều khiển
+của một ngôn ngữ lập trình với các phép toán của một hệ thống thao tác logic,
+dẫn đến công việc tìm kiếm tự động được đề cập trong @ref{4.3.1}
+(@ref{Footnote 250}). Đồng thời với điều này, Colmerauer, ở Marseille, đang
+phát triển các hệ thống dựa trên quy tắc để thao tác ngôn ngữ tự nhiên (xem
+@ref{Colmerauer et al. 1973}). Ông đã phát minh ra một ngôn ngữ lập trình gọi
+là Prolog để biểu diễn những quy tắc đó. @ref{Kowalski (1973; 1979)}, ở
+Edinburgh, nhận ra rằng việc thực thi một chương trình Prolog có thể được giải
+thích như việc chứng minh các định lý (sử dụng một kỹ thuật chứng minh gọi là
+giải phân giải Horn-clause tuyến tính). Sự hợp nhất của hai nhánh cuối này đã
+dẫn đến phong trào lập trình logic. Do đó, trong việc ghi công cho sự phát
+triển của lập trình logic, người Pháp có thể chỉ ra nguồn gốc của Prolog tại
+Đại học Marseille, trong khi người Anh có thể nêu bật công trình tại Đại học
+Edinburgh. Theo những người ở MIT, lập trình logic được phát triển bởi các
+nhóm này trong một nỗ lực để tìm hiểu Hewitt đang nói gì trong luận án tiến
+sĩ xuất sắc nhưng khó hiểu của ông. Để biết lịch sử về lập trình logic, xem
+@ref{Robinson 1983}.}
+
+Cách tiếp cận này, khi nó hoạt động, có thể là một cách rất mạnh mẽ để viết
+chương trình. Một phần sức mạnh đến từ thực tế là một sự kiện ``what is'' duy
+nhất có thể được dùng để giải quyết một số bài toán khác nhau có các thành
+phần ``how to'' khác nhau. Như một ví dụ, hãy xem xét phép toán @code{append},
+nhận hai danh sách làm đối số và kết hợp các phần tử của chúng để tạo thành
+một danh sách duy nhất. Trong một ngôn ngữ thủ tục như Lisp, chúng ta có thể
+định nghĩa @code{append} theo bộ xây dựng danh sách cơ bản @code{cons}, như
+chúng ta đã làm trong @ref{2.2.1}:
+
+@lisp
+(define (append x y)
+  (if (null? x)
+      y
+      (cons (car x) (append (cdr x) y))))
+@end lisp
+
+@noindent
+Thủ tục này có thể được coi là sự dịch thuật vào Lisp của hai quy tắc sau, cái
+đầu tiên bao gồm trường hợp danh sách đầu tiên là rỗng và cái thứ hai xử lý
+trường hợp danh sách không rỗng, là một @code{cons} của hai phần:
+
+@itemize @bullet
+
+@item
+Với bất kỳ danh sách @code{y} nào, danh sách rỗng và @code{y} @code{append}
+để tạo thành @code{y}.
+
+@item
+Với bất kỳ @code{u}, @code{v}, @code{y} và @code{z} nào, @code{(cons u v)}
+và @code{y} @code{append} để tạo thành @code{(cons u z)} nếu @code{v} và
+@code{y} @code{append} để tạo thành @code{z}.@footnote{Để thấy sự tương ứng
+giữa các quy tắc và thủ tục, hãy để @code{x} trong thủ tục (trong đó @code{x}
+khác rỗng) tương ứng với @code{(cons u v)} trong quy tắc. Thì @code{z} trong
+quy tắc tương ứng với @code{append} của @code{(cdr x)} và @code{y}.}
+
+@end itemize
+
+@noindent
+Sử dụng thủ tục @code{append}, chúng ta có thể trả lời các câu hỏi như
+
+@quotation
+Tìm @code{append} của @code{(a b)} và @code{(c d)}.
+@end quotation
+
+@noindent
+Nhưng hai quy tắc tương tự cũng đủ để trả lời các loại câu hỏi sau, mà thủ
+tục không thể trả lời:
+
+@quotation
+Tìm một danh sách @code{y} mà @code{append}s với @code{(a b)} để tạo ra
+@code{(a b c d)}.
+
+Tìm tất cả @code{x} và @code{y} mà @code{append} để tạo thành @code{(a b c d)}.
+@end quotation
+
+@noindent
+Trong một ngôn ngữ lập trình logic, lập trình viên viết một ``thủ tục''
+@code{append} bằng cách phát biểu hai quy tắc về @code{append} được đưa ra ở
+trên. Kiến thức ``how to'' được cung cấp tự động bởi trình thông dịch để cho
+phép cặp quy tắc duy nhất này được dùng để trả lời cả ba loại câu hỏi về
+@code{append}.@footnote{Điều này chắc chắn không giải phóng người dùng khỏi
+toàn bộ vấn đề về cách tính toán câu trả lời. Có nhiều tập hợp quy tắc tương
+đương toán học khác nhau để công thức hóa quan hệ @code{append}, chỉ một số
+trong đó có thể được biến thành các thiết bị hiệu quả để tính toán theo bất
+kỳ hướng nào. Ngoài ra, đôi khi thông tin ``what is'' không cho bất kỳ gợi ý
+nào về ``how to'' tính toán một câu trả lời. Ví dụ, hãy xem xét bài toán tính
+toán @math{y} sao cho @math{{y^2 = x}}.}
+
+Các ngôn ngữ lập trình logic đương đại (bao gồm cả ngôn ngữ chúng ta hiện
+thực ở đây) có những thiếu sót đáng kể, ở chỗ các phương pháp ``how to'' tổng
+quát của chúng có thể dẫn chúng vào các vòng lặp vô hạn giả tạo hoặc hành vi
+không mong muốn khác. Lập trình logic là một lĩnh vực nghiên cứu tích cực
+trong khoa học máy tính.@footnote{Sự quan tâm đến lập trình logic đạt đỉnh
+trong đầu những năm 80 khi chính phủ Nhật Bản bắt đầu một dự án đầy tham vọng
+nhằm xây dựng các máy tính siêu nhanh được tối ưu hóa để chạy các ngôn ngữ
+lập trình logic. Tốc độ của các máy tính như vậy được đo bằng LIPS (Logical
+Inferences Per Second) thay vì FLOPS thông thường (FLoating-point Operations
+Per Second). Mặc dù dự án đã thành công trong việc phát triển phần cứng và
+phần mềm như kế hoạch ban đầu, ngành công nghiệp máy tính quốc tế đã đi theo
+một hướng khác. Xem @ref{Feigenbaum and Shrobe 1993} để có đánh giá tổng quan
+về dự án Nhật Bản. Cộng đồng lập trình logic cũng đã chuyển sang xem xét lập
+trình quan hệ dựa trên các kỹ thuật khác ngoài khớp mẫu đơn giản, chẳng hạn
+như khả năng xử lý các ràng buộc số như những ràng buộc được minh họa trong
+hệ thống lan truyền ràng buộc của @ref{3.3.5}.}
+
+Trước đó trong chương này, chúng ta đã khám phá công nghệ hiện thực các trình
+thông dịch và mô tả các yếu tố cần thiết cho một trình thông dịch cho ngôn
+ngữ giống Lisp (thật ra, cho một trình thông dịch cho bất kỳ ngôn ngữ thông
+thường nào). Bây giờ chúng ta sẽ áp dụng những ý tưởng này để thảo luận về
+một trình thông dịch cho một ngôn ngữ lập trình logic. Chúng ta gọi ngôn ngữ
+này là @newterm{ngôn ngữ truy vấn}, vì nó rất hữu ích để truy xuất thông tin
+từ cơ sở dữ liệu bằng cách công thức hóa các @newterm{truy vấn}, hay câu hỏi,
+được diễn đạt bằng ngôn ngữ. Mặc dù ngôn ngữ truy vấn rất khác với Lisp,
+chúng ta sẽ thấy thuận tiện khi mô tả ngôn ngữ theo cùng khung tổng quát mà
+chúng ta đã dùng suốt: như một tập hợp các phần tử nguyên thủy, cùng với các
+phương tiện kết hợp cho phép chúng ta kết hợp các phần tử đơn giản để tạo ra
+các phần tử phức tạp hơn và các phương tiện trừu tượng hóa cho phép chúng ta
+coi các phần tử phức tạp như các đơn vị khái niệm đơn lẻ. Một trình thông
+dịch cho một ngôn ngữ lập trình logic phức tạp hơn đáng kể so với một trình
+thông dịch cho ngôn ngữ như Lisp. Tuy nhiên, chúng ta sẽ thấy rằng trình thông
+dịch ngôn ngữ truy vấn của chúng ta chứa nhiều yếu tố giống nhau được tìm
+thấy trong trình thông dịch của @ref{4.1}. Đặc biệt, sẽ có một phần ``eval''
+phân loại các biểu thức theo loại và một phần ``apply'' hiện thực cơ chế trừu
+tượng hóa của ngôn ngữ (các thủ tục trong trường hợp Lisp, và @newterm{các
+quy tắc} trong trường hợp lập trình logic). Ngoài ra, một vai trò trung tâm
+được thực hiện trong hiện thực bởi một cấu trúc dữ liệu khung, xác định sự
+tương ứng giữa các ký hiệu và các giá trị liên kết của chúng. Một khía cạnh
+thú vị bổ sung của hiện thực ngôn ngữ truy vấn của chúng ta là chúng ta sử
+dụng đáng kể các luồng, được giới thiệu trong @ref{Chapter 3}.
+
+@menu
+* 4.4.1::            Truy Xuất Thông Tin Suy Diễn
+* 4.4.2::            Hệ Thống Truy Vấn Hoạt Động Như Thế Nào
+* 4.4.3::            Lập Trình Logic Có Phải Là Logic Toán Học Không?
+* 4.4.4::            Hiện Thực Hệ Thống Truy Vấn
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04/index.texi

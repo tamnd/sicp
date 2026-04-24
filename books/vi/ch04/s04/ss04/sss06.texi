@@ -1,0 +1,49 @@
+@node 4.4.4.6, 4.4.4.7, 4.4.4.5, 4.4.4
+@subsubsection Các Phép Toán Luồng
+
+Hệ thống truy vấn sử dụng một vài phép toán luồng không được trình bày trong @ref{Chapter 3}.
+
+@code{Stream-append-delayed} và @code{interleave-delayed} giống như @code{stream-append} và @code{interleave} (@ref{3.5.3}), ngoại trừ chúng nhận một đối số bị trễ (giống như thủ tục @code{integral} trong @ref{3.5.4}). Điều này trì hoãn vòng lặp trong một số trường hợp (xem @ref{Exercise 4.71}).
+
+@lisp
+(define (stream-append-delayed s1 delayed-s2)
+  (if (stream-null? s1)
+      (force delayed-s2)
+      (cons-stream
+       (stream-car s1)
+       (stream-append-delayed (stream-cdr s1)
+                              delayed-s2))))
+
+(define (interleave-delayed s1 delayed-s2)
+  (if (stream-null? s1)
+      (force delayed-s2)
+      (cons-stream
+       (stream-car s1)
+       (interleave-delayed
+        (force delayed-s2)
+        (delay (stream-cdr s1))))))
+@end lisp
+
+@noindent
+@code{Stream-flatmap}, được dùng xuyên suốt trình định giá truy vấn để ánh xạ một thủ tục qua một luồng các khung và kết hợp các luồng khung kết quả, là phần tương tự luồng của thủ tục @code{flatmap} được giới thiệu cho các danh sách thông thường trong @ref{2.2.3}. Tuy nhiên, không giống như @code{flatmap} thông thường, ta tích lũy các luồng bằng một quá trình xen kẽ, thay vì chỉ đơn giản là nối chúng lại (xem @ref{Exercise 4.72} và @ref{Exercise 4.73}).
+
+@lisp
+(define (stream-flatmap proc s)
+  (flatten-stream (stream-map proc s)))
+
+(define (flatten-stream stream)
+  (if (stream-null? stream)
+      the-empty-stream
+      (interleave-delayed
+       (stream-car stream)
+       (delay (flatten-stream
+               (stream-cdr stream))))))
+@end lisp
+
+@noindent
+Trình định giá cũng sử dụng thủ tục đơn giản sau để tạo ra một luồng bao gồm một phần tử duy nhất:
+
+@lisp
+(define (singleton-stream x)
+  (cons-stream x the-empty-stream))
+@end lisp

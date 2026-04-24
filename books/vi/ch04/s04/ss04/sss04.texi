@@ -1,0 +1,185 @@
+@node 4.4.4.4, 4.4.4.5, 4.4.4.3, 4.4.4
+@subsubsection Các Quy Tắc và Hợp Nhất
+
+@code{Apply-rules} là phần tương tự của quy tắc so với @code{find-assertions} (@ref{4.4.4.3}). Nó nhận làm đầu vào một mẫu và một khung, và tạo thành một luồng các khung mở rộng bằng cách áp dụng các quy tắc từ cơ sở dữ liệu. @code{Stream-flatmap} ánh xạ @code{apply-a-rule} xuống luồng các quy tắc có thể áp dụng (được chọn bởi @code{fetch-rules}, @ref{4.4.4.5}) và kết hợp các luồng khung kết quả.
+
+@lisp
+(define (apply-rules pattern frame)
+  (stream-flatmap
+   (lambda (rule)
+     (apply-a-rule rule pattern frame))
+   (fetch-rules pattern frame)))
+@end lisp
+
+@noindent
+@code{Apply-a-rule} áp dụng các quy tắc sử dụng phương pháp được phác thảo trong @ref{4.4.2}. Đầu tiên nó tăng cường khung đối số của mình bằng cách hợp nhất kết luận quy tắc với mẫu trong khung đã cho. Nếu thành công, nó định giá thân quy tắc trong khung mới này.
+
+Tuy nhiên, trước khi bất kỳ điều nào trong số này xảy ra, chương trình đổi tên tất cả các biến trong quy tắc bằng các tên mới duy nhất. Lý do cho điều này là để ngăn các biến cho các áp dụng quy tắc khác nhau trở nên lẫn lộn với nhau. Ví dụ, nếu hai quy tắc đều sử dụng một biến có tên @code{?x}, thì mỗi biến có thể thêm một ràng buộc cho @code{?x} vào khung khi nó được áp dụng. Hai @code{?x} này không liên quan gì đến nhau, và ta không nên bị nhầm lẫn khi nghĩ rằng hai ràng buộc phải nhất quán. Thay vì đổi tên các biến, ta có thể nghĩ ra một cấu trúc môi trường khéo léo hơn; tuy nhiên, cách tiếp cận đổi tên ta đã chọn ở đây là đơn giản nhất, dù không hiệu quả nhất. (Xem @ref{Exercise 4.79}.) Đây là thủ tục @code{apply-a-rule}:
+
+@lisp
+(define (apply-a-rule rule
+                      query-pattern
+                      query-frame)
+  (let ((clean-rule
+         (rename-variables-in rule)))
+    (let ((unify-result
+           (unify-match query-pattern
+                        (conclusion clean-rule)
+                        query-frame)))
+      (if (eq? unify-result 'failed)
+          the-empty-stream
+          (qeval (rule-body clean-rule)
+                 (singleton-stream
+                  unify-result))))))
+@end lisp
+
+@noindent
+Các bộ chọn @code{rule-body} và @code{conclusion} trích xuất các phần của quy tắc được định nghĩa trong @ref{4.4.4.7}.
+
+Ta tạo ra các tên biến duy nhất bằng cách liên kết một định danh duy nhất (chẳng hạn như một số) với mỗi áp dụng quy tắc và kết hợp định danh này với các tên biến gốc. Ví dụ, nếu định danh áp dụng quy tắc là 7, ta có thể đổi mỗi @code{?x} trong quy tắc thành @code{?x-7} và mỗi @code{?y} trong quy tắc thành @code{?y-7}. (@code{Make-new-variable} và @code{new-rule-application-id} được bao gồm cùng với các thủ tục cú pháp trong @ref{4.4.4.7}.)
+
+@lisp
+(define (rename-variables-in rule)
+  (let ((rule-application-id
+         (new-rule-application-id)))
+    (define (tree-walk exp)
+      (cond ((var? exp)
+             (make-new-variable
+              exp
+              rule-application-id))
+            ((pair? exp)
+             (cons (tree-walk (car exp))
+                   (tree-walk (cdr exp))))
+            (else exp)))
+    (tree-walk rule)))
+@end lisp
+
+@noindent
+Thuật toán hợp nhất được hiện thực hóa như một thủ tục nhận làm đầu vào hai mẫu và một khung và trả về khung mở rộng hoặc ký hiệu @code{failed}. Bộ hợp nhất giống như bộ khớp mẫu ngoại trừ nó đối xứng---các biến được phép ở cả hai phía của kết quả khớp. @code{Unify-match} về cơ bản giống như @code{pattern-match}, ngoại trừ có thêm mã (được đánh dấu ``@code{***}'' bên dưới) để xử lý trường hợp đối tượng ở phía bên phải của kết quả khớp là một biến.
+
+@lisp
+(define (unify-match p1 p2 frame)
+  (cond ((eq? frame 'failed) 'failed)
+        ((equal? p1 p2) frame)
+        ((var? p1)
+         (extend-if-possible p1 p2 frame))
+        ((var? p2)
+         (extend-if-possible
+          p2
+          p1
+          frame))        ; @r{***}
+        ((and (pair? p1)
+              (pair? p2))
+         (unify-match
+          (cdr p1)
+          (cdr p2)
+          (unify-match
+           (car p1)
+           (car p2)
+           frame)))
+        (else 'failed)))
+@end lisp
+
+@noindent
+Trong hợp nhất, như trong khớp mẫu một chiều, ta muốn chấp nhận một phần mở rộng được đề xuất của khung chỉ khi nó nhất quán với các ràng buộc hiện có. Thủ tục @code{extend-if-possible} được dùng trong hợp nhất giống như @code{extend-if-consistent} được dùng trong khớp mẫu ngoại trừ hai kiểm tra đặc biệt, được đánh dấu ``@code{***}'' trong chương trình bên dưới. Trong trường hợp đầu tiên, nếu biến ta đang cố gắng khớp chưa được gán, nhưng giá trị ta đang cố gắng khớp với nó tự nó là một biến (khác), cần thiết phải kiểm tra xem giá trị có được gán không, và nếu có, để khớp giá trị của nó. Nếu cả hai bên của kết quả khớp đều chưa được gán, ta có thể gán một trong hai với bên kia.
+
+Kiểm tra thứ hai xử lý các nỗ lực gán một biến với một mẫu bao gồm biến đó. Tình huống như vậy có thể xảy ra bất cứ khi nào một biến được lặp lại trong cả hai mẫu. Hãy xem xét, ví dụ, hợp nhất hai mẫu @code{(?x ?x)} và @code{(?y ⟨@var{expression involving @code{?y}}⟩)} trong một khung trong đó cả @code{?x} và @code{?y} đều chưa được gán. Đầu tiên @code{?x} được khớp với @code{?y}, tạo ra một ràng buộc của @code{?x} với @code{?y}. Tiếp theo, cùng @code{?x} được khớp với biểu thức đã cho liên quan đến @code{?y}. Vì @code{?x} đã được gán với @code{?y}, điều này dẫn đến việc khớp @code{?y} với biểu thức. Nếu ta nghĩ về bộ hợp nhất như việc tìm một tập hợp các giá trị cho các biến mẫu làm cho các mẫu giống nhau, thì các mẫu này ngụ ý các hướng dẫn để tìm @code{?y} sao cho @code{?y} bằng biểu thức liên quan đến @code{?y}. Không có phương pháp chung nào để giải các phương trình như vậy, vì vậy ta từ chối các ràng buộc như vậy; các trường hợp này được nhận dạng bởi vị từ @code{depends-on?}.@footnote{Nói chung, việc hợp nhất @code{?y} với một biểu thức liên quan đến @code{?y} sẽ đòi hỏi ta có khả năng tìm một điểm cố định của phương trình @code{?y} = @code{⟨}@var{expression involving @code{?y}}@code{⟩}. Đôi khi có thể tạo thành một biểu thức về mặt cú pháp có vẻ là nghiệm. Ví dụ, @code{?y} = @code{(f ?y)} dường như có điểm cố định @code{(f (f (f @r{…} )))}, mà ta có thể tạo ra bằng cách bắt đầu với biểu thức @code{(f ?y)} và liên tục thay thế @code{(f ?y)} cho @code{?y}. Thật không may, không phải mọi phương trình như vậy đều có điểm cố định có ý nghĩa. Các vấn đề nảy sinh ở đây tương tự với các vấn đề thao túng chuỗi vô hạn trong toán học. Ví dụ, ta biết rằng 2 là nghiệm của phương trình @math{{y = 1 + y / 2}}. Bắt đầu với biểu thức @math{{1 + y / 2}} và liên tục thay thế @math{{1 + y / 2}} cho @math{y} ta được
+@ifinfo
+
+@example
+2 = y = 1 + y/2 = 1 + (1 + y/2)/2 = 1 + 1/2 + y/4 = ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :78:
+  2 = y = 1 + {y \over 2} = 1 + {{1\over2}\left(1 + {y \over 2}\right)} =
+  1 + {1\over2} + {y \over 4} = {\dots,}  \]
+@end tex
+@noindent
+dẫn đến
+@ifinfo
+
+@example
+2 = 1 + 1/2 + 1/4 + 1/8 + ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :79:
+  2 = 1 + {1\over2} + {1\over4} + {1\over8} + {\dots.}  \]
+@end tex
+@noindent
+Tuy nhiên, nếu ta thử cùng một thao tác bắt đầu với quan sát rằng @math{{-1}} là nghiệm của phương trình @math{{y = 1 + 2y}}, ta thu được
+@ifinfo
+
+@example
+-1 = y = 1 + 2y = 1 + 2(1 + 2y) = 1 + 2 + 4y = ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :80:
+  {-1} = y = 1 + {2y} = 1 + {2(1 + 2y)} = 1 + 2 + {4y} = {\dots,}  \]
+@end tex
+@noindent
+dẫn đến
+@ifinfo
+
+@example
+-1 = 1 + 2 + 4 + 8 + ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :81:
+  -1 = 1 + 2 + 4 + 8 + {\dots.}  \]
+@end tex
+@noindent
+Mặc dù các phép thao túng hình thức được dùng trong việc rút ra hai phương trình này là giống hệt nhau, kết quả đầu tiên là một khẳng định hợp lệ về chuỗi vô hạn nhưng kết quả thứ hai thì không. Tương tự, đối với các kết quả hợp nhất của ta, suy luận với một biểu thức được xây dựng tùy tiện về mặt cú pháp có thể dẫn đến lỗi.} Mặt khác, ta không muốn từ chối các nỗ lực gán một biến với chính nó. Ví dụ, hãy xem xét hợp nhất @code{(?x ?x)} và @code{(?y ?y)}. Nỗ lực thứ hai để gán @code{?x} với @code{?y} khớp @code{?y} (giá trị được lưu trữ của @code{?x}) với @code{?y} (giá trị mới của @code{?x}). Điều này được xử lý bởi mệnh đề @code{equal?} của @code{unify-match}.
+
+@lisp
+(define (extend-if-possible var val frame)
+  (let ((binding (binding-in-frame var frame)))
+    (cond (binding
+           (unify-match
+            (binding-value binding) val frame))
+          ((var? val)                   @r{; ***}
+           (let ((binding
+                  (binding-in-frame
+                   val
+                   frame)))
+             (if binding
+                 (unify-match
+                  var
+                  (binding-value binding)
+                  frame)
+                 (extend var val frame))))
+          ((depends-on? val var frame)  @r{; ***}
+           'failed)
+          (else (extend var val frame)))))
+@end lisp
+
+@noindent
+@code{Depends-on?} là một vị từ kiểm tra xem một biểu thức được đề xuất là giá trị của một biến mẫu có phụ thuộc vào biến đó không. Điều này phải được thực hiện liên quan đến khung hiện tại vì biểu thức có thể chứa các xuất hiện của một biến đã có giá trị phụ thuộc vào biến kiểm tra của ta. Cấu trúc của @code{depends-on?} là một phép duyệt cây đệ quy đơn giản trong đó ta thay thế cho các giá trị của các biến bất cứ khi nào cần thiết.
+
+@lisp
+(define (depends-on? exp var frame)
+  (define (tree-walk e)
+    (cond ((var? e)
+           (if (equal? var e)
+               true
+               (let
+                 ((b (binding-in-frame
+                      e
+                      frame)))
+                  (if b
+                      (tree-walk
+                       (binding-value b))
+                      false))))
+          ((pair? e)
+           (or (tree-walk (car e))
+               (tree-walk (cdr e))))
+          (else false)))
+  (tree-walk exp))
+@end lisp

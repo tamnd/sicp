@@ -1,0 +1,24 @@
+@node	4.4.4, 4.4.4.1, 4.4.3, 4.4
+@subsection Hiện Thực Hóa Hệ Thống Truy Vấn
+
+Mục @ref{4.4.2} đã mô tả cách hoạt động của hệ thống truy vấn. Bây giờ ta điền vào các chi tiết bằng cách trình bày một hiện thực hóa hoàn chỉnh của hệ thống.
+
+@menu
+* 4.4.4.1::          Vòng Lặp Điều Khiển và Khởi Tạo
+* 4.4.4.2::          Trình Định Giá
+* 4.4.4.3::          Tìm Kiếm Khẳng Định bằng Khớp Mẫu
+* 4.4.4.4::          Các Quy Tắc và Hợp Nhất
+* 4.4.4.5::          Duy Trì Cơ Sở Dữ Liệu
+* 4.4.4.6::          Các Phép Toán Luồng
+* 4.4.4.7::          Các Thủ Tục Cú Pháp Truy Vấn
+* 4.4.4.8::          Các Khung và Ràng Buộc
+@end menu
+
+@include sss01.texi
+@include sss02.texi
+@include sss03.texi
+@include sss04.texi
+@include sss05.texi
+@include sss06.texi
+@include sss07.texi
+@include sss08.texi

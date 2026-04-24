@@ -1,0 +1,136 @@
+@node 4.4.4.2, 4.4.4.3, 4.4.4.1, 4.4.4
+@subsubsection Trình Định Giá
+
+Thủ tục @code{qeval}, được gọi bởi @code{query-driver-loop}, là trình định giá cơ bản của hệ thống truy vấn. Nó nhận làm đầu vào một truy vấn và một luồng các khung, và trả về một luồng các khung mở rộng. Nó nhận dạng các dạng đặc biệt bằng cách phân phối theo hướng dữ liệu sử dụng @code{get} và @code{put}, giống như ta đã làm khi hiện thực hóa các phép toán chung trong @ref{Chapter 2}. Bất kỳ truy vấn nào không được nhận dạng là dạng đặc biệt đều được coi là truy vấn đơn giản, để được xử lý bởi @code{simple-query}.
+
+@lisp
+(define (qeval query frame-stream)
+  (let ((qproc (get (type query) 'qeval)))
+    (if qproc
+        (qproc (contents query) frame-stream)
+        (simple-query query frame-stream))))
+@end lisp
+
+@noindent
+@code{Type} và @code{contents}, được định nghĩa trong @ref{4.4.4.7}, hiện thực hóa cú pháp trừu tượng của các dạng đặc biệt.
+
+@subsubheading Các truy vấn đơn giản
+
+Thủ tục @code{simple-query} xử lý các truy vấn đơn giản. Nó nhận làm đối số một truy vấn đơn giản (một mẫu) cùng với một luồng các khung, và trả về luồng được tạo thành bằng cách mở rộng mỗi khung bởi tất cả các kết quả khớp cơ sở dữ liệu của truy vấn.
+
+@lisp
+(define (simple-query query-pattern
+                      frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (stream-append-delayed
+      (find-assertions query-pattern frame)
+      (delay
+        (apply-rules query-pattern frame))))
+   frame-stream))
+@end lisp
+
+@noindent
+Với mỗi khung trong luồng đầu vào, ta sử dụng @code{find-assertions} (@ref{4.4.4.3}) để khớp mẫu với tất cả các khẳng định trong cơ sở dữ liệu, tạo ra một luồng các khung mở rộng, và ta sử dụng @code{apply-rules} (@ref{4.4.4.4}) để áp dụng tất cả các quy tắc có thể, tạo ra một luồng khung mở rộng khác. Hai luồng này được kết hợp (sử dụng @code{stream-append-delayed}, @ref{4.4.4.6}) để tạo thành một luồng tất cả các cách mà mẫu đã cho có thể được thỏa mãn nhất quán với khung gốc (xem @ref{Exercise 4.71}). Các luồng cho các khung đầu vào riêng lẻ được kết hợp sử dụng @code{stream-flatmap} (@ref{4.4.4.6}) để tạo thành một luồng lớn duy nhất của tất cả các cách mà bất kỳ khung nào trong luồng đầu vào ban đầu có thể được mở rộng để tạo ra một kết quả khớp với mẫu đã cho.
+
+@subsubheading Các truy vấn ghép
+
+Các truy vấn @code{And} được xử lý như được minh họa trong @ref{Figure 4.5} bởi thủ tục @code{conjoin}. @code{Conjoin} nhận làm đầu vào các kết hợp và luồng khung và trả về luồng các khung mở rộng. Đầu tiên, @code{conjoin} xử lý luồng các khung để tìm luồng của tất cả các mở rộng khung có thể thỏa mãn truy vấn đầu tiên trong kết hợp. Sau đó, sử dụng điều này làm luồng khung mới, nó áp dụng đệ quy @code{conjoin} cho phần còn lại của các truy vấn.
+
+@lisp
+(define (conjoin conjuncts frame-stream)
+  (if (empty-conjunction? conjuncts)
+      frame-stream
+      (conjoin (rest-conjuncts conjuncts)
+               (qeval
+                (first-conjunct conjuncts)
+                frame-stream))))
+@end lisp
+
+@noindent
+Biểu thức
+
+@lisp
+(put 'and 'qeval conjoin)
+@end lisp
+
+@noindent
+thiết lập @code{qeval} phân phối đến @code{conjoin} khi gặp dạng @code{and}.
+
+Các truy vấn @code{Or} được xử lý tương tự, như được thể hiện trong @ref{Figure 4.6}. Các luồng đầu ra cho các tách rời khác nhau của @code{or} được tính toán riêng biệt và được hợp nhất sử dụng thủ tục @code{interleave-delayed} từ @ref{4.4.4.6}. (Xem @ref{Exercise 4.71} và @ref{Exercise 4.72}.)
+
+@lisp
+(define (disjoin disjuncts frame-stream)
+  (if (empty-disjunction? disjuncts)
+      the-empty-stream
+      (interleave-delayed
+       (qeval (first-disjunct disjuncts)
+              frame-stream)
+       (delay (disjoin
+               (rest-disjuncts disjuncts)
+               frame-stream)))))
+(put 'or 'qeval disjoin)
+@end lisp
+
+@noindent
+Các vị từ và bộ chọn cho cú pháp của các kết hợp và tách rời được trình bày trong @ref{4.4.4.7}.
+
+@subsubheading Các bộ lọc
+
+@code{Not} được xử lý bằng phương pháp được phác thảo trong @ref{4.4.2}. Ta cố gắng mở rộng mỗi khung trong luồng đầu vào để thỏa mãn truy vấn đang bị phủ định, và ta chỉ đưa một khung đã cho vào luồng đầu ra nếu nó không thể được mở rộng.
+
+@lisp
+(define (negate operands frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (if (stream-null?
+          (qeval (negated-query operands)
+                 (singleton-stream frame)))
+         (singleton-stream frame)
+         the-empty-stream))
+   frame-stream))
+(put 'not 'qeval negate)
+@end lisp
+
+@noindent
+@code{Lisp-value} là một bộ lọc tương tự @code{not}. Mỗi khung trong luồng được dùng để khởi tạo các biến trong mẫu, vị từ được chỉ định được áp dụng, và các khung mà vị từ trả về false được lọc ra khỏi luồng đầu vào. Một lỗi xảy ra nếu có các biến mẫu chưa được gán.
+
+@lisp
+(define (lisp-value call frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (if (execute
+          (instantiate
+           call
+           frame
+           (lambda (v f)
+             (error
+              "Unknown pat var: LISP-VALUE"
+              v))))
+         (singleton-stream frame)
+         the-empty-stream))
+   frame-stream))
+(put 'lisp-value 'qeval lisp-value)
+@end lisp
+
+@noindent
+@code{Execute}, áp dụng vị từ cho các đối số, phải @code{eval} biểu thức vị từ để lấy thủ tục cần áp dụng. Tuy nhiên, nó không được định giá các đối số, vì chúng đã là các đối số thực tế, không phải các biểu thức mà việc định giá (trong Lisp) sẽ tạo ra các đối số. Lưu ý rằng @code{execute} được hiện thực hóa sử dụng @code{eval} và @code{apply} từ hệ thống Lisp cơ sở.
+
+@lisp
+(define (execute exp)
+  (apply (eval (predicate exp)
+               user-initial-environment)
+         (args exp)))
+@end lisp
+
+@noindent
+Dạng đặc biệt @code{always-true} cung cấp cho một truy vấn luôn được thỏa mãn. Nó bỏ qua nội dung của nó (thường là rỗng) và đơn giản là truyền qua tất cả các khung trong luồng đầu vào. @code{Always-true} được sử dụng bởi bộ chọn @code{rule-body} (@ref{4.4.4.7}) để cung cấp thân cho các quy tắc được định nghĩa không có thân (tức là các quy tắc có kết luận luôn được thỏa mãn).
+
+@lisp
+(define (always-true ignore frame-stream)
+  frame-stream)
+(put 'always-true 'qeval always-true)
+@end lisp
+
+@noindent
+Các bộ chọn định nghĩa cú pháp của @code{not} và @code{lisp-value} được trình bày trong @ref{4.4.4.7}.

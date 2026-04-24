@@ -1,0 +1,127 @@
+@node 4.4.4.7, 4.4.4.8, 4.4.4.6, 4.4.4
+@subsubsection Các Thủ Tục Cú Pháp Truy Vấn
+
+@code{Type} và @code{contents}, được dùng bởi @code{qeval} (@ref{4.4.4.2}), chỉ định rằng một dạng đặc biệt được nhận dạng bởi ký hiệu trong @code{car} của nó. Chúng giống như các thủ tục @code{type-tag} và @code{contents} trong @ref{2.4.2}, ngoại trừ thông báo lỗi.
+
+@lisp
+(define (type exp)
+  (if (pair? exp)
+      (car exp)
+      (error "Unknown expression TYPE"
+             exp)))
+
+(define (contents exp)
+  (if (pair? exp)
+      (cdr exp)
+      (error "Unknown expression CONTENTS"
+             exp)))
+@end lisp
+
+@noindent
+Các thủ tục sau, được dùng bởi @code{query-driver-loop} (trong @ref{4.4.4.1}), chỉ định rằng các quy tắc và khẳng định được thêm vào cơ sở dữ liệu bởi các biểu thức có dạng @code{(assert! ⟨@var{rule-or-assertion}⟩)}:
+
+@lisp
+(define (assertion-to-be-added? exp)
+  (eq? (type exp) 'assert!))
+
+(define (add-assertion-body exp)
+  (car (contents exp)))
+@end lisp
+
+@noindent
+Đây là các định nghĩa cú pháp cho các dạng đặc biệt @code{and}, @code{or}, @code{not}, và @code{lisp-value} (@ref{4.4.4.2}):
+
+@lisp
+(define (empty-conjunction? exps) (null? exps))
+(define (first-conjunct exps) (car exps))
+(define (rest-conjuncts exps) (cdr exps))
+(define (empty-disjunction? exps) (null? exps))
+(define (first-disjunct exps) (car exps))
+(define (rest-disjuncts exps) (cdr exps))
+(define (negated-query exps) (car exps))
+(define (predicate exps) (car exps))
+(define (args exps) (cdr exps))
+@end lisp
+
+@noindent
+Ba thủ tục sau định nghĩa cú pháp của các quy tắc:
+
+@lisp
+(define (rule? statement)
+  (tagged-list? statement 'rule))
+
+(define (conclusion rule) (cadr rule))
+
+(define (rule-body rule)
+  (if (null? (cddr rule))
+      '(always-true)
+      (caddr rule)))
+@end lisp
+
+@noindent
+@code{Query-driver-loop} (@ref{4.4.4.1}) gọi @code{query-syntax-process} để biến đổi các biến mẫu trong biểu thức, có dạng @code{?symbol}, thành định dạng nội bộ @code{(? symbol)}. Tức là, một mẫu như @code{(job ?x ?y)} thực ra được biểu diễn nội bộ bởi hệ thống như @code{(job (? x) (? y))}. Điều này tăng hiệu quả xử lý truy vấn, vì nó có nghĩa là hệ thống có thể kiểm tra xem một biểu thức có phải là một biến mẫu hay không bằng cách kiểm tra xem @code{car} của biểu thức có phải là ký hiệu @code{?} không, thay vì phải trích xuất các ký tự từ ký hiệu. Phép biến đổi cú pháp được thực hiện bởi thủ tục sau:@footnote{Hầu hết các hệ thống Lisp cung cấp cho người dùng khả năng sửa đổi thủ tục @code{read} thông thường để thực hiện các phép biến đổi như vậy bằng cách định nghĩa @newterm{ký tự macro đọc}. Các biểu thức được trích dẫn đã được xử lý theo cách này: Bộ đọc tự động dịch @code{'expression} thành @code{(quote expression)} trước khi trình định giá nhìn thấy nó. Ta có thể sắp xếp để @code{?expression} được biến đổi thành @code{(? expression)} theo cùng cách; tuy nhiên, để rõ ràng ta đã bao gồm thủ tục biến đổi ở đây một cách rõ ràng.
+
+@code{Expand-question-mark} và @code{contract-question-mark} sử dụng một số thủ tục có @code{string} trong tên của chúng. Đây là các nguyên thủy Scheme.}
+
+@lisp
+(define (query-syntax-process exp)
+  (map-over-symbols expand-question-mark exp))
+
+(define (map-over-symbols proc exp)
+  (cond ((pair? exp)
+         (cons (map-over-symbols
+                proc (car exp))
+               (map-over-symbols
+                proc (cdr exp))))
+        ((symbol? exp) (proc exp))
+        (else exp)))
+
+(define (expand-question-mark symbol)
+  (let ((chars (symbol->string symbol)))
+    (if (string=? (substring chars 0 1) "?")
+        (list '? (string->symbol
+                  (substring
+                   chars
+                   1
+                   (string-length chars))))
+        symbol)))
+@end lisp
+
+@noindent
+Khi các biến được biến đổi theo cách này, các biến trong một mẫu là các danh sách bắt đầu bằng @code{?}, và các ký hiệu hằng (cần được nhận dạng để lập chỉ mục cơ sở dữ liệu, @ref{4.4.4.5}) chỉ là các ký hiệu.
+
+@lisp
+(define (var? exp) (tagged-list? exp '?))
+(define (constant-symbol? exp) (symbol? exp))
+@end lisp
+
+@noindent
+Các biến duy nhất được xây dựng trong quá trình áp dụng quy tắc (trong @ref{4.4.4.4}) bằng phương tiện các thủ tục sau. Định danh duy nhất cho một áp dụng quy tắc là một số, được tăng mỗi khi một quy tắc được áp dụng.
+
+@lisp
+(define rule-counter 0)
+
+(define (new-rule-application-id)
+  (set! rule-counter (+ 1 rule-counter))
+  rule-counter)
+
+(define (make-new-variable
+         var rule-application-id)
+  (cons '? (cons rule-application-id
+                 (cdr var))))
+@end lisp
+
+@noindent
+Khi @code{query-driver-loop} khởi tạo truy vấn để in câu trả lời, nó chuyển đổi bất kỳ biến mẫu chưa được gán nào trở lại dạng đúng để in, sử dụng
+
+@lisp
+(define (contract-question-mark variable)
+  (string->symbol
+   (string-append "?"
+     (if (number? (cadr variable))
+         (string-append
+          (symbol->string (caddr variable))
+          "-"
+          (number->string (cadr variable)))
+         (symbol->string (cadr variable))))))
+@end lisp

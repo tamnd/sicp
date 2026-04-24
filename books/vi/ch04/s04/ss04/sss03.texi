@@ -1,0 +1,70 @@
+@node 4.4.4.3, 4.4.4.4, 4.4.4.2, 4.4.4
+@subsubsection Tìm Kiếm Khẳng Định bằng Khớp Mẫu
+
+@code{Find-assertions}, được gọi bởi @code{simple-query} (@ref{4.4.4.2}), nhận làm đầu vào một mẫu và một khung. Nó trả về một luồng các khung, mỗi khung mở rộng khung đã cho bằng một kết quả khớp cơ sở dữ liệu của mẫu đã cho. Nó sử dụng @code{fetch-assertions} (@ref{4.4.4.5}) để lấy một luồng tất cả các khẳng định trong cơ sở dữ liệu cần được kiểm tra để khớp với mẫu và khung. Lý do cho @code{fetch-assertions} ở đây là ta thường có thể áp dụng các bài kiểm tra đơn giản sẽ loại bỏ nhiều mục trong cơ sở dữ liệu khỏi nhóm ứng viên cho một kết quả khớp thành công. Hệ thống vẫn sẽ hoạt động nếu ta loại bỏ @code{fetch-assertions} và chỉ đơn giản là kiểm tra một luồng tất cả các khẳng định trong cơ sở dữ liệu, nhưng việc tính toán sẽ kém hiệu quả hơn vì ta sẽ cần thực hiện nhiều cuộc gọi hơn đến bộ khớp.
+
+@lisp
+(define (find-assertions pattern frame)
+  (stream-flatmap
+    (lambda (datum)
+      (check-an-assertion datum pattern frame))
+    (fetch-assertions pattern frame)))
+@end lisp
+
+@noindent
+@code{Check-an-assertion} nhận làm đối số một mẫu, một đối tượng dữ liệu (khẳng định), và một khung và trả về một luồng một phần tử chứa khung mở rộng hoặc @code{the-empty-stream} nếu kết quả khớp thất bại.
+
+@lisp
+(define (check-an-assertion
+         assertion query-pat query-frame)
+  (let ((match-result
+         (pattern-match
+          query-pat assertion query-frame)))
+    (if (eq? match-result 'failed)
+        the-empty-stream
+        (singleton-stream match-result))))
+@end lisp
+
+@noindent
+Bộ khớp mẫu cơ bản trả về ký hiệu @code{failed} hoặc một phần mở rộng của khung đã cho. Ý tưởng cơ bản của bộ khớp là kiểm tra mẫu với dữ liệu, từng phần tử một, tích lũy các ràng buộc cho các biến mẫu. Nếu mẫu và đối tượng dữ liệu giống nhau, kết quả khớp thành công và ta trả về khung các ràng buộc tích lũy được cho đến nay. Nếu không, nếu mẫu là một biến ta mở rộng khung hiện tại bằng cách gán biến với dữ liệu, miễn là điều này nhất quán với các ràng buộc đã có trong khung. Nếu mẫu và dữ liệu đều là các cặp, ta (đệ quy) khớp @code{car} của mẫu với @code{car} của dữ liệu để tạo ra một khung; trong khung này ta sau đó khớp @code{cdr} của mẫu với @code{cdr} của dữ liệu. Nếu không có trường hợp nào trong số này áp dụng, kết quả khớp thất bại và ta trả về ký hiệu @code{failed}.
+
+@lisp
+(define (pattern-match pat dat frame)
+  (cond ((eq? frame 'failed) 'failed)
+        ((equal? pat dat) frame)
+        ((var? pat)
+         (extend-if-consistent
+          pat dat frame))
+        ((and (pair? pat) (pair? dat))
+         (pattern-match
+          (cdr pat)
+          (cdr dat)
+          (pattern-match
+           (car pat) (car dat) frame)))
+        (else 'failed)))
+@end lisp
+
+@noindent
+Đây là thủ tục mở rộng một khung bằng cách thêm một ràng buộc mới, nếu điều này nhất quán với các ràng buộc đã có trong khung:
+
+@lisp
+(define (extend-if-consistent var dat frame)
+  (let ((binding (binding-in-frame var frame)))
+    (if binding
+        (pattern-match
+         (binding-value binding) dat frame)
+        (extend var dat frame))))
+@end lisp
+
+@noindent
+Nếu không có ràng buộc nào cho biến trong khung, ta đơn giản là thêm ràng buộc của biến với dữ liệu. Nếu không ta khớp, trong khung, dữ liệu với giá trị của biến trong khung. Nếu giá trị được lưu trữ chỉ chứa các hằng số, như phải có nếu nó được lưu trữ trong quá trình khớp mẫu bởi @code{extend-if-consistent}, thì kết quả khớp chỉ đơn giản kiểm tra xem các giá trị được lưu trữ và mới có giống nhau không. Nếu có, nó trả về khung chưa được sửa đổi; nếu không, nó trả về dấu hiệu thất bại. Tuy nhiên, giá trị được lưu trữ có thể chứa các biến mẫu nếu nó được lưu trữ trong quá trình hợp nhất (xem @ref{4.4.4.4}). Kết quả khớp đệ quy của mẫu được lưu trữ với dữ liệu mới sẽ thêm hoặc kiểm tra các ràng buộc cho các biến trong mẫu này. Ví dụ, giả sử ta có một khung trong đó @code{?x} được gán với @code{(f ?y)} và @code{?y} chưa được gán, và ta muốn tăng cường khung này bằng một ràng buộc của @code{?x} với @code{(f b)}. Ta tra cứu @code{?x} và thấy rằng nó được gán với @code{(f ?y)}. Điều này dẫn đến việc ta khớp @code{(f ?y)} với giá trị mới được đề xuất @code{(f b)} trong cùng một khung. Cuối cùng kết quả khớp này mở rộng khung bằng cách thêm một ràng buộc của @code{?y} với @code{b}. @code{?X} vẫn được gán với @code{(f ?y)}. Ta không bao giờ sửa đổi một ràng buộc được lưu trữ và ta không bao giờ lưu trữ nhiều hơn một ràng buộc cho một biến đã cho.
+
+Các thủ tục được sử dụng bởi @code{extend-if-consistent} để thao túng các ràng buộc được định nghĩa trong @ref{4.4.4.8}.
+
+@subsubheading Các mẫu với đuôi có dấu chấm
+
+Nếu một mẫu chứa một dấu chấm tiếp theo là một biến mẫu, biến mẫu khớp với phần còn lại của danh sách dữ liệu (thay vì phần tử tiếp theo của danh sách dữ liệu), giống như người ta mong đợi với ký hiệu đuôi có dấu chấm được mô tả trong @ref{Exercise 2.20}. Mặc dù bộ khớp mẫu ta vừa hiện thực hóa không tìm kiếm các dấu chấm, nhưng nó hoạt động như ta muốn. Điều này là bởi vì nguyên thủy @code{read} của Lisp, được dùng bởi @code{query-driver-loop} để đọc truy vấn và biểu diễn nó như là một cấu trúc danh sách, xử lý các dấu chấm theo cách đặc biệt.
+
+Khi @code{read} thấy một dấu chấm, thay vì làm cho mục tiếp theo trở thành phần tử tiếp theo của một danh sách (@code{car} của một @code{cons} có @code{cdr} là phần còn lại của danh sách), nó làm cho mục tiếp theo trở thành @code{cdr} của cấu trúc danh sách. Ví dụ, cấu trúc danh sách được tạo ra bởi @code{read} cho mẫu @code{(computer ?type)} có thể được xây dựng bằng cách định giá biểu thức @code{(cons 'computer (cons '?type '()))}, và cấu trúc cho @code{(computer . ?type)} có thể được xây dựng bằng cách định giá biểu thức @code{(cons 'computer '?type)}.
+
+Do đó, khi @code{pattern-match} so sánh đệ quy các @code{car} và @code{cdr} của một danh sách dữ liệu và một mẫu có dấu chấm, cuối cùng nó khớp biến sau dấu chấm (đó là @code{cdr} của mẫu) với một danh sách con của danh sách dữ liệu, gán biến với danh sách đó. Ví dụ, khớp mẫu @code{(computer . ?type)} với @code{(computer programmer trainee)} sẽ khớp @code{?type} với danh sách @code{(programmer trainee)}.

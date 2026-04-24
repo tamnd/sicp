@@ -1,0 +1,167 @@
+@node	4.4.3, 4.4.4, 4.4.2, 4.4
+@subsection Lập Trình Logic Có Phải Là Logic Toán Học Không?
+
+Các phương tiện kết hợp được dùng trong ngôn ngữ truy vấn thoạt nhìn có vẻ giống với các phép toán @code{and}, @code{or}, và @code{not} của logic toán học, và việc áp dụng các quy tắc của ngôn ngữ truy vấn thực ra được thực hiện thông qua một phương pháp suy luận hợp lệ.@footnote{Rằng một phương pháp suy luận cụ thể là hợp lệ không phải là một khẳng định tầm thường. Người ta phải chứng minh rằng nếu xuất phát từ các tiền đề đúng, chỉ có thể rút ra các kết luận đúng. Phương pháp suy luận được biểu diễn bởi các áp dụng quy tắc là @newterm{modus ponens}, phương pháp suy luận quen thuộc nói rằng nếu @math{A} đúng và @emph{A kéo theo B} đúng, thì ta có thể kết luận rằng @math{B} đúng.} Tuy nhiên, sự đồng nhất này của ngôn ngữ truy vấn với logic toán học thực ra không hoàn toàn hợp lệ, bởi vì ngôn ngữ truy vấn cung cấp một @newterm{cấu trúc điều khiển} diễn giải các mệnh đề logic theo cách thủ tục. Ta thường có thể tận dụng cấu trúc điều khiển này. Ví dụ, để tìm tất cả các người giám sát của các lập trình viên, ta có thể đặt câu truy vấn dưới một trong hai dạng logic tương đương:
+
+@lisp
+(and (job ?x (computer programmer))
+     (supervisor ?x ?y))
+@end lisp
+
+@noindent
+hoặc
+
+@lisp
+(and (supervisor ?x ?y)
+     (job ?x (computer programmer)))
+@end lisp
+
+@noindent
+Nếu một công ty có nhiều người giám sát hơn lập trình viên (trường hợp thông thường), tốt hơn nên dùng dạng đầu tiên thay vì dạng thứ hai vì cơ sở dữ liệu phải được quét cho mỗi kết quả trung gian (khung) được tạo ra bởi mệnh đề đầu tiên của @code{and}.
+
+Mục tiêu của lập trình logic là cung cấp cho lập trình viên các kỹ thuật để phân tách một bài toán tính toán thành hai vấn đề riêng biệt: ``cái gì'' cần được tính, và ``làm thế nào'' nên tính. Điều này được thực hiện bằng cách chọn một tập con các mệnh đề của logic toán học đủ mạnh để có thể mô tả bất cứ thứ gì người ta muốn tính, nhưng đủ yếu để có một cách diễn giải thủ tục có thể kiểm soát được. Ý định ở đây là, một mặt, một chương trình được đặc tả trong ngôn ngữ lập trình logic phải là một chương trình hiệu quả có thể được thực hiện bởi máy tính. Điều khiển (``làm thế nào'' để tính) được thực hiện bằng cách sử dụng thứ tự định giá của ngôn ngữ. Ta cần có khả năng sắp xếp thứ tự các mệnh đề và thứ tự các mục tiêu con trong mỗi mệnh đề sao cho việc tính toán được thực hiện theo một thứ tự được coi là hiệu quả. Đồng thời, ta cần có khả năng xem kết quả của phép tính (``cái gì'' cần tính) là một hệ quả đơn giản của các định luật logic.
+
+Ngôn ngữ truy vấn của ta có thể được coi là một tập con có thể diễn giải theo thủ tục như vậy của logic toán học. Một khẳng định biểu diễn một sự kiện đơn giản (một mệnh đề nguyên tử). Một quy tắc biểu diễn hàm ý rằng kết luận của quy tắc đúng với những trường hợp mà thân quy tắc đúng. Một quy tắc có cách diễn giải thủ tục tự nhiên: Để thiết lập kết luận của quy tắc, hãy thiết lập thân của quy tắc. Do đó, các quy tắc đặc tả các phép tính. Tuy nhiên, vì các quy tắc cũng có thể được coi là các mệnh đề của logic toán học, ta có thể biện minh cho bất kỳ ``suy luận'' nào được thực hiện bởi một chương trình logic bằng cách khẳng định rằng kết quả tương tự có thể đạt được bằng cách làm việc hoàn toàn trong logic toán học.@footnote{Ta phải đặt điều kiện cho mệnh đề này bằng cách đồng ý rằng, khi nói về ``suy luận'' được thực hiện bởi một chương trình logic, ta giả sử rằng phép tính kết thúc. Thật không may, ngay cả mệnh đề có điều kiện này cũng là sai đối với cách hiện thực hóa ngôn ngữ truy vấn của ta (và cũng sai đối với các chương trình trong Prolog và hầu hết các ngôn ngữ lập trình logic hiện tại khác) vì việc sử dụng @code{not} và @code{lisp-value} của ta. Như ta sẽ mô tả dưới đây, @code{not} được hiện thực hóa trong ngôn ngữ truy vấn không phải lúc nào cũng nhất quán với @code{not} của logic toán học, và @code{lisp-value} đưa ra những phức tạp bổ sung. Ta có thể hiện thực hóa một ngôn ngữ nhất quán với logic toán học bằng cách đơn giản là loại bỏ @code{not} và @code{lisp-value} khỏi ngôn ngữ và đồng ý viết chương trình chỉ sử dụng các truy vấn đơn giản, @code{and}, và @code{or}. Tuy nhiên, điều này sẽ hạn chế đáng kể sức mạnh biểu đạt của ngôn ngữ. Một trong những mối quan tâm chính của nghiên cứu trong lập trình logic là tìm cách đạt được sự nhất quán hơn với logic toán học mà không hy sinh quá nhiều sức mạnh biểu đạt.}
+
+@subsubheading Vòng lặp vô hạn
+
+Một hệ quả của cách diễn giải thủ tục của các chương trình logic là có thể xây dựng các chương trình vô cùng kém hiệu quả để giải quyết một số vấn đề. Một trường hợp cực đoan của sự kém hiệu quả xảy ra khi hệ thống rơi vào các vòng lặp vô hạn trong quá trình suy luận. Là một ví dụ đơn giản, giả sử ta đang thiết lập một cơ sở dữ liệu về các cuộc hôn nhân nổi tiếng, bao gồm
+
+@lisp
+(assert! (married Minnie Mickey))
+@end lisp
+
+@noindent
+Nếu bây giờ ta hỏi
+
+@lisp
+(married Mickey ?who)
+@end lisp
+
+@noindent
+ta sẽ không nhận được phản hồi nào, vì hệ thống không biết rằng nếu @math{A} đã kết hôn với @math{B}, thì @math{B} đã kết hôn với @math{A}. Vì vậy ta khẳng định quy tắc
+
+@lisp
+(assert! (rule (married ?x ?y)
+               (married ?y ?x)))
+@end lisp
+
+@noindent
+và hỏi lại
+
+@lisp
+(married Mickey ?who)
+@end lisp
+
+Thật không may, điều này sẽ đưa hệ thống vào một vòng lặp vô hạn, như sau:
+
+@itemize @bullet
+
+@item
+Hệ thống thấy rằng quy tắc @code{married} có thể áp dụng; tức là, kết luận quy tắc @code{(married ?x ?y)} khớp thành công với mẫu truy vấn @code{(married Mickey ?who)} để tạo ra một khung trong đó @code{?x} được gán với @code{Mickey} và @code{?y} được gán với @code{?who}. Vì vậy trình thông dịch tiến hành định giá thân quy tắc @code{(married ?y ?x)} trong khung này---thực chất là xử lý truy vấn @code{(married ?who Mickey)}.
+
+@item
+Một câu trả lời xuất hiện trực tiếp như là một khẳng định trong cơ sở dữ liệu: @code{(married Minnie Mickey)}.
+
+@item
+Quy tắc @code{married} cũng có thể áp dụng, vì vậy trình thông dịch một lần nữa định giá thân quy tắc, lần này tương đương với @code{(married Mickey ?who)}.
+
+@end itemize
+
+@noindent
+Hệ thống bây giờ đang trong một vòng lặp vô hạn. Thực ra, liệu hệ thống có tìm thấy câu trả lời đơn giản @code{(married Minnie Mickey)} trước khi rơi vào vòng lặp hay không phụ thuộc vào chi tiết hiện thực liên quan đến thứ tự mà hệ thống kiểm tra các mục trong cơ sở dữ liệu. Đây là một ví dụ rất đơn giản về các loại vòng lặp có thể xảy ra. Các tập hợp các quy tắc liên quan với nhau có thể dẫn đến các vòng lặp khó dự đoán hơn nhiều, và sự xuất hiện của một vòng lặp có thể phụ thuộc vào thứ tự các mệnh đề trong một @code{and} (xem @ref{Exercise 4.64}) hoặc vào các chi tiết cấp thấp liên quan đến thứ tự mà hệ thống xử lý các truy vấn.@footnote{Đây không phải là vấn đề của logic mà là vấn đề của cách diễn giải thủ tục của logic được cung cấp bởi trình thông dịch của ta. Ta có thể viết một trình thông dịch không rơi vào vòng lặp ở đây. Ví dụ, ta có thể liệt kê tất cả các chứng minh có thể rút ra từ các khẳng định và quy tắc của ta theo thứ tự theo chiều rộng thay vì theo chiều sâu. Tuy nhiên, một hệ thống như vậy khiến việc tận dụng thứ tự của các suy luận trong chương trình trở nên khó khăn hơn. Một nỗ lực để xây dựng điều khiển tinh vi vào một chương trình như vậy được mô tả trong @ref{deKleer et al. 1977}. Một kỹ thuật khác, không dẫn đến các vấn đề kiểm soát nghiêm trọng như vậy, là đưa vào kiến thức đặc biệt, chẳng hạn như các bộ phát hiện cho các loại vòng lặp cụ thể (@ref{Exercise 4.67}). Tuy nhiên, không thể có một sơ đồ chung để ngăn chắc chắn hệ thống đi vào các đường dẫn vô hạn trong khi thực hiện suy luận. Hãy tưởng tượng một quy tắc quỷ quái có dạng ``Để chỉ ra @math{{P(x)}} đúng, hãy chỉ ra @math{{P(f(x))}} đúng,'' với một hàm @math{f} được chọn phù hợp.}
+
+@subsubheading Vấn đề với @code{not}
+
+Một điểm kỳ lạ khác trong hệ thống truy vấn liên quan đến @code{not}. Với cơ sở dữ liệu của @ref{4.4.1}, hãy xem xét hai truy vấn sau:
+
+@lisp
+(and (supervisor ?x ?y)
+     (not (job ?x (computer programmer))))
+
+(and (not (job ?x (computer programmer)))
+     (supervisor ?x ?y))
+@end lisp
+
+@noindent
+Hai truy vấn này không cho cùng một kết quả. Truy vấn đầu tiên bắt đầu bằng cách tìm tất cả các mục trong cơ sở dữ liệu khớp với @code{(supervisor ?x ?y)}, và sau đó lọc các khung kết quả bằng cách loại bỏ những khung trong đó giá trị của @code{?x} thỏa mãn @code{(job ?x (computer programmer))}. Truy vấn thứ hai bắt đầu bằng cách lọc các khung đầu vào để loại bỏ những khung có thể thỏa mãn @code{(job ?x (computer programmer))}. Vì khung đầu vào duy nhất trống, nó kiểm tra cơ sở dữ liệu xem có bất kỳ mẫu nào thỏa mãn @code{(job ?x (computer programmer))} không. Vì thường có các mục có dạng này, mệnh đề @code{not} lọc bỏ khung trống và trả về một luồng khung rỗng. Do đó, toàn bộ truy vấn ghép trả về một luồng rỗng.
+
+Vấn đề là cách hiện thực hóa @code{not} của ta thực sự nhằm mục đích phục vụ như một bộ lọc cho các giá trị của các biến. Nếu một mệnh đề @code{not} được xử lý với một khung trong đó một số biến vẫn chưa được gán (như @code{?x} trong ví dụ trên), hệ thống sẽ cho ra kết quả không mong muốn. Các vấn đề tương tự xảy ra với việc sử dụng @code{lisp-value}---vị từ Lisp không thể hoạt động nếu một số đối số của nó chưa được gán. Xem @ref{Exercise 4.77}.
+
+Còn có một cách khác nghiêm trọng hơn nhiều mà @code{not} của ngôn ngữ truy vấn khác với @code{not} của logic toán học. Trong logic, ta diễn giải mệnh đề ``not @math{P}'' có nghĩa là @math{P} không đúng. Trong hệ thống truy vấn, tuy nhiên, ``not @math{P}'' có nghĩa là @math{P} không thể suy luận được từ kiến thức trong cơ sở dữ liệu. Ví dụ, với cơ sở dữ liệu nhân sự của @ref{4.4.1}, hệ thống sẽ vui vẻ suy luận ra tất cả các loại mệnh đề @code{not}, chẳng hạn như Ben Bitdiddle không phải là người hâm mộ bóng chày, trời không mưa bên ngoài, và 2 + 2 không bằng 4.@footnote{Hãy xem xét truy vấn @code{(not (baseball-fan (Bitdiddle Ben)))}. Hệ thống thấy rằng @code{(baseball-fan (Bitdiddle Ben))} không có trong cơ sở dữ liệu, vì vậy khung trống không thỏa mãn mẫu và không bị lọc khỏi luồng khung ban đầu. Kết quả của truy vấn do đó là khung trống, được dùng để khởi tạo truy vấn đầu vào để tạo ra @code{(not (baseball-fan (Bitdiddle Ben)))}.} Nói cách khác, @code{not} của các ngôn ngữ lập trình logic phản ánh cái gọi là @newterm{giả thiết thế giới đóng} rằng tất cả thông tin liên quan đã được đưa vào cơ sở dữ liệu.@footnote{Một thảo luận và biện minh cho cách xử lý @code{not} này có thể được tìm thấy trong bài báo của @ref{Clark (1978)}.}
+
+@quotation
+@strong{@anchor{Exercise 4.64}Bài tập 4.64:} Louis Reasoner vô tình xóa quy tắc @code{outranked-by} (@ref{4.4.1}) khỏi cơ sở dữ liệu. Khi nhận ra điều này, anh ấy nhanh chóng cài đặt lại. Thật không may, anh ấy thực hiện một thay đổi nhỏ trong quy tắc và gõ vào như
+
+@lisp
+(rule (outranked-by ?staff-person ?boss)
+  (or (supervisor ?staff-person ?boss)
+      (and (outranked-by ?middle-manager
+                         ?boss)
+           (supervisor ?staff-person
+                       ?middle-manager))))
+@end lisp
+
+Ngay sau khi Louis gõ thông tin này vào hệ thống, DeWitt Aull đến để hỏi ai có thứ bậc cao hơn Ben Bitdiddle. Anh ấy đặt truy vấn
+
+@lisp
+(outranked-by (Bitdiddle Ben) ?who)
+@end lisp
+
+Sau khi trả lời, hệ thống rơi vào một vòng lặp vô hạn. Hãy giải thích tại sao.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.65}Bài tập 4.65:} Cy D. Fect, mong đợi đến ngày mình sẽ thăng tiến trong tổ chức, đặt một truy vấn để tìm tất cả các bánh xe (dùng quy tắc @code{wheel} của @ref{4.4.1}):
+
+@lisp
+(wheel ?who)
+@end lisp
+
+Thật ngạc nhiên, hệ thống trả lời
+
+@lisp
+@i{;;; Query results:}
+(wheel (Warbucks Oliver))
+(wheel (Bitdiddle Ben))
+(wheel (Warbucks Oliver))
+(wheel (Warbucks Oliver))
+(wheel (Warbucks Oliver))
+@end lisp
+
+Tại sao Oliver Warbucks được liệt kê bốn lần?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.66}Bài tập 4.66:} Ben đã mở rộng hệ thống truy vấn để cung cấp thống kê về công ty. Ví dụ, để tìm tổng lương của tất cả các lập trình viên máy tính người ta có thể nói
+
+@lisp
+(sum ?amount
+     (and (job ?x (computer programmer))
+          (salary ?x ?amount)))
+@end lisp
+
+Nói chung, hệ thống mới của Ben cho phép các biểu thức có dạng
+
+@lisp
+(accumulation-function ⟨@var{variable}⟩
+                       ⟨@var{query pattern}⟩)
+@end lisp
+
+@noindent
+trong đó @code{accumulation-function} có thể là các thứ như @code{sum}, @code{average}, hoặc @code{maximum}. Ben lý luận rằng điều này sẽ dễ dàng thực hiện. Anh ấy sẽ đơn giản đưa mẫu truy vấn vào @code{qeval}. Điều này sẽ tạo ra một luồng các khung. Anh ấy sau đó sẽ truyền luồng này qua một hàm ánh xạ trích xuất giá trị của biến được chỉ định từ mỗi khung trong luồng và đưa luồng giá trị kết quả vào hàm tích lũy. Ngay khi Ben hoàn thành việc hiện thực hóa và chuẩn bị thử nghiệm, Cy đi qua, vẫn đang suy nghĩ về kết quả truy vấn @code{wheel} trong @ref{Exercise 4.65}. Khi Cy cho Ben thấy phản hồi của hệ thống, Ben kêu lên: ``Ồ không, sơ đồ tích lũy đơn giản của tôi sẽ không hoạt động!''
+
+Ben vừa nhận ra điều gì? Hãy phác thảo một phương pháp anh ấy có thể dùng để cứu vãn tình huống.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.67}Bài tập 4.67:} Hãy nghĩ ra cách cài đặt bộ phát hiện vòng lặp trong hệ thống truy vấn để tránh các loại vòng lặp đơn giản như được minh họa trong văn bản và trong @ref{Exercise 4.64}. Ý tưởng chung là hệ thống nên duy trì một số loại lịch sử của chuỗi suy luận hiện tại của nó và không nên bắt đầu xử lý một truy vấn mà nó đang thực hiện. Hãy mô tả loại thông tin nào (các mẫu và khung) được đưa vào lịch sử này, và cách kiểm tra nên được thực hiện. (Sau khi bạn nghiên cứu chi tiết về hiện thực hóa hệ thống truy vấn trong @ref{4.4.4}, bạn có thể muốn sửa đổi hệ thống để bao gồm bộ phát hiện vòng lặp của mình.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.68}Bài tập 4.68:} Định nghĩa các quy tắc để hiện thực hóa phép toán @code{reverse} của @ref{Exercise 2.18}, trả về một danh sách chứa các phần tử giống nhau theo thứ tự ngược lại. (Gợi ý: Dùng @code{append-to-form}.) Các quy tắc của bạn có thể trả lời cả @code{(reverse (1 2 3) ?x)} và @code{(reverse ?x (1 2 3))} không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.69}Bài tập 4.69:} Bắt đầu với cơ sở dữ liệu và các quy tắc bạn đã xây dựng trong @ref{Exercise 4.63}, hãy nghĩ ra một quy tắc để thêm ``greats'' vào một mối quan hệ cháu trai. Điều này nên cho phép hệ thống suy luận rằng Irad là chắt của Adam, hoặc Jabal và Jubal là chắt chắt chắt chắt chắt của Adam. (Gợi ý: Biểu diễn sự kiện về Irad, ví dụ, như @code{((great grandson) Adam Irad)}. Viết các quy tắc xác định xem một danh sách kết thúc bằng từ @code{grandson}. Dùng điều này để diễn đạt một quy tắc cho phép suy ra mối quan hệ @code{((great .  ?rel) ?x ?y)}, trong đó @code{?rel} là danh sách kết thúc bằng @code{grandson}.) Kiểm tra các quy tắc của bạn trên các truy vấn như @code{((great grandson) ?g ?ggs)} và @code{(?relationship Adam Irad)}.
+@end quotation
