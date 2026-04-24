@@ -1,0 +1,37 @@
+@node	2.1, 2.2, Chapter 2, Chapter 2
+@section Giới Thiệu về Trừu Tượng Dữ Liệu
+
+Trong @ref{1.1.8}, chúng ta lưu ý rằng một thủ tục được dùng làm thành phần
+trong việc tạo ra một thủ tục phức tạp hơn không chỉ có thể được coi là một
+tập hợp các phép toán cụ thể mà còn là một trừu tượng thủ tục. Tức là, các
+chi tiết về cách thủ tục được cài đặt có thể bị che giấu, và bản thân thủ tục
+đó có thể được thay thế bởi bất kỳ thủ tục nào khác có cùng hành vi tổng thể.
+Nói cách khác, chúng ta có thể tạo ra một trừu tượng tách biệt cách thủ tục
+sẽ được sử dụng khỏi các chi tiết về cách nó sẽ được cài đặt theo các thủ tục
+nguyên thủy hơn. Khái niệm tương tự cho dữ liệu phức hợp được gọi là
+@newterm{trừu tượng dữ liệu}. Trừu tượng dữ liệu là một phương pháp luận cho
+phép chúng ta cô lập cách một đối tượng dữ liệu phức hợp được sử dụng khỏi
+các chi tiết về cách nó được xây dựng từ các đối tượng dữ liệu nguyên thủy hơn.
+
+Ý tưởng cơ bản của trừu tượng dữ liệu là cấu trúc các chương trình sẽ sử dụng
+các đối tượng dữ liệu phức hợp sao cho chúng thao tác trên ``dữ liệu trừu
+tượng.'' Tức là, các chương trình của chúng ta nên sử dụng dữ liệu theo cách
+không đưa ra các giả định về dữ liệu mà không thực sự cần thiết để thực hiện
+nhiệm vụ. Đồng thời, một biểu diễn dữ liệu ``cụ thể'' được định nghĩa độc lập
+với các chương trình sử dụng dữ liệu. Giao diện giữa hai phần này của hệ thống
+sẽ là một tập hợp các thủ tục, được gọi là @newterm{bộ chọn} và
+@newterm{bộ khởi tạo}, thực hiện dữ liệu trừu tượng theo biểu diễn cụ thể.
+Để minh họa kỹ thuật này, chúng ta sẽ xem xét cách thiết kế một tập hợp các
+thủ tục để thao tác với số hữu tỉ.
+
+@menu
+* 2.1.1::            Ví Dụ: Các Phép Toán Số Học cho Số Hữu Tỉ
+* 2.1.2::            Các Rào Cản Trừu Tượng
+* 2.1.3::            Dữ Liệu Là Gì?
+* 2.1.4::            Bài Tập Mở Rộng: Số Học Khoảng
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi

@@ -1,0 +1,254 @@
+@node	2.1.4, 2.2, Chapter 2, 2.1
+@subsection Bài Tập Mở Rộng: Số Học Khoảng
+
+Alyssa P. Hacker đang thiết kế một hệ thống để giúp mọi người giải quyết các
+bài toán kỹ thuật. Một tính năng cô ấy muốn cung cấp trong hệ thống là khả
+năng thao tác các đại lượng không chính xác (chẳng hạn như các tham số đo được
+của các thiết bị vật lý) với độ chính xác đã biết, sao cho khi thực hiện các
+phép tính với các đại lượng xấp xỉ như vậy thì kết quả sẽ là các số có độ
+chính xác đã biết.
+
+Các kỹ sư điện sẽ sử dụng hệ thống của Alyssa để tính các đại lượng điện. Đôi
+khi họ cần tính giá trị điện trở tương đương song song @math{R_p} của hai điện
+trở @math{R_1} và @math{R_2} theo công thức:
+@ifinfo
+
+@example
+            1
+R_p = -------------
+      1/R_1 + 1/R_2
+@end example
+
+@end ifinfo
+@tex
+\[ % :32:
+  R_p \,=\, {{1 \over 1 / R_1 + 1 / R_2}.}   \]
+@end tex
+Các giá trị điện trở thường chỉ biết đến một dung sai nhất định được nhà sản
+xuất điện trở đảm bảo. Ví dụ, nếu bạn mua một điện trở ghi ``6.8 ohm với dung
+sai 10%'' thì bạn chỉ chắc chắn rằng điện trở có giá trị nằm giữa
+6.8 @math{-} 0.68 = 6.12 và 6.8 + 0.68 = 7.48 ohm. Vì vậy, nếu bạn có điện trở
+6.8 ohm 10% mắc song song với điện trở 4.7 ohm 5%, thì điện trở của tổ hợp
+có thể dao động từ khoảng 2.58 ohm (nếu cả hai điện trở đều ở giới hạn dưới)
+đến khoảng 2.97 ohm (nếu cả hai điện trở đều ở giới hạn trên).
+
+Ý tưởng của Alyssa là cài đặt ``số học khoảng'' như một tập hợp các phép toán
+số học để kết hợp các ``khoảng'' (các đối tượng biểu diễn phạm vi giá trị có
+thể có của một đại lượng không chính xác). Kết quả của việc cộng, trừ, nhân
+hoặc chia hai khoảng là chính một khoảng, biểu diễn phạm vi kết quả.
+
+Alyssa đặt ra sự tồn tại của một đối tượng trừu tượng gọi là ``khoảng'' có
+hai đầu mút: cận dưới và cận trên. Cô ấy cũng giả định rằng, cho trước các
+đầu mút của một khoảng, cô ấy có thể xây dựng khoảng bằng cách dùng bộ khởi
+tạo dữ liệu @code{make-interval}. Alyssa trước tiên viết thủ tục cộng hai
+khoảng. Cô ấy lý luận rằng giá trị nhỏ nhất của tổng có thể là tổng của hai
+cận dưới và giá trị lớn nhất là tổng của hai cận trên:
+
+@lisp
+(define (add-interval x y)
+  (make-interval (+ (lower-bound x)
+                    (lower-bound y))
+                 (+ (upper-bound x)
+                    (upper-bound y))))
+@end lisp
+
+@noindent
+Alyssa cũng xây dựng tích của hai khoảng bằng cách tìm giá trị nhỏ nhất và
+lớn nhất của các tích của các cận và dùng chúng làm cận của khoảng kết quả.
+(@code{Min} và @code{max} là các hàm nguyên thủy tìm giá trị nhỏ nhất hoặc
+lớn nhất trong bất kỳ số đối số nào.)
+
+@lisp
+(define (mul-interval x y)
+  (let ((p1 (* (lower-bound x)
+               (lower-bound y)))
+        (p2 (* (lower-bound x)
+               (upper-bound y)))
+        (p3 (* (upper-bound x)
+               (lower-bound y)))
+        (p4 (* (upper-bound x)
+               (upper-bound y))))
+    (make-interval (min p1 p2 p3 p4)
+                   (max p1 p2 p3 p4))))
+@end lisp
+
+@noindent
+Để chia hai khoảng, Alyssa nhân khoảng đầu tiên với nghịch đảo của khoảng
+thứ hai. Lưu ý rằng các cận của khoảng nghịch đảo là nghịch đảo của cận trên
+và nghịch đảo của cận dưới, theo thứ tự đó.
+
+@lisp
+(define (div-interval x y)
+  (mul-interval x
+                (make-interval
+                 (/ 1.0 (upper-bound y))
+                 (/ 1.0 (lower-bound y)))))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 2.7}Bài tập 2.7:} Chương trình của Alyssa chưa hoàn
+chỉnh vì cô ấy chưa chỉ định cài đặt của trừu tượng khoảng. Đây là định nghĩa
+bộ khởi tạo khoảng:
+
+@lisp
+(define (make-interval a b) (cons a b))
+@end lisp
+
+Định nghĩa các bộ chọn @code{upper-bound} và @code{lower-bound} để hoàn thành
+cài đặt.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.8}Bài tập 2.8:} Sử dụng lý luận tương tự như Alyssa,
+hãy mô tả cách tính hiệu của hai khoảng. Định nghĩa một thủ tục trừ tương ứng,
+gọi là @code{sub-interval}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.9}Bài tập 2.9:} @newterm{Độ rộng} của một khoảng
+là một nửa hiệu giữa cận trên và cận dưới của nó. Độ rộng là thước đo độ
+không chắc chắn của số được chỉ định bởi khoảng. Đối với một số phép toán số
+học, độ rộng của kết quả kết hợp hai khoảng chỉ là hàm của độ rộng các khoảng
+đối số, trong khi đối với các phép khác thì độ rộng của tổ hợp không phải là
+hàm của độ rộng các khoảng đối số. Hãy chứng minh rằng độ rộng của tổng (hoặc
+hiệu) của hai khoảng chỉ là hàm của độ rộng các khoảng được cộng (hoặc trừ).
+Hãy đưa ra các ví dụ để chứng minh rằng điều này không đúng cho phép nhân
+hoặc chia.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.10}Bài tập 2.10:} Ben Bitdiddle, một lập trình viên
+hệ thống chuyên nghiệp, nhìn qua vai Alyssa và nhận xét rằng không rõ chia cho
+một khoảng vắt qua số không có nghĩa là gì. Hãy sửa đổi code của Alyssa để
+kiểm tra điều kiện này và báo lỗi nếu nó xảy ra.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.11}Bài tập 2.11:} Trong khi qua, Ben cũng bí hiểm
+nhận xét: ``Bằng cách kiểm tra dấu của các đầu mút khoảng, có thể phân chia
+@code{mul-interval} thành chín trường hợp, chỉ một trong số đó đòi hỏi nhiều
+hơn hai phép nhân.'' Hãy viết lại thủ tục này theo gợi ý của Ben.
+
+Sau khi gỡ lỗi chương trình, Alyssa cho một người dùng tiềm năng xem, người
+này phàn nàn rằng chương trình của cô giải quyết sai bài toán. Anh ta muốn
+một chương trình có thể xử lý các số được biểu diễn dưới dạng giá trị trung
+tâm và dung sai cộng trừ; ví dụ, anh ta muốn làm việc với các khoảng như
+3.5 @math{\pm} 0.15 thay vì [3.35, 3.65]. Alyssa quay lại bàn làm việc và khắc
+phục vấn đề này bằng cách cung cấp bộ khởi tạo thay thế và các bộ chọn
+thay thế:
+
+@lisp
+(define (make-center-width c w)
+  (make-interval (- c w) (+ c w)))
+
+(define (center i)
+  (/ (+ (lower-bound i)
+        (upper-bound i))
+     2))
+
+(define (width i)
+  (/ (- (upper-bound i)
+        (lower-bound i))
+     2))
+@end lisp
+
+Thật không may, hầu hết người dùng của Alyssa đều là kỹ sư. Các tình huống
+kỹ thuật thực tế thường liên quan đến các phép đo với độ không chắc chắn nhỏ,
+được đo là tỉ số giữa độ rộng khoảng và giá trị trung tâm của khoảng. Các kỹ
+sư thường chỉ định dung sai phần trăm cho các tham số của thiết bị, như trong
+các thông số điện trở đã nêu trước đó.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.12}Bài tập 2.12:} Định nghĩa bộ khởi tạo
+@code{make-center-percent} nhận giá trị trung tâm và dung sai phần trăm và tạo
+ra khoảng mong muốn. Bạn cũng phải định nghĩa bộ chọn @code{percent} tạo ra
+dung sai phần trăm cho một khoảng cho trước. Bộ chọn @code{center} giống như
+đã hiển thị ở trên.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.13}Bài tập 2.13:} Chứng minh rằng với giả thiết
+dung sai phần trăm nhỏ có một công thức đơn giản cho dung sai phần trăm xấp
+xỉ của tích hai khoảng theo dung sai của các nhân tử. Bạn có thể đơn giản hóa
+bài toán bằng cách giả sử tất cả các số đều dương.
+
+Sau nhiều công việc, Alyssa P. Hacker giao hệ thống đã hoàn chỉnh. Nhiều năm
+sau, khi cô đã quên hết, cô nhận được một cuộc gọi hốt hoảng từ người dùng
+đang tức giận, Lem E. Tweakit. Có vẻ Lem đã nhận ra rằng công thức điện trở
+song song có thể được viết theo hai cách đại số tương đương:
+@ifinfo
+
+@example
+ R_1 R_2
+---------
+R_1 + R_2
+@end example
+
+@end ifinfo
+@tex
+\[ % :33:
+  {R_1 R_2 \over R_1 + R_2}  \]
+@end tex
+@noindent
+và
+@ifinfo
+
+@example
+      1
+-------------
+1/R_1 + 1/R_2
+@end example
+
+@end ifinfo
+@tex
+\[ % :34:
+  {{1 \over 1 / R_1 + 1 / R_2}.}  \]
+@end tex
+Anh ta đã viết hai chương trình sau, mỗi chương trình tính công thức điện trở
+song song theo cách khác nhau:
+
+@lisp
+(define (par1 r1 r2)
+  (div-interval
+   (mul-interval r1 r2)
+   (add-interval r1 r2)))
+
+(define (par2 r1 r2)
+  (let ((one (make-interval 1 1)))
+    (div-interval
+     one
+     (add-interval
+      (div-interval one r1)
+      (div-interval one r2)))))
+@end lisp
+
+Lem phàn nàn rằng chương trình của Alyssa cho kết quả khác nhau cho hai cách
+tính. Đây là một phàn nàn nghiêm trọng.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.14}Bài tập 2.14:} Chứng minh Lem đúng. Khảo sát
+hành vi của hệ thống trên nhiều biểu thức số học khác nhau. Tạo một số khoảng
+@math{A} và @math{B}, và dùng chúng để tính các biểu thức @math{{A / A}} và
+@math{{A / B}}. Bạn sẽ có cái nhìn sâu sắc nhất bằng cách sử dụng các khoảng
+có độ rộng là phần trăm nhỏ của giá trị trung tâm. Kiểm tra kết quả tính toán
+dưới dạng center-percent (xem @ref{Exercise 2.12}).
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.15}Bài tập 2.15:} Eva Lu Ator, một người dùng khác,
+cũng nhận thấy các khoảng khác nhau được tính bởi các biểu thức khác nhau nhưng
+tương đương về mặt đại số. Cô ấy nói rằng một công thức tính toán với khoảng
+bằng hệ thống của Alyssa sẽ cho giới hạn sai số chặt hơn nếu nó có thể được
+viết theo dạng mà không có biến nào biểu diễn số không chắc chắn bị lặp lại.
+Do đó, cô ấy nói, @code{par2} là chương trình ``tốt hơn'' cho điện trở song
+song hơn @code{par1}. Cô ấy có đúng không? Tại sao?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.16}Bài tập 2.16:} Giải thích, nói chung, tại sao
+các biểu thức đại số tương đương có thể dẫn đến các câu trả lời khác nhau.
+Bạn có thể nghĩ ra một gói số học khoảng không có nhược điểm này không, hay
+nhiệm vụ đó là không thể? (Cảnh báo: Vấn đề này rất khó.)
+@end quotation

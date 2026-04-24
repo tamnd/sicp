@@ -1,0 +1,261 @@
+@node	2.1.1, 2.1.2, 2.1, 2.1
+@subsection Ví Dụ: Các Phép Toán Số Học cho Số Hữu Tỉ
+
+Giả sử chúng ta muốn thực hiện số học với các số hữu tỉ. Chúng ta muốn có thể
+cộng, trừ, nhân, chia chúng và kiểm tra xem hai số hữu tỉ có bằng nhau không.
+
+Hãy bắt đầu bằng cách giả sử rằng chúng ta đã có cách xây dựng một số hữu tỉ
+từ tử số và mẫu số. Chúng ta cũng giả sử rằng, cho một số hữu tỉ, chúng ta có
+cách trích xuất (hoặc chọn) tử số và mẫu số của nó. Hãy giả sử thêm rằng
+bộ khởi tạo và các bộ chọn có sẵn dưới dạng các thủ tục:
+
+@itemize @bullet
+
+@item
+@code{(make-rat ⟨@var{n}⟩ ⟨@var{d}⟩)} trả về số hữu tỉ có tử số
+là số nguyên @code{⟨@var{n}⟩} và mẫu số là số nguyên @code{⟨@var{d}⟩}.
+
+@item
+@code{(numer ⟨@var{x}⟩)} trả về tử số của số hữu tỉ @code{⟨@var{x}⟩}.
+
+@item
+@code{(denom ⟨@var{x}⟩)} trả về mẫu số của số hữu tỉ @code{⟨@var{x}⟩}.
+
+@end itemize
+
+@noindent
+Ở đây chúng ta đang sử dụng một chiến lược tổng hợp mạnh mẽ: @newterm{tư duy
+ước muốn}. Chúng ta chưa nói số hữu tỉ được biểu diễn như thế nào, hay các
+thủ tục @code{numer}, @code{denom} và @code{make-rat} nên được cài đặt ra sao.
+Dù vậy, nếu chúng ta có ba thủ tục này, chúng ta có thể cộng, trừ, nhân, chia
+và kiểm tra đẳng thức bằng cách sử dụng các quy tắc sau:
+@ifinfo
+
+@example
+n_1   n_2   n_1 d_2 + n_2 d_1
+--- + --- = -----------------
+d_1   d_2        d_1 d_2
+
+n_1   n_2   n_1 d_2 - n_2 d_1
+--- - --- = -----------------
+d_1   d_2        d_1 d_2
+
+n_1   n_2   n_1 n_2
+--- * --- = -------
+d_1   d_2   d_1 d_2
+
+n_1 / d_1   n_1 d_2
+--------- = -------
+n_2 / d_2   d_1 n_2
+
+n_1   n_2
+--- = ---  if and only if n_1 d_2 = n_2 d_1
+d_1   d_2
+@end example
+
+@end ifinfo
+@tex
+\[ % :30:
+
+\begin{eqnarray}
+{n_1 \over d_1} + {n_2 \over d_2}       &=& {n_1 d_2 + n_2 d_1 \over d_1 d_2}, \\
+{n_1 \over d_1} - {n_2 \over d_2} 	&=& {n_1 d_2 - n_2 d_1 \over d_1 d_2}, \\
+{n_1 \over d_1} \times {n_2 \over d_2} 	&=& {n_1 n_2 \over d_1 d_2}, \\
+{n_1 \,/\, d_1} \over {n_2 \,/\, d_2} 	&=& {n_1 d_2 \over d_1 n_2}, \\
+{n_1 \over d_1} 			&=& {n_2 \over d_2} \quad
+						{\rm\ if\ and\ only\ if\quad}
+						n_1 d_2 = n_2 d_1.
+\end{eqnarray}
+\]
+@end tex
+@noindent
+Chúng ta có thể diễn đạt các quy tắc này dưới dạng thủ tục:
+
+@lisp
+(define (add-rat x y)
+  (make-rat (+ (* (numer x) (denom y))
+               (* (numer y) (denom x)))
+            (* (denom x) (denom y))))
+
+(define (sub-rat x y)
+  (make-rat (- (* (numer x) (denom y))
+               (* (numer y) (denom x)))
+            (* (denom x) (denom y))))
+
+(define (mul-rat x y)
+  (make-rat (* (numer x) (numer y))
+            (* (denom x) (denom y))))
+
+(define (div-rat x y)
+  (make-rat (* (numer x) (denom y))
+            (* (denom x) (numer y))))
+
+(define (equal-rat? x y)
+  (= (* (numer x) (denom y))
+     (* (numer y) (denom x))))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có các phép toán trên số hữu tỉ được định nghĩa theo các thủ
+tục bộ chọn và bộ khởi tạo @code{numer}, @code{denom} và @code{make-rat}.
+Nhưng chúng ta chưa định nghĩa những thủ tục này. Điều chúng ta cần là một
+cách nào đó để kết dính tử số và mẫu số lại thành một số hữu tỉ.
+
+@subsubheading Cặp
+
+Để cho phép chúng ta cài đặt cấp độ cụ thể của trừu tượng dữ liệu, ngôn ngữ
+cung cấp một cấu trúc phức hợp gọi là @newterm{cặp}, có thể được xây dựng
+bằng thủ tục nguyên thủy @code{cons}. Thủ tục này nhận hai đối số và trả về
+một đối tượng dữ liệu phức hợp chứa hai đối số đó làm các thành phần. Từ một
+cặp, chúng ta có thể trích xuất các thành phần bằng các thủ tục nguyên thủy
+@code{car} và @code{cdr}.@footnote{Tên @code{cons} là viết tắt của
+``construct'' (xây dựng). Các tên @code{car} và @code{cdr} bắt nguồn từ cài
+đặt Lisp ban đầu trên máy IBM 704. Máy đó có sơ đồ địa chỉ cho phép tham chiếu
+đến phần ``address'' (địa chỉ) và ``decrement'' (giảm) của một vị trí bộ nhớ.
+@code{Car} là viết tắt của ``Contents of Address part of Register'' (Nội dung
+phần Address của Register) và @code{cdr} (đọc là ``could-er'') là viết tắt của
+``Contents of Decrement part of Register'' (Nội dung phần Decrement của
+Register).} Như vậy, chúng ta có thể sử dụng @code{cons}, @code{car} và
+@code{cdr} như sau:
+
+@lisp
+(define x (cons 1 2))
+
+(car x)
+@i{1}
+
+(cdr x)
+@i{2}
+@end lisp
+
+@noindent
+Lưu ý rằng một cặp là một đối tượng dữ liệu có thể được đặt tên và thao tác,
+giống như một đối tượng dữ liệu nguyên thủy. Hơn nữa, @code{cons} có thể được
+dùng để tạo thành các cặp mà các phần tử của chúng là các cặp, và cứ thế:
+
+@lisp
+(define x (cons 1 2))
+(define y (cons 3 4))
+(define z (cons x y))
+
+(car (car z))
+@i{1}
+
+(car (cdr z))
+@i{3}
+@end lisp
+
+@noindent
+Trong @ref{2.2} chúng ta sẽ thấy khả năng kết hợp các cặp này có nghĩa là
+các cặp có thể được sử dụng như các khối xây dựng đa năng để tạo ra mọi loại
+cấu trúc dữ liệu phức tạp. Kiểu dữ liệu nguyên thủy phức hợp duy nhất là
+@newterm{cặp}, được cài đặt bởi các thủ tục @code{cons}, @code{car} và
+@code{cdr}, là loại keo dán duy nhất chúng ta cần. Các đối tượng dữ liệu được
+xây dựng từ các cặp được gọi là dữ liệu có @newterm{cấu trúc danh sách}.
+
+@subsubheading Biểu diễn số hữu tỉ
+
+Các cặp cung cấp một cách tự nhiên để hoàn thiện hệ thống số hữu tỉ. Chỉ cần
+biểu diễn một số hữu tỉ như một cặp gồm hai số nguyên: tử số và mẫu số. Khi đó
+@code{make-rat}, @code{numer} và @code{denom} được cài đặt dễ dàng như
+sau:@footnote{Một cách khác để định nghĩa các bộ chọn và bộ khởi tạo là
+
+@lisp
+(define make-rat cons)
+(define numer car)
+(define denom cdr)
+@end lisp
+
+Định nghĩa đầu tiên liên kết tên @code{make-rat} với giá trị của biểu thức
+@code{cons}, là thủ tục nguyên thủy xây dựng các cặp. Do đó @code{make-rat}
+và @code{cons} là các tên cho cùng một bộ khởi tạo nguyên thủy.
+
+Định nghĩa bộ chọn và bộ khởi tạo theo cách này rất hiệu quả: Thay vì
+@code{make-rat} @emph{gọi} @code{cons}, @code{make-rat} @emph{là} @code{cons},
+vì vậy chỉ có một thủ tục được gọi, không phải hai, khi @code{make-rat} được
+gọi. Mặt khác, làm như thế này sẽ vô hiệu hóa các công cụ gỡ lỗi theo dõi
+lời gọi thủ tục hoặc đặt điểm dừng trên lời gọi thủ tục: Bạn có thể muốn
+xem @code{make-rat} được gọi, nhưng chắc chắn không muốn xem mọi lời gọi
+đến @code{cons}.
+
+Chúng ta đã chọn không dùng kiểu định nghĩa này trong cuốn sách này.}
+
+@lisp
+(define (make-rat n d) (cons n d))
+(define (numer x) (car x))
+(define (denom x) (cdr x))
+@end lisp
+
+@noindent
+Ngoài ra, để hiển thị kết quả tính toán, chúng ta có thể in số hữu tỉ bằng
+cách in tử số, dấu gạch chéo và mẫu số:@footnote{@code{Display} là hàm nguyên
+thủy của Scheme để in dữ liệu. Hàm nguyên thủy @code{newline} bắt đầu một
+dòng mới để in. Cả hai thủ tục này đều không trả về giá trị có ích, vì vậy
+trong các ví dụ dùng @code{print-rat} bên dưới, chúng ta chỉ hiển thị những
+gì @code{print-rat} in ra, không phải những gì trình thông dịch in ra là giá
+trị trả về bởi @code{print-rat}.}
+
+@lisp
+(define (print-rat x)
+  (newline)
+  (display (numer x))
+  (display "/")
+  (display (denom x)))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có thể thử các thủ tục số hữu tỉ:
+
+@lisp
+(define one-half (make-rat 1 2))
+(print-rat one-half)
+@i{1/2}
+
+(define one-third (make-rat 1 3))
+(print-rat
+ (add-rat one-half one-third))
+@i{5/6}
+
+(print-rat
+ (mul-rat one-half one-third))
+@i{1/6}
+
+(print-rat
+ (add-rat one-third one-third))
+@i{6/9}
+@end lisp
+
+@noindent
+Như ví dụ cuối cùng cho thấy, cài đặt số hữu tỉ của chúng ta không rút gọn số
+hữu tỉ về dạng tối giản. Chúng ta có thể khắc phục điều này bằng cách thay
+đổi @code{make-rat}. Nếu chúng ta có thủ tục @code{gcd} như trong @ref{1.2.5}
+tính ước số chung lớn nhất của hai số nguyên, chúng ta có thể dùng @code{gcd}
+để rút gọn tử số và mẫu số về dạng tối giản trước khi tạo cặp:
+
+@lisp
+(define (make-rat n d)
+  (let ((g (gcd n d)))
+    (cons (/ n g)
+          (/ d g))))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có
+
+@lisp
+(print-rat
+ (add-rat one-third one-third))
+@i{2/3}
+@end lisp
+
+@noindent
+đúng như mong muốn. Sự thay đổi này được thực hiện bằng cách sửa bộ khởi tạo
+@code{make-rat} mà không thay đổi bất kỳ thủ tục nào (như @code{add-rat} và
+@code{mul-rat}) cài đặt các phép toán thực tế.
+
+@quotation
+@strong{@anchor{Exercise 2.1}Bài tập 2.1:} Định nghĩa một phiên bản tốt hơn
+của @code{make-rat} để xử lý cả đối số dương và âm. @code{Make-rat} nên chuẩn
+hóa dấu sao cho nếu số hữu tỉ là dương thì cả tử số và mẫu số đều dương, và
+nếu số hữu tỉ là âm thì chỉ tử số là âm.
+@end quotation

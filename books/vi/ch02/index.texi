@@ -1,0 +1,175 @@
+@node    Chapter 2, 2.1, 1.3, Top
+@chapter Xây Dựng Các Trừu Tượng với Dữ Liệu
+
+@quotation
+Bây giờ chúng ta đến bước then chốt của trừu tượng hóa toán học: chúng ta quên đi
+ý nghĩa của các ký hiệu. @dots{} [Nhà toán học] không cần ngồi không; có
+nhiều thao tác mà ông có thể thực hiện với các ký hiệu đó, mà không cần
+nhìn vào những thứ chúng đại diện.
+
+---Hermann Weyl, @cite{The Mathematical Way of Thinking}
+@end quotation
+
+
+@noindent
+Ở @ref{Chapter 1} chúng ta tập trung vào các quá trình tính toán và vai trò
+của các thủ tục trong thiết kế chương trình. Chúng ta đã thấy cách sử dụng dữ
+liệu nguyên thủy (số) và các phép toán nguyên thủy (các phép số học), cách kết
+hợp các thủ tục để tạo thành các thủ tục phức hợp thông qua phép kết hợp, điều
+kiện và việc dùng tham số, cũng như cách trừu tượng hóa các thủ tục bằng
+@code{define}. Chúng ta thấy rằng một thủ tục có thể được coi là mẫu cho sự
+phát triển cục bộ của một quá trình, và chúng ta đã phân loại, lý luận cũng
+như thực hiện các phân tích thuật toán đơn giản cho một số mẫu quá trình phổ
+biến thể hiện qua thủ tục. Chúng ta cũng thấy rằng các thủ tục bậc cao tăng
+cường sức mạnh ngôn ngữ bằng cách cho phép chúng ta thao tác và nhờ đó lý luận
+theo các phương pháp tính toán tổng quát. Đây là phần cốt lõi của lập trình.
+
+Trong chương này chúng ta sẽ xem xét dữ liệu phức tạp hơn. Tất cả các thủ tục
+trong chương 1 đều thao tác trên dữ liệu số đơn giản, và dữ liệu đơn giản
+không đủ để giải quyết nhiều bài toán mà chúng ta muốn dùng tính toán. Các
+chương trình thường được thiết kế để mô hình hóa các hiện tượng phức tạp, và
+nhiều khi người ta phải xây dựng các đối tượng tính toán có nhiều thành phần để
+mô hình hóa các hiện tượng thực tế có nhiều khía cạnh. Do đó, trong khi chương 1
+tập trung vào việc xây dựng các trừu tượng bằng cách kết hợp các thủ tục thành
+các thủ tục phức hợp, thì chương này hướng đến một khía cạnh then chốt khác của
+bất kỳ ngôn ngữ lập trình nào: phương tiện mà ngôn ngữ đó cung cấp để xây dựng
+các trừu tượng bằng cách kết hợp các đối tượng dữ liệu thành @newterm{dữ liệu phức hợp}.
+
+Tại sao chúng ta muốn có dữ liệu phức hợp trong một ngôn ngữ lập trình? Vì những
+lý do tương tự như chúng ta muốn có thủ tục phức hợp: để nâng cao mức độ khái
+niệm khi thiết kế chương trình, tăng tính mô-đun hóa trong thiết kế, và tăng
+cường khả năng biểu đạt của ngôn ngữ. Cũng như khả năng định nghĩa thủ tục
+giúp chúng ta xử lý các quá trình ở mức độ khái niệm cao hơn so với các phép
+toán nguyên thủy, khả năng xây dựng các đối tượng dữ liệu phức hợp giúp chúng
+ta xử lý dữ liệu ở mức độ khái niệm cao hơn so với các đối tượng dữ liệu
+nguyên thủy.
+
+Hãy xem xét bài toán thiết kế một hệ thống thực hiện số học với các số hữu tỉ.
+Chúng ta có thể hình dung phép toán @code{add-rat} nhận hai số hữu tỉ và cho ra
+tổng của chúng. Về mặt dữ liệu đơn giản, một số hữu tỉ có thể được coi là hai
+số nguyên: tử số và mẫu số. Do đó, chúng ta có thể thiết kế một chương trình
+trong đó mỗi số hữu tỉ được biểu diễn bởi hai số nguyên (tử số và mẫu số), và
+@code{add-rat} được cài đặt bởi hai thủ tục (một thủ tục tính tử số của tổng và
+một thủ tục tính mẫu số). Nhưng cách này sẽ rắc rối, vì chúng ta sẽ phải theo
+dõi tường minh xem tử số nào tương ứng với mẫu số nào. Trong một hệ thống thực
+hiện nhiều phép toán trên nhiều số hữu tỉ, những chi tiết quản lý như vậy sẽ
+làm chương trình trở nên rối rắm đáng kể, chưa kể đến ảnh hưởng đến tư duy của
+chúng ta. Sẽ tốt hơn nhiều nếu chúng ta có thể ``dán'' tử số và mẫu số lại
+thành một cặp---một @newterm{đối tượng dữ liệu phức hợp}---mà chương trình có
+thể thao tác theo cách nhất quán với việc coi số hữu tỉ là một đơn vị khái niệm
+duy nhất.
+
+Việc sử dụng dữ liệu phức hợp cũng giúp tăng tính mô-đun hóa của chương trình.
+Nếu chúng ta có thể thao tác trực tiếp với các số hữu tỉ như các đối tượng độc
+lập, thì chúng ta có thể tách phần chương trình xử lý số hữu tỉ theo nghĩa tự
+thân khỏi các chi tiết về cách số hữu tỉ có thể được biểu diễn dưới dạng cặp số
+nguyên. Kỹ thuật tổng quát là cô lập các phần chương trình xử lý cách biểu diễn
+đối tượng dữ liệu khỏi các phần xử lý cách sử dụng đối tượng đó---đây là
+phương pháp luận thiết kế mạnh mẽ được gọi là @newterm{trừu tượng dữ liệu}.
+Chúng ta sẽ thấy trừu tượng dữ liệu làm cho chương trình dễ thiết kế, bảo trì
+và sửa đổi hơn nhiều.
+
+Việc sử dụng dữ liệu phức hợp dẫn đến sự tăng thực sự trong khả năng biểu đạt
+của ngôn ngữ lập trình. Hãy xem xét ý tưởng tạo thành ``tổ hợp tuyến tính''
+@math{{ax + by}}. Chúng ta muốn viết một thủ tục nhận @math{a}, @math{b},
+@math{x} và @math{y} làm đối số và trả về giá trị của @math{{ax + by}}. Điều
+này không khó nếu các đối số là số, vì chúng ta có thể dễ dàng định nghĩa:
+
+@lisp
+(define (linear-combination a b x y)
+  (+ (* a x) (* b y)))
+@end lisp
+
+@noindent
+Nhưng giả sử chúng ta không chỉ quan tâm đến số. Giả sử chúng ta muốn diễn đạt,
+theo ngôn ngữ thủ tục, ý tưởng rằng người ta có thể tạo thành tổ hợp tuyến tính
+bất cứ khi nào phép cộng và phép nhân được định nghĩa---với số hữu tỉ, số phức,
+đa thức, hoặc bất cứ thứ gì. Chúng ta có thể diễn đạt điều này như một thủ tục:
+
+@lisp
+(define (linear-combination a b x y)
+  (add (mul a x) (mul b y)))
+@end lisp
+
+@noindent
+trong đó @code{add} và @code{mul} không phải là các thủ tục nguyên thủy @code{+}
+và @code{*} mà là những thứ phức tạp hơn, sẽ thực hiện các thao tác thích hợp
+cho bất kỳ loại dữ liệu nào được truyền vào dưới dạng đối số @code{a}, @code{b},
+@code{x} và @code{y}. Điểm mấu chốt là thứ duy nhất mà @code{linear-combination}
+cần biết về @code{a}, @code{b}, @code{x} và @code{y} là các thủ tục @code{add}
+và @code{mul} sẽ thực hiện các thao tác thích hợp. Từ góc độ của
+@code{linear-combination}, điều @code{a}, @code{b}, @code{x} và @code{y} là gì
+hoàn toàn không quan trọng, và càng không quan trọng hơn là cách chúng có thể
+được biểu diễn theo các dữ liệu nguyên thủy hơn.@footnote{Khả năng thao tác
+trực tiếp với các thủ tục cũng mang lại sự tăng cường tương tự trong khả năng
+biểu đạt của ngôn ngữ lập trình. Ví dụ, trong @ref{1.3.1} chúng ta đã giới
+thiệu thủ tục @code{sum}, nhận thủ tục @code{term} làm đối số và tính tổng các
+giá trị của @code{term} trên một khoảng xác định. Để định nghĩa @code{sum},
+điều quan trọng là chúng ta có thể nói đến một thủ tục như @code{term} như một
+thực thể độc lập, mà không cần biết @code{term} được biểu diễn bằng các phép
+toán nguyên thủy hơn như thế nào. Thật vậy, nếu không có khái niệm ``một thủ
+tục'', thì có lẽ chúng ta sẽ chẳng bao giờ nghĩ đến khả năng định nghĩa một
+phép toán như @code{sum}. Hơn nữa, đối với việc thực hiện phép tính tổng, các
+chi tiết về cách @code{term} có thể được xây dựng từ các phép toán nguyên thủy
+hơn là hoàn toàn không liên quan.}
+
+Chúng ta bắt đầu chương này bằng cách cài đặt hệ thống số học số hữu tỉ đã đề
+cập ở trên. Điều này sẽ tạo nền tảng cho cuộc thảo luận của chúng ta về dữ liệu
+phức hợp và trừu tượng dữ liệu. Cũng như với thủ tục phức hợp, vấn đề chính
+cần giải quyết là trừu tượng hóa như một kỹ thuật đối phó với sự phức tạp, và
+chúng ta sẽ thấy trừu tượng dữ liệu cho phép chúng ta dựng nên các
+@newterm{rào cản trừu tượng} thích hợp giữa các phần khác nhau của chương trình.
+
+Chúng ta sẽ thấy rằng chìa khóa để tạo thành dữ liệu phức hợp là ngôn ngữ lập
+trình phải cung cấp một loại ``keo dán'' nào đó để các đối tượng dữ liệu có
+thể được kết hợp thành các đối tượng phức tạp hơn. Có nhiều loại keo dán khả
+thi. Thực ra, chúng ta sẽ khám phá cách tạo thành dữ liệu phức hợp mà hoàn toàn
+không dùng các phép toán ``dữ liệu'' đặc biệt nào, chỉ dùng thủ tục. Điều này
+sẽ làm mờ hơn nữa ranh giới giữa ``thủ tục'' và ``dữ liệu'', vốn đã bắt đầu
+mờ nhạt ở cuối chương 1. Chúng ta cũng sẽ khám phá một số kỹ thuật thông
+thường để biểu diễn dãy và cây. Một ý tưởng then chốt khi làm việc với dữ
+liệu phức hợp là khái niệm @newterm{bao đóng}---rằng keo dán chúng ta dùng để
+kết hợp các đối tượng dữ liệu phải cho phép chúng ta kết hợp không chỉ các
+đối tượng dữ liệu nguyên thủy mà còn cả các đối tượng dữ liệu phức hợp. Một ý
+tưởng then chốt khác là các đối tượng dữ liệu phức hợp có thể đóng vai trò là
+@newterm{giao diện thông thường} để kết hợp các mô-đun chương trình theo nhiều
+cách tùy ý. Chúng ta minh họa một số ý tưởng này bằng cách trình bày một ngôn
+ngữ đồ họa đơn giản khai thác tính bao đóng.
+
+Sau đó, chúng ta sẽ tăng cường sức mạnh biểu diễn của ngôn ngữ bằng cách giới
+thiệu @newterm{biểu thức ký hiệu}---dữ liệu mà các thành phần cơ bản của nó
+có thể là các ký hiệu tùy ý chứ không chỉ là số. Chúng ta khám phá các lựa
+chọn khác nhau để biểu diễn tập hợp các đối tượng. Chúng ta sẽ thấy rằng, giống
+như một hàm số nhất định có thể được tính bằng nhiều quá trình tính toán khác
+nhau, có nhiều cách biểu diễn một cấu trúc dữ liệu nhất định theo các đối tượng
+đơn giản hơn, và sự lựa chọn biểu diễn có thể có tác động đáng kể đến yêu cầu
+thời gian và không gian của các quá trình thao tác dữ liệu. Chúng ta sẽ khảo
+sát những ý tưởng này trong bối cảnh đạo hàm ký hiệu, biểu diễn tập hợp và
+mã hóa thông tin.
+
+Tiếp theo chúng ta sẽ xem xét vấn đề làm việc với dữ liệu có thể được biểu diễn
+khác nhau bởi các phần khác nhau của chương trình. Điều này dẫn đến nhu cầu cài
+đặt @newterm{các phép toán tổng quát}, vốn phải xử lý nhiều kiểu dữ liệu khác
+nhau. Duy trì tính mô-đun hóa khi có các phép toán tổng quát đòi hỏi các rào
+cản trừu tượng mạnh mẽ hơn so với những gì có thể dựng được chỉ bằng trừu tượng
+dữ liệu đơn giản. Đặc biệt, chúng ta giới thiệu @newterm{lập trình hướng dữ liệu}
+như một kỹ thuật cho phép các biểu diễn dữ liệu riêng lẻ được thiết kế độc lập
+và sau đó kết hợp @newterm{theo kiểu cộng dồn} (tức là không cần sửa đổi). Để
+minh họa sức mạnh của cách tiếp cận thiết kế hệ thống này, chúng ta kết thúc
+chương bằng cách áp dụng những gì đã học vào cài đặt một gói thực hiện số học
+ký hiệu trên đa thức, trong đó các hệ số của đa thức có thể là số nguyên, số
+hữu tỉ, số phức, và thậm chí là các đa thức khác.
+
+@menu
+* 2.1::              Giới Thiệu về Trừu Tượng Dữ Liệu
+* 2.2::              Dữ Liệu Phân Cấp và Tính Chất Bao Đóng
+* 2.3::              Dữ Liệu Ký Hiệu
+* 2.4::              Nhiều Biểu Diễn cho Dữ Liệu Trừu Tượng
+* 2.5::              Hệ Thống với Các Phép Toán Tổng Quát
+@end menu
+
+@include s01/index.texi
+@include s02/index.texi
+@include s03/index.texi
+@include s04/index.texi
+@include s05/index.texi

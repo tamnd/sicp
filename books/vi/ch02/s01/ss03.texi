@@ -1,0 +1,163 @@
+@node	2.1.3, 2.1.4, 2.1.2, 2.1
+@subsection Dữ Liệu Là Gì?
+
+Chúng ta bắt đầu cài đặt số hữu tỉ trong @ref{2.1.1} bằng cách cài đặt các
+phép toán số hữu tỉ @code{add-rat}, @code{sub-rat}, v.v. theo ba thủ tục chưa
+được chỉ định: @code{make-rat}, @code{numer} và @code{denom}. Lúc đó, chúng
+ta có thể coi các phép toán như được định nghĩa theo các đối tượng dữ liệu---
+tử số, mẫu số và số hữu tỉ---có hành vi được xác định bởi ba thủ tục sau.
+
+Nhưng chính xác thì @newterm{dữ liệu} có nghĩa là gì? Nói ``bất cứ thứ gì
+được cài đặt bởi các bộ chọn và bộ khởi tạo đã cho'' là chưa đủ. Rõ ràng,
+không phải mọi tập hợp tùy ý gồm ba thủ tục đều có thể làm cơ sở thích hợp
+cho việc cài đặt số hữu tỉ. Chúng ta cần đảm bảo rằng, nếu chúng ta tạo ra
+một số hữu tỉ @code{x} từ một cặp số nguyên @code{n} và @code{d}, thì trích
+xuất @code{numer} và @code{denom} của @code{x} rồi chia chúng phải cho kết
+quả giống như chia @code{n} cho @code{d}. Nói cách khác, @code{make-rat},
+@code{numer} và @code{denom} phải thỏa mãn điều kiện rằng, với bất kỳ số nguyên
+@code{n} và số nguyên khác không @code{d} nào, nếu @code{x} là
+@code{(make-rat n d)} thì
+@ifinfo
+
+@example
+(numer x)    n
+--------- = ---
+(denom x)    d
+@end example
+
+@end ifinfo
+@tex
+\[ % :31:
+  {\text{(numer x)} \over \text{(denom x)}} = {{\text{n} \over \text{d}}.}   \]
+@end tex
+Thực ra, đây là điều kiện duy nhất mà @code{make-rat}, @code{numer} và
+@code{denom} phải thỏa mãn để tạo thành cơ sở thích hợp cho một biểu diễn số
+hữu tỉ. Nhìn chung, chúng ta có thể coi dữ liệu như được định nghĩa bởi một
+số tập hợp các bộ chọn và bộ khởi tạo, cùng với các điều kiện được chỉ định
+mà các thủ tục này phải thỏa mãn để trở thành một biểu diễn hợp lệ.@footnote{Đáng
+ngạc nhiên, ý tưởng này rất khó hình thức hóa chặt chẽ. Có hai cách tiếp cận
+để đưa ra sự hình thức hóa như vậy. Một cách, được C. A. R. @ref{Hoare (1972)}
+tiên phong, được gọi là phương pháp @newterm{mô hình trừu tượng}. Nó hình thức
+hóa đặc tả ``thủ tục cộng điều kiện'' như được phác thảo trong ví dụ số hữu tỉ
+ở trên. Lưu ý rằng điều kiện về biểu diễn số hữu tỉ được phát biểu theo các
+sự thật về số nguyên (đẳng thức và phép chia). Nói chung, các mô hình trừu tượng
+định nghĩa các loại đối tượng dữ liệu mới theo các kiểu đối tượng dữ liệu đã
+được định nghĩa trước đó. Do đó các khẳng định về đối tượng dữ liệu có thể
+được kiểm tra bằng cách rút gọn chúng thành các khẳng định về các đối tượng
+dữ liệu đã được định nghĩa trước. Cách tiếp cận khác, được Zilles giới thiệu
+tại @abbr{MIT}, Goguen, Thatcher, Wagner và Wright tại IBM (xem
+@ref{Thatcher et al. 1978}), và Guttag tại Toronto (xem @ref{Guttag 1977}),
+được gọi là @newterm{đặc tả đại số}. Nó coi các ``thủ tục'' là các phần tử
+của một hệ thống đại số trừu tượng mà hành vi của nó được chỉ định bởi các
+tiên đề tương ứng với ``điều kiện'' của chúng ta, và sử dụng các kỹ thuật đại
+số trừu tượng để kiểm tra các khẳng định về đối tượng dữ liệu. Cả hai phương
+pháp đều được khảo sát trong bài báo của @ref{Liskov and Zilles (1975)}.}
+
+Quan điểm này có thể phục vụ để định nghĩa không chỉ các đối tượng dữ liệu
+``cấp cao'', như số hữu tỉ, mà cả các đối tượng cấp thấp hơn. Hãy xem xét
+khái niệm về cặp, mà chúng ta đã dùng để định nghĩa số hữu tỉ. Chúng ta
+chưa bao giờ thực sự nói một cặp là gì, chỉ nói rằng ngôn ngữ cung cấp các
+thủ tục @code{cons}, @code{car} và @code{cdr} để thao tác trên các cặp. Nhưng
+điều duy nhất chúng ta cần biết về ba phép toán này là nếu chúng ta kết dính
+hai đối tượng lại bằng @code{cons} thì chúng ta có thể lấy lại các đối tượng
+bằng @code{car} và @code{cdr}. Tức là, các phép toán thỏa mãn điều kiện rằng,
+với bất kỳ đối tượng @code{x} và @code{y} nào, nếu @code{z} là @code{(cons x y)}
+thì @code{(car z)} là @code{x} và @code{(cdr z)} là @code{y}. Thực vậy, chúng
+ta đã đề cập rằng ba thủ tục này được bao gồm dưới dạng nguyên thủy trong ngôn
+ngữ. Tuy nhiên, bất kỳ bộ ba thủ tục nào thỏa mãn điều kiện trên đều có thể
+được dùng làm cơ sở để cài đặt các cặp. Điểm này được minh họa một cách ấn
+tượng bởi thực tế là chúng ta có thể cài đặt @code{cons}, @code{car} và
+@code{cdr} mà không cần dùng bất kỳ cấu trúc dữ liệu nào mà chỉ dùng thủ tục.
+Đây là các định nghĩa:
+
+@lisp
+(define (cons x y)
+  (define (dispatch m)
+    (cond ((= m 0) x)
+          ((= m 1) y)
+          (else
+           (error "Argument not 0 or 1:
+                   CONS" m))))
+  dispatch)
+
+(define (car z) (z 0))
+(define (cdr z) (z 1))
+@end lisp
+
+@noindent
+Việc sử dụng thủ tục này không tương ứng với bất cứ điều gì trong khái niệm
+trực giác của chúng ta về dữ liệu là gì. Dù vậy, tất cả những gì chúng ta cần
+làm để chứng minh đây là cách biểu diễn cặp hợp lệ là xác minh rằng các thủ
+tục này thỏa mãn điều kiện đã nêu ở trên.
+
+Điểm tinh tế cần lưu ý là giá trị được trả về bởi @code{(cons x y)} là một
+thủ tục---cụ thể là thủ tục @code{dispatch} được định nghĩa bên trong, nhận
+một đối số và trả về @code{x} hoặc @code{y} tùy thuộc vào đối số là 0 hay 1.
+Tương ứng, @code{(car z)} được định nghĩa để áp dụng @code{z} cho 0. Do đó,
+nếu @code{z} là thủ tục được tạo bởi @code{(cons x y)}, thì @code{z} áp dụng
+cho 0 sẽ cho ra @code{x}. Vì vậy, chúng ta đã chứng minh rằng @code{(car
+(cons x y))} cho ra @code{x}, đúng như mong muốn. Tương tự, @code{(cdr (cons
+x y))} áp dụng thủ tục được trả về bởi @code{(cons x y)} cho 1, trả về
+@code{y}. Do đó, cài đặt thủ tục của các cặp này là cài đặt hợp lệ, và nếu
+chúng ta truy cập các cặp chỉ bằng @code{cons}, @code{car} và @code{cdr} thì
+chúng ta không thể phân biệt cài đặt này với cài đặt dùng các cấu trúc dữ liệu
+``thực sự''.
+
+Mục đích của việc trình bày biểu diễn thủ tục của các cặp không phải là ngôn
+ngữ hoạt động theo cách này (Scheme, và các hệ thống Lisp nói chung, cài đặt
+các cặp trực tiếp vì lý do hiệu quả) mà là nó có thể hoạt động theo cách này.
+Biểu diễn thủ tục, dù mơ hồ, là một cách biểu diễn hoàn toàn đủ dùng cho các
+cặp, vì nó đáp ứng các điều kiện duy nhất mà cặp cần thỏa mãn. Ví dụ này cũng
+chứng minh rằng khả năng thao tác các thủ tục như các đối tượng tự động cung
+cấp khả năng biểu diễn dữ liệu phức hợp. Điều này có vẻ kỳ lạ hiện tại, nhưng
+biểu diễn thủ tục của dữ liệu sẽ đóng một vai trò trung tâm trong danh mục lập
+trình của chúng ta. Kiểu lập trình này thường được gọi là @newterm{truyền thông
+điệp}, và chúng ta sẽ sử dụng nó như một công cụ cơ bản trong @ref{Chapter 3}
+khi chúng ta giải quyết các vấn đề mô hình hóa và mô phỏng.
+
+@quotation
+@strong{@anchor{Exercise 2.4}Bài tập 2.4:} Đây là một biểu diễn thủ tục thay
+thế của các cặp. Với biểu diễn này, hãy xác minh rằng @code{(car (cons x y))}
+cho ra @code{x} với bất kỳ đối tượng @code{x} và @code{y} nào.
+
+@lisp
+(define (cons x y)
+  (lambda (m) (m x y)))
+
+(define (car z)
+  (z (lambda (p q) p)))
+@end lisp
+
+Định nghĩa tương ứng của @code{cdr} là gì? (Gợi ý: Để xác minh điều này hoạt
+động, hãy sử dụng mô hình thay thế của @ref{1.1.5}.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.5}Bài tập 2.5:} Chứng minh rằng chúng ta có thể
+biểu diễn các cặp số nguyên không âm chỉ bằng số và các phép toán số học nếu
+chúng ta biểu diễn cặp @math{a} và @math{b} là số nguyên bằng tích @math{{2^a 3^b}}.
+Hãy đưa ra các định nghĩa tương ứng của các thủ tục @code{cons}, @code{car}
+và @code{cdr}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.6}Bài tập 2.6:} Trong trường hợp biểu diễn các cặp
+bằng thủ tục chưa đủ gây ngợp, hãy xem xét rằng, trong một ngôn ngữ có thể
+thao tác thủ tục, chúng ta có thể bỏ qua số (ít nhất là đối với các số nguyên
+không âm) bằng cách cài đặt 0 và phép toán cộng 1 như sau:
+
+@lisp
+(define zero (lambda (f) (lambda (x) x)))
+
+(define (add-1 n)
+  (lambda (f) (lambda (x) (f ((n f) x)))))
+@end lisp
+
+Biểu diễn này được gọi là @newterm{số Church}, theo tên người phát minh ra nó,
+Alonzo Church, nhà logic học đã phát minh ra λ-calculus.
+
+Định nghĩa trực tiếp @code{one} và @code{two} (không theo @code{zero} và
+@code{add-1}). (Gợi ý: Dùng phép thay thế để đánh giá @code{(add-1 zero)}).
+Đưa ra định nghĩa trực tiếp của thủ tục cộng @code{+} (không theo cách áp
+dụng lặp lại @code{add-1}).
+@end quotation

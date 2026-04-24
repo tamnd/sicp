@@ -1,0 +1,137 @@
+@node	2.1.2, 2.1.3, 2.1.1, 2.1
+@subsection Các Rào Cản Trừu Tượng
+
+Trước khi tiếp tục với nhiều ví dụ hơn về dữ liệu phức hợp và trừu tượng dữ
+liệu, hãy xem xét một số vấn đề được nêu ra bởi ví dụ số hữu tỉ. Chúng ta đã
+định nghĩa các phép toán số hữu tỉ theo bộ khởi tạo @code{make-rat} và các bộ
+chọn @code{numer} và @code{denom}. Nói chung, ý tưởng cơ bản của trừu tượng
+dữ liệu là xác định cho mỗi loại đối tượng dữ liệu một tập hợp cơ bản các
+phép toán theo đó tất cả các thao tác trên đối tượng dữ liệu của kiểu đó sẽ
+được biểu đạt, và sau đó chỉ sử dụng những phép toán đó khi thao tác dữ liệu.
+
+Chúng ta có thể hình dung cấu trúc của hệ thống số hữu tỉ như trong
+@ref{Figure 2.1}. Các đường nằm ngang đại diện cho các @newterm{rào cản trừu
+tượng} cô lập các ``cấp độ'' khác nhau của hệ thống. Ở mỗi cấp độ, rào cản
+ngăn cách các chương trình (ở trên) sử dụng trừu tượng dữ liệu với các chương
+trình (ở dưới) cài đặt trừu tượng dữ liệu. Các chương trình sử dụng số hữu tỉ
+thao tác chúng hoàn toàn theo các thủ tục được cung cấp ``cho công dụng
+chung'' bởi gói số hữu tỉ: @code{add-rat}, @code{sub-rat}, @code{mul-rat},
+@code{div-rat} và @code{equal-rat?}. Đến lượt mình, chúng được cài đặt hoàn
+toàn theo bộ khởi tạo và các bộ chọn @code{make-rat}, @code{numer} và
+@code{denom}, vốn được cài đặt theo các cặp. Các chi tiết về cách cặp được cài
+đặt không liên quan đến phần còn lại của gói số hữu tỉ miễn là cặp có thể
+được thao tác bằng cách dùng @code{cons}, @code{car} và @code{cdr}. Thực tế,
+các thủ tục ở mỗi cấp độ là các giao diện xác định các rào cản trừu tượng và
+kết nối các cấp độ khác nhau.
+
+@float
+@anchor{Figure 2.1}
+@ifinfo
+@quotation
+@strong{Figure 2.1:} Data-abstraction barriers in the rational-number package.
+
+@example
+        +------------------------------------+
+--------| Programs that use rational numbers |--------
+        +------------------------------------+
+          Rational numbers in problem domain
+            +---------------------------+
+------------|   add-rat  sub-rat  ...   |-------------
+            +---------------------------+
+   Rational numbers as numerators and denominators
+              +------------------------+
+--------------| make-rat  numer  denom |--------------
+              +------------------------+
+              Rational numbers as pairs
+                  +----------------+
+------------------| cons  car  cdr |------------------
+                  +----------------+
+            However pairs are implemented
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.1d,125mm,,,.std.svg}
+@caption{@strong{Figure 2.1:} Data-abstraction barriers in the rational-number package.}
+@end iftex
+@end float
+
+@noindent
+Ý tưởng đơn giản này có nhiều ưu điểm. Một ưu điểm là nó làm cho chương trình
+dễ bảo trì và sửa đổi hơn nhiều. Bất kỳ cấu trúc dữ liệu phức tạp nào cũng
+có thể được biểu diễn theo nhiều cách khác nhau với các cấu trúc dữ liệu
+nguyên thủy do ngôn ngữ lập trình cung cấp. Tất nhiên, sự lựa chọn biểu diễn
+ảnh hưởng đến các chương trình thao tác trên nó; do đó, nếu biểu diễn được
+thay đổi vào thời điểm sau, tất cả các chương trình đó có thể phải được sửa
+đổi tương ứng. Nhiệm vụ này có thể tốn thời gian và chi phí cao đối với các
+chương trình lớn trừ khi sự phụ thuộc vào biểu diễn được thiết kế để giới hạn
+trong rất ít mô-đun chương trình.
+
+Ví dụ, một cách khác để giải quyết bài toán rút gọn số hữu tỉ về dạng tối giản
+là thực hiện rút gọn mỗi khi chúng ta truy cập các thành phần của số hữu tỉ,
+thay vì khi chúng ta xây dựng nó. Điều này dẫn đến các thủ tục bộ khởi tạo
+và bộ chọn khác nhau:
+
+@lisp
+(define (make-rat n d)
+  (cons n d))
+
+(define (numer x)
+  (let ((g (gcd (car x) (cdr x))))
+    (/ (car x) g)))
+
+(define (denom x)
+  (let ((g (gcd (car x) (cdr x))))
+    (/ (cdr x) g)))
+@end lisp
+
+@noindent
+Sự khác biệt giữa cài đặt này và cài đặt trước là khi chúng ta tính @code{gcd}.
+Nếu trong cách sử dụng thông thường số hữu tỉ chúng ta truy cập tử số và mẫu
+số của cùng một số hữu tỉ nhiều lần, thì sẽ tốt hơn khi tính @code{gcd} lúc
+tạo số hữu tỉ. Nếu không, chúng ta có thể tốt hơn khi đợi đến lúc truy cập
+mới tính @code{gcd}. Trong mọi trường hợp, khi chúng ta chuyển từ biểu diễn
+này sang biểu diễn kia, các thủ tục @code{add-rat}, @code{sub-rat}, v.v. không
+cần sửa đổi gì cả.
+
+Ràng buộc sự phụ thuộc vào biểu diễn trong một vài thủ tục giao diện giúp
+chúng ta thiết kế chương trình cũng như sửa đổi chúng, vì nó cho phép chúng
+ta duy trì tính linh hoạt để xem xét các cài đặt thay thế. Để tiếp tục ví dụ
+đơn giản của chúng ta, giả sử chúng ta đang thiết kế một gói số hữu tỉ và ban
+đầu không thể quyết định nên thực hiện @code{gcd} lúc xây dựng hay lúc chọn.
+Phương pháp luận trừu tượng dữ liệu cho chúng ta cách hoãn quyết định đó mà
+không mất khả năng tiến triển với phần còn lại của hệ thống.
+
+@quotation
+@strong{@anchor{Exercise 2.2}Bài tập 2.2:} Xem xét bài toán biểu diễn các
+đoạn thẳng trong mặt phẳng. Mỗi đoạn được biểu diễn bằng một cặp điểm: điểm
+đầu và điểm cuối. Định nghĩa bộ khởi tạo @code{make-segment} và các bộ chọn
+@code{start-segment} và @code{end-segment} để xác định biểu diễn của đoạn theo
+điểm. Hơn nữa, một điểm có thể được biểu diễn bằng một cặp số: tọa độ @math{x}
+và tọa độ @math{y}. Theo đó, hãy chỉ định bộ khởi tạo @code{make-point} và
+các bộ chọn @code{x-point} và @code{y-point} để xác định biểu diễn này. Cuối
+cùng, dùng các bộ chọn và bộ khởi tạo của bạn, định nghĩa thủ tục
+@code{midpoint-segment} nhận một đoạn thẳng làm đối số và trả về trung điểm
+(điểm có tọa độ là trung bình cộng tọa độ của hai đầu mút). Để thử các thủ tục
+của bạn, bạn sẽ cần một cách để in điểm:
+
+@lisp
+(define (print-point p)
+  (newline)
+  (display "(")
+  (display (x-point p))
+  (display ",")
+  (display (y-point p))
+  (display ")"))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.3}Bài tập 2.3:} Cài đặt một biểu diễn cho các hình
+chữ nhật trong mặt phẳng. (Gợi ý: Bạn có thể muốn sử dụng @ref{Exercise 2.2}.)
+Theo các bộ khởi tạo và bộ chọn của bạn, tạo các thủ tục tính chu vi và diện
+tích của một hình chữ nhật cho trước. Bây giờ hãy cài đặt một biểu diễn khác
+cho hình chữ nhật. Bạn có thể thiết kế hệ thống với các rào cản trừu tượng
+thích hợp sao cho cùng các thủ tục chu vi và diện tích sẽ hoạt động với cả hai
+biểu diễn không?
+@end quotation
