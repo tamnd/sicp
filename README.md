@@ -45,6 +45,14 @@ Most of the scripts are licensed under GNU General Public License version 3 (for
 
 Fonts are under SIL Open Font License version 1.1. Other files, like Javascript libraries, have their own licenses.
 
+Build image
+-----------
+
+CI and local builds use the Docker image from [tamnd/sicp-docker](https://github.com/tamnd/sicp-docker)
+(`ghcr.io/tamnd/sicp-docker:latest`). That repository is the canonical home for the
+Dockerfile and toolchain (XeLaTeX, texi2any, Inkscape, Inconsolata LGC). Update the
+image there, not here.
+
 Sister project
 --------------
 
