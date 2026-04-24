@@ -1,0 +1,37 @@
+name: Test PDF build
+
+on:
+  workflow_dispatch:
+    inputs:
+      lang:
+        description: 'Language to build (e.g. vi, en_US)'
+        required: true
+        default: 'vi'
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BUILD_IMAGE: ghcr.io/tamnd/sicp-docker:latest
+
+jobs:
+  test-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull build image
+        run: docker pull ${{ env.BUILD_IMAGE }}
+
+      - name: Build PDF
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            ${{ env.BUILD_IMAGE }} \
+            make -C /workspace/src/pdf LANG=${{ inputs.lang }}
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sicp-${{ inputs.lang }}-pdf
+          path: src/pdf/sicp-${{ inputs.lang }}.pdf
+          retention-days: 7
