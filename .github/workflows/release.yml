@@ -14,37 +14,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            latexmk \
-            texlive-xetex \
-            texlive-latex-extra \
-            texlive-fonts-extra \
-            fonts-linuxlibertine \
-            fonts-inconsolata \
-            inkscape \
-            perl \
-            ruby \
-            ruby-nokogiri \
-            unzip \
-            zip
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Map Inconsolata LGC to system Inconsolata
-        run: sed -i 's/Inconsolata LGC/Inconsolata/g' src/pdf/preamble.tex
+      - name: Build builder image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: sicp-vi-builder:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build PDF
-        run: make -C src/pdf
+        run: |
+          sed -i 's/Inconsolata LGC/Inconsolata/g' src/pdf/preamble.tex
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            sicp-vi-builder:latest \
+            make -C /workspace/src/pdf
 
       - name: Build epub
         run: |
           touch src/html/*.xhtml
-          make -C src epub
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            sicp-vi-builder:latest \
+            make -C /workspace/src epub
 
       - name: Package HTML
-        run: |
-          cd src && zip -r ../sicp-html.zip html/
+        run: cd src && zip -r ../sicp-html.zip html/
 
       - name: Attach assets to release
         run: |
