@@ -25,7 +25,7 @@ như quá trình chuyển từ @TeX{} sang @abbr{HTML}, công việc này không
 số lỗi phát sinh. Trong trường hợp của Định dạng Texinfo Không chính thức, các hình
 vẽ đã trải qua một sự hồi sinh nghiệp dư của nghệ thuật @abbr{ASCII} đã bị thất
 truyền. Ngoài ra, hoàn toàn có thể một số lỗi mơ hồ đã xuất hiện trong quá trình
-chuyển đổi các chỉ số trên (`^') và chỉ số dưới (`_') dày đặc. Việc phân biệt
+chuyển đổi các chỉ số trên (@code{^}) và chỉ số dưới (@code{_}) dày đặc. Việc phân biệt
 @emph{cái nào} được coi là bài tập dành cho bạn đọc. Ít nhất thì chúng tôi không đặt
 các phi hành gia dũng cảm của mình vào rủi ro bằng cách mã hóa ký hiệu
 @emph{lớn-hơn-hoặc-bằng} là @code{<u>&gt;</u>}.

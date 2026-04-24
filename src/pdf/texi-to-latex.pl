@@ -433,8 +433,10 @@ sub transform { # expects a string and an environment
   my $env = (shift or '');
   my ($out, $tag, $arg, $pointer) = ('', '', '', 0);
   my $toggle = '';
-  if ($env eq 'code') { 
+  if ($env eq 'code') {
     $in =~ s/(?<=\S)-(?=\S)/\\-\//g;  # assist line break after dash
+    $in =~ s/\^/\\textasciicircum{}/g;
+    $in =~ s/_/\\_/g;
   }
   elsif ($env =~ m/scheme/) { $toggle = $textrigger; }
   while (substr($in, $pointer) =~ $texi_tag) {
