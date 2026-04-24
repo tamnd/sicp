@@ -1,0 +1,13 @@
+@node    Term Index, Colophon, Figures, Top
+@unnumbered Chỉ Mục Thuật Ngữ
+
+@quotation
+Mọi sự không chính xác trong chỉ mục này có thể được giải thích bởi thực tế
+rằng nó đã được chuẩn bị với sự trợ giúp của máy tính.
+
+---Donald E. Knuth, @cite{Fundamental Algorithms}@*
+(Tập 1 của @cite{The Art of Computer Programming})
+@end quotation
+
+@printindex cp
+

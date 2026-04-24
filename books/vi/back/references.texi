@@ -1,0 +1,561 @@
+@node    References, Exercises, 5.5, Top
+@unnumbered Tài Liệu Tham Khảo
+
+@anchor{Abelson et al. 1992}
+Abelson, Harold, Andrew Berlin, Jacob Katzenelson, William McAllister,
+Guillermo Rozas, Gerald Jay Sussman, and Jack Wisdom. 1992.  The Super@-com@-pu@-ter
+Tool@-kit: A general framework for special-purpose com@-pu@-ting.
+@cite{In@-ter@-na@-tio@-nal Journal of High-Speed Electronics} 3(3): 337-361.
+@url{http://www.hpl.hp.com/techreports/94/HPL-94-30.html, –›}
+
+@anchor{Allen 1978}
+Allen, John.  1978.  @cite{Anatomy of Lisp}. New York: McGraw-Hill.
+
+@anchor{ANSI 1994}
+@abbr{ANSI} @abbr{X}3.226-1994. @cite{American National Standard for Information
+Systems---Programming Language---Common Lisp}.
+
+@anchor{Appel 1987}
+Appel, Andrew W.  1987.  Garbage collection can be faster than stack
+allocation.  @cite{Information Processing Letters} 25(4): 275-279.
+@url{https://www.cs.princeton.edu/~appel/papers/45.ps, –›}
+
+@anchor{Backus 1978}
+Backus, John.  1978.  Can programming be liberated from the von Neumann style?
+@cite{Communications of the @abbr{ACM}} 21(8): 613-641.
+@url{http://worrydream.com/refs/Backus-CanProgrammingBeLiberated.pdf, –›}
+
+@anchor{Baker (1978)}
+Baker, Henry G., Jr.  1978.  List processing in real time on a serial computer.
+@cite{Communications of the @abbr{ACM}} 21(4): 280-293.
+@url{http://dspace.mit.edu/handle/1721.1/41976, –›}
+
+@anchor{Batali et al. 1982}
+Batali, John, Neil Mayle, Howard Shrobe, Gerald Jay Sussman, and Daniel Weise.
+1982.  The Scheme-81 architecture---System and chip.  In @cite{Proceedings of
+the @abbr{MIT} Conference on Advanced Research in @abbr{VLSI}}, edited by
+Paul Penfield, Jr. Dedham, @abbr{MA}: Artech House.
+
+@anchor{Borning (1977)}
+Borning, Alan.  1977.  ThingLab---An object-oriented system for building
+simulations using constraints. In @cite{Proceedings of the 5th International
+Joint Conference on Artificial Intelligence}.
+@url{http://ijcai.org/Past%20Proceedings/IJCAI-77-VOL1/PDF/085.pdf, –›}
+
+@anchor{Borodin and Munro (1975)}
+Borodin, Alan, and Ian Munro.  1975.  @cite{The Computational Complexity of
+Algebraic and Numeric Problems}. New York: American Elsevier.
+
+@anchor{Chaitin 1975}
+Chaitin, Gregory J.  1975.  Randomness and mathematical proof.
+@cite{Scientific American} 232(5): 47-52.
+@url{http://www.owlnet.rice.edu/~km9/Randomness%20and%20Mathematical.pdf, –›}
+
+@anchor{Church (1941)}
+Church, Alonzo.  1941.  @cite{The Calculi of Lambda-Con@-ver@-sion}.  Princeton,
+N.J.: Princeton University Press.
+
+@anchor{Clark (1978)}
+Clark, Keith L.  1978.  Negation as failure.  In @cite{Logic and Data Bases}.
+New York: Plenum Press, pp. 293-322.
+@url{http://www.doc.ic.ac.uk/~klc/neg.html, –›}
+
+@anchor{Clinger (1982)}
+Clinger, William.  1982.  Nondeterministic call by need is neither lazy nor by
+name. In @cite{Proceedings of the @abbr{ACM} Symposium on Lisp and
+Functional Programming}, pp. 226-234.
+
+@anchor{Clinger and Rees 1991}
+Clinger, William, and Jonathan Rees.  1991.  Macros that work.  In
+@cite{Proceedings of the 1991 @abbr{ACM} Conference on Principles of
+Programming Languages}, pp. 155-162.
+@url{http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.464.1336&rep=rep1&type=pdf, –›}
+
+@anchor{Colmerauer et al. 1973}
+Colmerauer A., H. Kanoui, R. Pasero, and P. Roussel.  1973.  Un syst@`eme de
+communication homme-machine en fran@,{c}ais.  Technical report, Groupe
+Intelligence Artificielle, Universit@'e d'Aix Marseille, Luminy.
+@url{http://alain.colmerauer.free.fr/alcol/ArchivesPublications/HommeMachineFr/HoMa.pdf, –›}
+
+@anchor{Cormen et al. 1990}
+Cormen, Thomas, Charles Leiserson, and Ronald Rivest.  1990. @cite{Introduction
+to Algorithms}. Cambridge, @abbr{MA}: @abbr{MIT} Press.
+
+@anchor{Darlington et al. 1982}
+Darlington, John, Peter Henderson, and David Turner.  1982.  @cite{Functional
+Programming and Its Applications}. New York: Cambridge University Press.
+
+@anchor{Dijkstra 1968a}
+Dijkstra, Edsger W. 1968a.  The structure of the ``@abbr{THE}''
+multiprogramming system.  @cite{Communications of the @abbr{ACM}}
+11(5): 341-346.
+@url{http://www.cs.utexas.edu/users/EWD/ewd01xx/EWD196.PDF, –›}
+
+@anchor{1968b}
+Dijkstra, Edsger W. 1968b.  Cooperating sequential processes.  In
+@cite{Programming Languages}, edited by F. Genuys. New York: Academic Press,
+pp.  43-112.
+@url{http://www.cs.utexas.edu/users/EWD/ewd01xx/EWD123.PDF, –›}
+
+@anchor{Dinesman 1968}
+Dinesman, Howard P.  1968.  @cite{Superior Mathematical Puzzles}.  New York:
+Simon and Schuster.
+
+@anchor{deKleer et al. 1977}
+deKleer, Johan, Jon Doyle, Guy Steele, and Gerald J. Sussman.  1977.
+@abbr{AMORD}: Explicit control of reasoning.  In @cite{Proceedings of the
+@abbr{ACM} Symposium on Artificial Intelligence and Programming Languages},
+pp.  116-125.
+@url{http://dspace.mit.edu/handle/1721.1/5750, –›}
+
+@anchor{Doyle (1979)}
+Doyle, Jon. 1979. A truth maintenance system. @cite{Artificial Intelligence}
+12: 231-272.
+@url{http://dspace.mit.edu/handle/1721.1/5733, –›}
+
+@anchor{Feigenbaum and Shrobe 1993}
+Feigenbaum, Edward, and Howard Shrobe. 1993. The Japanese National Fifth
+Generation Project: Introduction, survey, and evaluation.  In @cite{Future
+Generation Computer Systems}, vol. 9, pp. 105-117.
+@url{https://saltworks.stanford.edu/assets/kv359wz9060.pdf, –›}
+
+@anchor{Feeley (1986)}
+Feeley, Marc.  1986.  Deux approches @`a l'implantation du language
+Scheme.  Masters thesis, Universit@'e de Montr@'eal.
+@url{http://www.iro.umontreal.ca/~feeley/papers/FeeleyMSc.pdf, –›}
+
+@anchor{Feeley and Lapalme 1987}
+Feeley, Marc and Guy Lapalme.  1987.  Using closures for code generation.
+@cite{Journal of Computer Languages} 12(1): 47-66.
+@url{http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.90.6978, –›}
+
+Feller, William.  1957.  @cite{An Introduction to Probability Theory and Its
+Applications}, volume 1. New York: John Wiley & Sons.
+
+@anchor{Fenichel and Yochelson (1969)}
+Fenichel, R., and J. Yochelson.  1969.  A Lisp garbage collector for virtual
+memory computer systems.  @cite{Communications of the @abbr{ACM}}
+12(11): 611-612.
+@url{https://www.cs.purdue.edu/homes/hosking/690M/p611-fenichel.pdf, –›}
+
+@anchor{Floyd (1967)}
+Floyd, Robert. 1967. Nondeterministic algorithms. @cite{@abbr{JACM}},
+14(4): 636-644.
+@url{http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.332.36, –›}
+
+@anchor{Forbus and deKleer 1993}
+Forbus, Kenneth D., and Johan deKleer.  1993. @cite{Building Problem
+Solvers}. Cambridge, @abbr{MA}: @abbr{MIT} Press.
+
+@anchor{Friedman and Wise (1976)}
+Friedman, Daniel P., and David S. Wise.  1976.  @abbr{CONS} should not
+evaluate its arguments. In @cite{Automata, Languages, and Programming: Third
+International Colloquium}, edited by S. Michaelson and R.  Milner, pp. 257-284.
+@url{https://www.cs.indiana.edu/cgi-bin/techreports/TRNNN.cgi?trnum=TR44, –›}
+
+@anchor{Friedman et al. 1992}
+Friedman, Daniel P., Mitchell Wand, and Christopher T. Haynes. 1992.
+@cite{Essentials of Programming Languages}.  Cambridge, @abbr{MA}: @abbr{MIT}
+Press/McGraw-Hill.
+
+@anchor{Gabriel 1988}
+Gabriel, Richard P. 1988.  The Why of @emph{Y}.  @cite{Lisp Pointers}
+2(2): 15-25.
+@url{http://www.dreamsongs.com/Files/WhyOfY.pdf, –›}
+
+Goldberg, Adele, and David Robson.  1983.  @cite{Smalltalk-80: The Language and
+Its Implementation}. Reading, @abbr{MA}: Addison-Wesley.
+@url{http://stephane.ducasse.free.fr/FreeBooks/BlueBook/Bluebook.pdf, –›}
+
+@anchor{Gordon et al. 1979}
+Gordon, Michael, Robin Milner, and Christopher Wadsworth.  1979.
+@cite{Edinburgh @abbr{LCF}}. Lecture Notes in Computer Science, volume 78. New York:
+Springer-Verlag.
+
+@anchor{Gray and Reuter 1993}
+Gray, Jim, and Andreas Reuter. 1993. @cite{Transaction Processing: Concepts and
+Models}. San Mateo, @abbr{CA}: Morgan-Kaufman.
+
+@anchor{Green 1969}
+Green, Cordell.  1969.  Application of theorem proving to problem solving.  In
+@cite{Proceedings of the International Joint Conference on Artificial
+Intelligence}, pp. 219-240.
+@url{http://citeseer.ist.psu.edu/viewdoc/summary?doi=10.1.1.81.9820, –›}
+
+@anchor{Green and Raphael (1968)}
+Green, Cordell, and Bertram Raphael.  1968.  The use of theorem-proving
+techniques in question-answering systems.  In @cite{Proceedings of the
+@abbr{ACM} National Conference}, pp. 169-181.
+@url{http://www.kestrel.edu/home/people/green/publications/green-raphael.pdf, –›}
+
+@anchor{Griss 1981}
+Griss, Martin L.  1981.  Portable Standard Lisp, a brief overview.  Utah
+Symbolic Computation Group Operating Note 58, University of Utah.
+
+@anchor{Guttag 1977}
+Guttag, John V.  1977.  Abstract data types and the development of data
+structures.  @cite{Communications of the @abbr{ACM}} 20(6): 396-404.
+@url{http://www.unc.edu/~stotts/comp723/guttagADT77.pdf, –›}
+
+@anchor{Hamming 1980}
+Hamming, Richard W.  1980.  @cite{Coding and Information Theory}.  Englewood
+Cliffs, N.J.: Prentice-Hall.
+
+@anchor{Hanson 1990}
+Hanson, Christopher P.  1990.  Efficient stack allocation for tail-recursive
+languages.  In @cite{Proceedings of @abbr{ACM} Conference on Lisp and
+Functional Programming}, pp. 106-118.
+@url{https://groups.csail.mit.edu/mac/ftpdir/users/cph/links.ps.gz, –›}
+
+@anchor{Hanson 1991}
+Hanson, Christopher P.  1991.  A syntactic closures macro facility.  @cite{Lisp
+Pointers}, 4(3).
+@url{http://groups.csail.mit.edu/mac/ftpdir/scheme-reports/synclo.ps, –›}
+
+@anchor{Hardy 1921}
+Hardy, Godfrey H.  1921.  Srinivasa Ramanujan.  @cite{Proceedings of the London
+Mathematical Society} @abbr{XIX}(2).
+
+@anchor{Hardy and Wright 1960}
+Hardy, Godfrey H., and E. M. Wright.  1960.  @cite{An Introduction to the
+Theory of Numbers}.  4th edition.  New York: Oxford University Press.
+@url{https://archive.org/details/AnIntroductionToTheTheoryOfNumbers-4thEd-G.h.HardyE.m.Wright, –›}
+
+@anchor{Havender (1968)}
+Havender, J. 1968. Avoiding deadlocks in multi-tasking systems. @cite{IBM
+Systems Journal} 7(2): 74-84.
+
+@anchor{Hearn 1969}
+Hearn, Anthony C.  1969.  Standard Lisp.  Technical report @abbr{AIM}-90,
+Artificial Intelligence Project, Stanford University.
+@url{http://www.softwarepreservation.org/projects/LISP/stanford/Hearn-StandardLisp-AIM-90.pdf, –›}
+
+@anchor{Henderson 1980}
+Henderson, Peter. 1980.  @cite{Functional Programming: Application and
+Implementation}. Englewood Cliffs, N.J.: Prentice-Hall.
+
+@anchor{Henderson 1982}
+Henderson. Peter. 1982. Functional Geometry. In @cite{Conference Record of the
+1982 @abbr{ACM} Symposium on Lisp and Functional Programming}, pp. 179-187.
+@url{http://pmh-systems.co.uk/phAcademic/papers/funcgeo.pdf, –›},
+@url{http://eprints.soton.ac.uk/257577/1/funcgeo2.pdf, 2002 version –›}
+
+@anchor{Hewitt (1969)}
+Hewitt, Carl E.  1969.  @abbr{PLANNER}: A language for proving
+theorems in robots.  In @cite{Proceedings of the International Joint
+Conference on Artificial Intelligence}, pp. 295-301.
+@url{http://dspace.mit.edu/handle/1721.1/6171, –›}
+
+@anchor{Hewitt (1977)}
+Hewitt, Carl E.  1977.  Viewing control structures as patterns of passing
+messages.  @cite{Journal of Artificial Intelligence} 8(3): 323-364.
+@url{http://dspace.mit.edu/handle/1721.1/6272, –›}
+
+@anchor{Hoare (1972)}
+Hoare, C. A. R. 1972.  Proof of correctness of data representations.
+@cite{Acta Informatica} 1(1).
+
+@anchor{Hodges 1983}
+Hodges, Andrew. 1983.  @cite{Alan Turing: The Enigma}. New York: Simon and
+Schuster.
+
+@anchor{Hofstadter 1979}
+Hofstadter, Douglas R.  1979.  @cite{G@"odel, Escher, Bach: An Eternal Golden
+Braid}. New York: Basic Books.
+
+@anchor{Hughes 1990}
+Hughes, R. J. M.  1990.  Why functional programming matters.  In @cite{Research
+Topics in Functional Programming}, edited by David Turner.  Reading, @abbr{MA}:
+Addison-Wesley, pp. 17-42.
+@url{http://www.cs.kent.ac.uk/people/staff/dat/miranda/whyfp90.pdf, –›}
+
+@anchor{IEEE 1990}
+@abbr{IEEE} Std 1178-1990.  1990.  @cite{@abbr{IEEE} Standard for the
+Scheme Programming Language}.
+
+@anchor{Ingerman et al. 1960}
+Ingerman, Peter, Edgar Irons, Kirk Sattley, and Wallace Feurzeig; assisted by
+M. Lind, Herbert Kanner, and Robert Floyd.  1960.  @abbr{THUNKS}: A way of
+compiling procedure statements, with some comments on procedure declarations.
+Unpublished manuscript.  (Also, private communication from Wallace Feurzeig.)
+
+@anchor{Kaldewaij 1990}
+Kaldewaij, Anne. 1990.  @cite{Programming: The Derivation of Algorithms}. New
+York: Prentice-Hall.
+
+@anchor{Knuth (1973)}
+Knuth, Donald E.  1973.  @cite{Fundamental Algorithms}. Volume 1 of @cite{The
+Art of Computer Programming}.  2nd edition. Reading, @abbr{MA}: Addison-Wesley.
+
+@anchor{Knuth 1981}
+Knuth, Donald E.  1981.  @cite{Seminumerical Algorithms}. Volume 2 of @cite{The
+Art of Computer Programming}.  2nd edition. Reading, @abbr{MA}: Addison-Wesley.
+
+@anchor{Kohlbecker 1986}
+Kohlbecker, Eugene Edmund, Jr. 1986.  Syntactic extensions in the programming
+language Lisp.  Ph.D. thesis, Indiana University.
+@url{http://www.ccs.neu.edu/scheme/pubs/dissertation-kohlbecker.pdf, –›}
+
+@anchor{Konopasek and Jayaraman 1984}
+Konopasek, Milos, and Sundaresan Jayaraman.  1984.  @cite{The TK!Solver Book: A
+Guide to Problem-Solving in Science, Engineering, Business, and
+Education}. Berkeley, @abbr{CA}: Osborne/McGraw-Hill.
+
+@anchor{Kowalski (1973; 1979)}
+Kowalski, Robert.  1973.  Predicate logic as a programming language.  Technical
+report 70, Department of Computational Logic, School of Artificial
+Intelligence, University of Edinburgh.
+@url{http://www.doc.ic.ac.uk/~rak/papers/IFIP%2074.pdf, –›}
+
+Kowalski, Robert.  1979.  @cite{Logic for Problem Solving}. New York:
+North-Holland.
+@url{http://www.doc.ic.ac.uk/%7Erak/papers/LogicForProblemSolving.pdf, –›}
+
+@anchor{Lamport (1978)}
+Lamport, Leslie. 1978.  Time, clocks, and the ordering of events in a
+distributed system.  @cite{Communications of the @abbr{ACM}} 21(7): 558-565.
+@url{https://amturing.acm.org/p558-lamport.pdf, –›}
+
+@anchor{Lampson et al. 1981}
+Lampson, Butler, J. J. Horning, R.  London, J. G. Mitchell, and G. K.  Popek.
+1981.  Report on the programming language Euclid.  Technical report, Computer
+Systems Research Group, University of Toronto.
+@url{http://www.bitsavers.org/pdf/xerox/parc/techReports/CSL-81-12_Report_On_The_Programming_Language_Euclid.pdf, –›}
+
+@anchor{Landin (1965)}
+Landin, Peter.  1965.  A correspondence between Algol 60 and Church's lambda
+notation: Part I.  @cite{Communications of the @abbr{ACM}} 8(2): 89-101.
+
+@anchor{Lieberman and Hewitt 1983}
+Lieberman, Henry, and Carl E. Hewitt. 1983. A real-time garbage collector based
+on the lifetimes of objects. @cite{Communications of the @abbr{ACM}}
+26(6): 419-429.
+@url{http://dspace.mit.edu/handle/1721.1/6335, –›}
+
+@anchor{Liskov and Zilles (1975)}
+Liskov, Barbara H., and Stephen N. Zilles.  1975.  Specification techniques for
+data abstractions.  @cite{@abbr{IEEE} Transactions on Software Engineering}
+1(1): 7-19.
+@url{http://csg.csail.mit.edu/CSGArchives/memos/Memo-117.pdf, –›}
+
+@anchor{McAllester (1978; 1980)}
+McAllester, David Allen.  1978.  A three-valued truth-maintenance system.  Memo
+473, @abbr{MIT} Artificial Intelligence Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/6296, –›}
+
+McAllester, David Allen.  1980.  An outlook on truth maintenance.  Memo 551,
+@abbr{MIT} Artificial Intelligence Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/6327, –›}
+
+@anchor{McCarthy 1960}
+McCarthy, John.  1960.  Recursive functions of symbolic expressions and their
+computation by machine.  @cite{Communications of the @abbr{ACM}} 3(4): 184-195.
+@url{http://homepages.inf.ed.ac.uk/wadler/papers/papers-we-love/mccarthy-recursive-functions.pdf, –›}
+
+@anchor{McCarthy 1963}
+McCarthy, John.  1963.  A basis for a mathematical theory of computation.  In
+@cite{Computer Programming and Formal Systems}, edited by P. Braffort and
+D. Hirschberg.  North-Holland.
+@url{https://ropas.snu.ac.kr/~kwang/4190.310/mccarthy63basis.pdf, –›}
+
+@anchor{McCarthy 1978}
+McCarthy, John.  1978.  The history of Lisp.  In @cite{Proceedings of the
+@abbr{ACM} @abbr{SIGPLAN} Conference on the History of Programming
+Languages}.
+@url{http://jmc.stanford.edu/articles/lisp.html, –›}
+
+@anchor{McCarthy et al. 1965}
+McCarthy, John, P. W. Abrahams, D. J. Edwards, T. P. Hart, and M. I.  Levin.
+1965.  @cite{Lisp 1.5 Programmer's Manual}.  2nd edition.  Cambridge, @abbr{MA}:
+@abbr{MIT} Press.
+@url{http://www.softwarepreservation.org/projects/LISP/book/LISP%201.5%20Programmers%20Manual.pdf/view, –›}
+
+@anchor{McDermott and Sussman (1972)}
+McDermott, Drew, and Gerald Jay Sussman.  1972. Conniver reference manual.
+Memo 259, @abbr{MIT} Artificial Intelligence Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/6203, –›}
+
+@anchor{Miller 1976}
+Miller, Gary L.  1976.  Riemann's Hypothesis and tests for primality.
+@cite{Journal of Computer and System Sciences} 13(3): 300-317.
+@url{http://www.cs.cmu.edu/~glmiller/Publications/b2hd-Mi76.html, –›}
+
+@anchor{Miller and Rozas 1994}
+Miller, James S., and Guillermo J. Rozas. 1994.  Garbage collection is fast,
+but a stack is faster.  Memo 1462, @abbr{MIT} Artificial Intelligence
+Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/6622, –›}
+
+@anchor{Moon 1978}
+Moon, David.  1978.  MacLisp reference manual, Version 0.  Technical report,
+@abbr{MIT} Laboratory for Computer Science.
+@url{http://www.softwarepreservation.org/projects/LISP/MIT/Moon-MACLISP_Reference_Manual-Apr_08_1974.pdf/view, –›}
+
+@anchor{Moon and Weinreb 1981}
+Moon, David, and Daniel Weinreb.  1981.  Lisp machine manual.  Technical
+report, @abbr{MIT} Artificial Intelligence Laboratory.
+@url{http://www.unlambda.com/lmman/index.html, –›}
+
+@anchor{Morris et al. 1980}
+Morris, J. H., Eric Schmidt, and Philip Wadler.  1980.  Experience with an
+applicative string processing language.  In @cite{Proceedings of the 7th Annual
+@abbr{ACM} @abbr{SIGACT}/@abbr{SIGPLAN} Symposium on the Principles of
+Programming Languages}.
+
+@anchor{Phillips 1934}
+Phillips, Hubert.  1934. @cite{The Sphinx Problem Book}.  London: Faber and
+Faber.
+
+@anchor{Pitman 1983}
+Pitman, Kent. 1983. The revised MacLisp Manual (Saturday evening edition).
+Technical report 295, @abbr{MIT} Laboratory for Computer Science.
+@url{http://maclisp.info/pitmanual, –›}
+
+@anchor{Rabin 1980}
+Rabin, Michael O. 1980. Probabilistic algorithm for testing primality.
+@cite{Journal of Number Theory} 12: 128-138.
+
+@anchor{Raymond 1993}
+Raymond, Eric.  1993. @cite{The New Hacker's Dictionary}. 2nd edition.
+Cambridge, @abbr{MA}: @abbr{MIT} Press.
+@url{http://www.catb.org/jargon/, –›}
+
+Raynal, Michel. 1986. @cite{Algorithms for Mutual Exclusion}.  Cambridge, @abbr{MA}:
+@abbr{MIT} Press.
+
+@anchor{Rees and Adams 1982}
+Rees, Jonathan A., and Norman I. Adams IV. 1982.  T: A dialect of Lisp or,
+lambda: The ultimate software tool.  In @cite{Conference Record of the 1982
+@abbr{ACM} Symposium on Lisp and Functional Programming}, pp.  114-122.
+@url{http://people.csail.mit.edu/riastradh/t/adams82t.pdf, –›}
+
+Rees, Jonathan, and William Clinger (eds). 1991.  The revised⁴ report on the
+algorithmic language Scheme.  @cite{Lisp Pointers}, 4(3).
+@url{http://people.csail.mit.edu/jaffer/r4rs.pdf, –›}
+
+@anchor{Rivest et al. (1977)}
+Rivest, Ronald, Adi Shamir, and Leonard Adleman.  1977.  A method for obtaining
+digital signatures and public-key cryptosystems. Technical memo @abbr{LCS}/@abbr{TM82},
+@abbr{MIT} Laboratory for Computer Science.
+@url{http://people.csail.mit.edu/rivest/Rsapaper.pdf, –›}
+
+@anchor{Robinson 1965}
+Robinson, J. A. 1965.  A machine-oriented logic based on the resolution
+principle.  @cite{Journal of the @abbr{ACM}} 12(1): 23.
+
+@anchor{Robinson 1983}
+Robinson, J. A. 1983.  Logic programming---Past, present, and future.
+@cite{New Generation Computing} 1: 107-124.
+
+@anchor{Spafford 1989}
+Spafford, Eugene H.  1989.  The Internet Worm: Crisis and aftermath.
+@cite{Communications of the @abbr{ACM}} 32(6): 678-688.
+@url{http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.123.8503&rep=rep1&type=pdf, –›}
+
+@anchor{Steele 1977}
+Steele, Guy Lewis, Jr.  1977.  Debunking the ``expensive procedure call'' myth.
+In @cite{Proceedings of the National Conference of the @abbr{ACM}},
+pp. 153-62.
+@url{http://dspace.mit.edu/handle/1721.1/5753, –›}
+
+@anchor{Steele 1982}
+Steele, Guy Lewis, Jr.  1982.  An overview of Common Lisp.  In
+@cite{Proceedings of the @abbr{ACM} Symposium on Lisp and Functional
+Programming}, pp. 98-107.
+
+@anchor{Steele 1990}
+Steele, Guy Lewis, Jr.  1990.  @cite{Common Lisp: The Language}. 2nd edition.
+Digital Press.
+@url{http://www.cs.cmu.edu/Groups/AI/html/cltl/cltl2.html, –›}
+
+@anchor{Steele and Sussman 1975}
+Steele, Guy Lewis, Jr., and Gerald Jay Sussman.  1975.  Scheme: An interpreter
+for the extended lambda calculus.  Memo 349, @abbr{MIT} Artificial
+Intelligence Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/5794, –›}
+
+@anchor{Steele et al. 1983}
+Steele, Guy Lewis, Jr., Donald R. Woods, Raphael A. Finkel, Mark R.  Crispin,
+Richard M. Stallman, and Geoffrey S. Goodfellow.  1983.  @cite{The Hacker's
+Dictionary}. New York: Harper & Row.
+@url{http://www.dourish.com/goodies/jargon.html, –›}
+
+@anchor{Stoy 1977}
+Stoy, Joseph E.  1977.  @cite{Denotational Semantics}. Cambridge, @abbr{MA}:
+@abbr{MIT} Press.
+
+@anchor{Sussman and Stallman 1975}
+Sussman, Gerald Jay, and Richard M. Stallman.  1975.  Heuristic techniques in
+computer-aided circuit analysis.  @cite{@abbr{IEEE} Transactions on Circuits
+and Systems} @abbr{CAS}-22(11): 857-865.
+@url{http://dspace.mit.edu/handle/1721.1/5803, –›}
+
+@anchor{Sussman and Steele 1980}
+Sussman, Gerald Jay, and Guy Lewis Steele Jr.  1980.  Constraints---A language
+for expressing almost-hierachical descriptions.  @cite{AI Journal} 14: 1-39.
+@url{http://dspace.mit.edu/handle/1721.1/6312, –›}
+
+@anchor{Sussman and Wisdom 1992}
+Sussman, Gerald Jay, and Jack Wisdom.  1992. Chaotic evolution of the solar
+system.  @cite{Science} 257: 256-262.
+@url{http://groups.csail.mit.edu/mac/users/wisdom/ss-chaos.pdf, –›}
+
+@anchor{Sussman et al. (1971)}
+Sussman, Gerald Jay, Terry Winograd, and Eugene Charniak.  1971.  Microplanner
+reference manual.  Memo 203@abbr{A}, @abbr{MIT} Artificial Intelligence Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/6184, –›}
+
+@anchor{Sutherland (1963)}
+Sutherland, Ivan E.  1963.  @abbr{SKETCHPAD}: A man-machine graphical
+com@-mu@-ni@-cation system.  Technical report 296, @abbr{MIT} Lincoln Laboratory.
+@url{https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-574.pdf, –›}
+
+@anchor{Teitelman 1974}
+Teitelman, Warren.  1974.  Interlisp reference manual.  Technical report, Xerox
+Palo Alto Research Center.
+@url{http://www.softwarepreservation.org/projects/LISP/interlisp/Interlisp-Oct_1974.pdf/view, –›}
+
+@anchor{Thatcher et al. 1978}
+Thatcher, James W., Eric G. Wagner, and Jesse B. Wright. 1978.  Data type
+specification: Parameterization and the power of specification techniques. In
+@cite{Conference Record of the Tenth Annual @abbr{ACM} Symposium on Theory
+of Computing}, pp. 119-132.
+
+@anchor{Turner 1981}
+Turner, David.  1981.  The future of applicative languages.  In
+@cite{Proceedings of the 3rd European Conference on Informatics}, Lecture Notes
+in Computer Science, volume 123. New York: Springer-Verlag, pp.  334-348.
+
+@anchor{Wand 1980}
+Wand, Mitchell.  1980.  Continuation-based program transformation strategies.
+@cite{Journal of the @abbr{ACM}} 27(1): 164-180.
+@url{http://www.diku.dk/OLD/undervisning/2005e/224/papers/Wand80.pdf, –›}
+
+@anchor{Waters (1979)}
+Waters, Richard C.  1979.  A method for analyzing loop programs.
+@cite{@abbr{IEEE} Transactions on Software Engineering} 5(3): 237-247.
+
+Winograd, Terry.  1971.  Procedures as a representation for data in a computer
+program for understanding natural language.  Technical report @abbr{AI TR}-17,
+@abbr{MIT} Artificial Intelligence Laboratory.
+@url{http://dspace.mit.edu/handle/1721.1/7095, –›}
+
+@anchor{Winston 1992}
+Winston, Patrick. 1992. @cite{Artificial Intelligence}.  3rd edition.  Reading,
+@abbr{MA}: Addison-Wesley.
+
+@anchor{Zabih et al. 1987}
+Zabih, Ramin, David McAllester, and David Chapman.  1987.  Non-deterministic
+Lisp with dependency-directed backtracking.  @cite{@abbr{AAAI}-87},
+pp. 59-64.
+@url{http://www.aaai.org/Papers/AAAI/1987/AAAI87-011.pdf, –›}
+
+@anchor{Zippel (1979)}
+Zippel, Richard.  1979.  Probabilistic algorithms for sparse polynomials.
+Ph.D. dissertation, Department of Electrical Engineering and Computer Science,
+@abbr{MIT}.
+
+@anchor{Zippel 1993}
+Zippel, Richard.  1993.  @cite{Effective Polynomial Computation}.  Boston, @abbr{MA}:
+Kluwer Academic Publishers.
+

@@ -1,0 +1,9 @@
+@node    Colophon, , Term Index, Top
+@unnumbered Lời Cuối
+
+Trên trang bìa là cơ chế bánh xe sách của Agostino Ramelli từ năm 1588. Nó có thể được coi là một công cụ điều hướng siêu văn bản thời kỳ đầu. Hình ảnh bản khắc này được lưu trữ bởi J. E. Johnson tại @url{http://newgottland.com/2012/02/09/before-the-ereader-there-was-the-wheelreader/ramelli_bookwheel_1032px/, New Gottland}.
+
+Các kiểu chữ được sử dụng là Linux Libertine cho văn bản thân bài và Linux Biolinum cho tiêu đề, cả hai đều của Philipp H. Poll. Kiểu chữ máy chữ là Inconsolata do Raph Levien tạo ra và được bổ sung bởi Dimosthenis Kaponis và Takashi Tanigawa dưới dạng Inconsolata LGC.
+
+Thiết kế đồ họa và sắp chữ được thực hiện bởi Andres Raba. Nguồn Texinfo được chuyển đổi sang @abbr{HTML} bằng phiên bản tùy chỉnh của tiện ích @code{texi2any} trong gói Texinfo 5.1. Các sơ đồ được vẽ bằng Inkscape và toán học được sắp chữ với sự trợ giúp của MathJax và MathML.
+
