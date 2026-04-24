@@ -1,0 +1,110 @@
+@node	2.4, 2.5, 2.3, Chapter 2
+@section Nhiều Biểu Diễn cho Dữ Liệu Trừu Tượng
+
+Chúng ta đã giới thiệu trừu tượng dữ liệu, một phương pháp cấu trúc hệ thống
+theo cách mà phần lớn chương trình có thể được chỉ định độc lập với các lựa
+chọn liên quan đến việc cài đặt các đối tượng dữ liệu mà chương trình thao tác.
+Ví dụ, chúng ta đã thấy trong @ref{2.1.1} cách phân tách nhiệm vụ thiết kế
+chương trình sử dụng số hữu tỉ khỏi nhiệm vụ cài đặt số hữu tỉ theo các cơ
+chế nguyên thủy của ngôn ngữ máy tính để xây dựng dữ liệu phức hợp. Ý tưởng
+then chốt là dựng lên một rào cản trừu tượng---trong trường hợp này, các bộ
+chọn và bộ tạo cho số hữu tỉ (@code{make-rat}, @code{numer}, @code{denom})---cô
+lập cách số hữu tỉ được sử dụng khỏi biểu diễn cơ bản của chúng dưới dạng cấu
+trúc danh sách. Một rào cản trừu tượng tương tự cô lập các chi tiết của các thủ
+tục thực hiện số học hữu tỉ (@code{add-rat}, @code{sub-rat}, @code{mul-rat}, và
+@code{div-rat}) khỏi các thủ tục ``cấp cao hơn'' sử dụng số hữu tỉ. Chương
+trình kết quả có cấu trúc được hiển thị trong @ref{Figure 2.1}.
+
+Các rào cản trừu tượng dữ liệu này là các công cụ mạnh mẽ để kiểm soát độ
+phức tạp. Bằng cách cô lập các biểu diễn cơ bản của các đối tượng dữ liệu,
+chúng ta có thể chia nhiệm vụ thiết kế chương trình lớn thành các nhiệm vụ nhỏ
+hơn có thể được thực hiện riêng biệt. Nhưng loại trừu tượng dữ liệu này vẫn
+chưa đủ mạnh, vì nó có thể không phải lúc nào cũng có ý nghĩa khi nói về
+``biểu diễn cơ bản'' cho một đối tượng dữ liệu.
+
+Thứ nhất, có thể có nhiều hơn một biểu diễn hữu ích cho một đối tượng dữ liệu,
+và chúng ta có thể muốn thiết kế các hệ thống có thể xử lý nhiều biểu diễn. Lấy
+ví dụ đơn giản, số phức có thể được biểu diễn theo hai cách gần tương đương:
+dạng trực giao (phần thực và phần ảo) và dạng cực (độ lớn và góc). Đôi khi
+dạng trực giao thích hợp hơn và đôi khi dạng cực thích hợp hơn. Thực vậy, hoàn
+toàn hợp lý khi hình dung một hệ thống trong đó số phức được biểu diễn theo cả
+hai cách, và trong đó các thủ tục thao tác số phức hoạt động với bất kỳ biểu
+diễn nào.
+
+Quan trọng hơn, các hệ thống lập trình thường được thiết kế bởi nhiều người làm
+việc trong thời gian dài, tùy thuộc vào các yêu cầu thay đổi theo thời gian.
+Trong môi trường như vậy, đơn giản là không thể mọi người đều đồng ý trước về
+các lựa chọn biểu diễn dữ liệu. Vì vậy, ngoài các rào cản trừu tượng dữ liệu
+cô lập biểu diễn khỏi việc sử dụng, chúng ta cần các rào cản trừu tượng cô lập
+các lựa chọn thiết kế khác nhau khỏi nhau và cho phép các lựa chọn khác nhau
+cùng tồn tại trong một chương trình. Hơn nữa, vì các chương trình lớn thường
+được tạo ra bằng cách kết hợp các mô-đun đã tồn tại trước được thiết kế riêng
+lẻ, chúng ta cần các quy ước cho phép các lập trình viên kết hợp các mô-đun vào
+các hệ thống lớn hơn một cách @newterm{cộng thêm}, tức là không cần phải thiết
+kế lại hoặc cài đặt lại các mô-đun này.
+
+Trong phần này, chúng ta sẽ học cách đối phó với dữ liệu có thể được biểu diễn
+theo nhiều cách bởi các phần khác nhau của chương trình. Điều này đòi hỏi xây
+dựng các @newterm{thủ tục tổng quát}---các thủ tục có thể hoạt động trên dữ
+liệu có thể được biểu diễn theo nhiều cách hơn. Kỹ thuật chính của chúng ta để
+xây dựng các thủ tục tổng quát sẽ là làm việc theo các đối tượng dữ liệu có
+@newterm{thẻ kiểu}, tức là các đối tượng dữ liệu bao gồm thông tin rõ ràng về
+cách chúng sẽ được xử lý. Chúng ta cũng sẽ thảo luận về lập trình
+@newterm{hướng dữ liệu}, một chiến lược cài đặt mạnh mẽ và tiện lợi để cộng
+thêm lắp ráp các hệ thống với các phép toán tổng quát.
+
+Chúng ta bắt đầu với ví dụ số phức đơn giản. Chúng ta sẽ thấy cách thẻ kiểu và
+phong cách hướng dữ liệu cho phép chúng ta thiết kế các biểu diễn trực giao và
+cực riêng biệt cho số phức trong khi duy trì khái niệm đối tượng dữ liệu ``số
+phức'' trừu tượng. Chúng ta sẽ thực hiện điều này bằng cách định nghĩa các thủ
+tục số học cho số phức (@code{add-complex}, @code{sub-complex},
+@code{mul-complex}, và @code{div-complex}) theo các bộ chọn tổng quát truy cập
+các phần của số phức độc lập với cách số được biểu diễn. Hệ thống số phức kết
+quả, như được hiển thị trong @ref{Figure 2.19}, chứa hai loại rào cản trừu
+tượng khác nhau. Các rào cản trừu tượng ``nằm ngang'' đóng vai trò tương tự
+như trong @ref{Figure 2.1}. Chúng cô lập các phép toán ``cấp cao hơn'' khỏi
+các biểu diễn ``cấp thấp hơn''. Ngoài ra, có một rào cản ``dọc'' cho chúng ta
+khả năng thiết kế và cài đặt các biểu diễn thay thế một cách độc lập.
+
+@float
+@anchor{Figure 2.19}
+@ifinfo
+@quotation
+@strong{Figure 2.19:} Data-abstraction barriers in the complex-number system.
+
+@example
+           Programs that use complex numbers
+  +-------------------------------------------------+
+--| add-complex sub-complex mul-complex div-complex |--
+  +-------------------------------------------------+
+              Complex arithmetic package
+---------------------------+---------------------------
+          Rectangular      |         Polar
+        representation     |     representation
+---------------------------+---------------------------
+    List structure and primitive machine arithmetic
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.19a,147mm,,,.std.svg}
+@caption{@strong{Figure 2.19:} Data-abstraction barriers in the complex-number system.}
+@end iftex
+@end float
+
+@noindent
+Trong @ref{2.5} chúng ta sẽ chỉ ra cách dùng thẻ kiểu và phong cách hướng dữ
+liệu để phát triển gói số học tổng quát. Điều này cung cấp các thủ tục
+(@code{add}, @code{mul}, v.v.) có thể được dùng để thao tác mọi loại ``số'' và
+có thể dễ dàng mở rộng khi cần một loại số mới. Trong @ref{2.5.3}, chúng ta sẽ
+chỉ ra cách sử dụng số học tổng quát trong hệ thống thực hiện đại số ký hiệu.
+
+@menu
+* 2.4.1::            Biểu Diễn cho Số Phức
+* 2.4.2::            Dữ Liệu Được Gắn Thẻ
+* 2.4.3::            Lập Trình Hướng Dữ Liệu và Tính Cộng Thêm
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi

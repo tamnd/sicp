@@ -1,0 +1,233 @@
+@node	2.4.2, 2.4.3, 2.4.1, 2.4
+@subsection Dữ Liệu Được Gắn Thẻ
+
+Một cách để nhìn trừu tượng dữ liệu là như một ứng dụng của ``nguyên tắc cam
+kết tối thiểu.'' Khi cài đặt hệ thống số phức trong @ref{2.4.1}, chúng ta có
+thể sử dụng biểu diễn trực giao của Ben hoặc biểu diễn cực của Alyssa. Rào
+cản trừu tượng được tạo bởi các bộ chọn và bộ tạo cho phép chúng ta trì hoãn
+đến thời điểm muộn nhất có thể việc lựa chọn biểu diễn cụ thể cho các đối
+tượng dữ liệu và do đó duy trì tính linh hoạt tối đa trong thiết kế hệ thống.
+
+Nguyên tắc cam kết tối thiểu có thể được thực hiện đến những cực độ xa hơn.
+Nếu chúng ta muốn, chúng ta có thể duy trì sự mơ hồ của biểu diễn ngay cả
+@emph{sau khi} chúng ta đã thiết kế các bộ chọn và bộ tạo, và chọn sử dụng
+cả biểu diễn của Ben @emph{lẫn} biểu diễn của Alyssa. Tuy nhiên, nếu cả hai
+biểu diễn được đưa vào trong một hệ thống, chúng ta sẽ cần một cách nào đó để
+phân biệt dữ liệu ở dạng cực với dữ liệu ở dạng trực giao. Nếu không, nếu được
+hỏi, chẳng hạn, để tìm @code{magnitude} của cặp (3, 4), chúng ta sẽ không biết
+liệu có nên trả lời 5 (diễn giải số theo dạng trực giao) hay 3 (diễn giải số
+theo dạng cực). Một cách đơn giản để thực hiện sự phân biệt này là đưa vào
+@newterm{thẻ kiểu}---ký hiệu @code{rectangular} hoặc @code{polar}---như một
+phần của mỗi số phức. Sau đó, khi chúng ta cần thao tác số phức, chúng ta có
+thể dùng thẻ để quyết định áp dụng bộ chọn nào.
+
+Để thao tác dữ liệu được gắn thẻ, chúng ta sẽ giả sử rằng chúng ta có các thủ
+tục @code{type-tag} và @code{contents} trích xuất từ một đối tượng dữ liệu thẻ
+và nội dung thực sự (tọa độ cực hoặc trực giao, trong trường hợp số phức). Chúng
+ta cũng sẽ đặt ra một thủ tục @code{attach-tag} nhận thẻ và nội dung và tạo ra
+đối tượng dữ liệu được gắn thẻ. Một cách đơn giản để cài đặt điều này là sử dụng
+cấu trúc danh sách thông thường:
+
+@lisp
+(define (attach-tag type-tag contents)
+  (cons type-tag contents))
+
+(define (type-tag datum)
+  (if (pair? datum)
+      (car datum)
+      (error "Bad tagged datum:
+              TYPE-TAG" datum)))
+
+(define (contents datum)
+  (if (pair? datum)
+      (cdr datum)
+      (error "Bad tagged datum:
+              CONTENTS" datum)))
+@end lisp
+
+@noindent
+Sử dụng các thủ tục này, chúng ta có thể định nghĩa các vị từ @code{rectangular?}
+và @code{polar?}, lần lượt nhận ra số trực giao và số cực:
+
+@lisp
+(define (rectangular? z)
+  (eq? (type-tag z) 'rectangular))
+
+(define (polar? z)
+  (eq? (type-tag z) 'polar))
+@end lisp
+
+@noindent
+Với thẻ kiểu, Ben và Alyssa bây giờ có thể sửa đổi mã của họ để hai biểu diễn
+khác nhau có thể cùng tồn tại trong cùng một hệ thống. Bất cứ khi nào Ben xây
+dựng số phức, anh ấy gắn thẻ là trực giao. Bất cứ khi nào Alyssa xây dựng số
+phức, cô ấy gắn thẻ là cực. Ngoài ra, Ben và Alyssa phải đảm bảo rằng tên của
+các thủ tục của họ không xung đột. Một cách để làm điều này là Ben thêm hậu tố
+@code{rectangular} vào tên của mỗi thủ tục biểu diễn của anh ấy và Alyssa thêm
+@code{polar} vào tên của cô ấy. Đây là biểu diễn trực giao được sửa đổi của Ben
+từ @ref{2.4.1}:
+
+@lisp
+(define (real-part-rectangular z) (car z))
+(define (imag-part-rectangular z) (cdr z))
+
+(define (magnitude-rectangular z)
+  (sqrt (+ (square (real-part-rectangular z))
+           (square (imag-part-rectangular z)))))
+
+(define (angle-rectangular z)
+  (atan (imag-part-rectangular z)
+        (real-part-rectangular z)))
+
+(define (make-from-real-imag-rectangular x y)
+  (attach-tag 'rectangular (cons x y)))
+
+(define (make-from-mag-ang-rectangular r a)
+  (attach-tag
+   'rectangular
+   (cons (* r (cos a)) (* r (sin a)))))
+@end lisp
+
+@noindent
+và đây là biểu diễn cực được sửa đổi của Alyssa:
+
+@lisp
+(define (real-part-polar z)
+  (* (magnitude-polar z)
+     (cos (angle-polar z))))
+
+(define (imag-part-polar z)
+  (* (magnitude-polar z)
+     (sin (angle-polar z))))
+
+(define (magnitude-polar z) (car z))
+(define (angle-polar z) (cdr z))
+
+(define (make-from-real-imag-polar x y)
+  (attach-tag
+   'polar
+   (cons (sqrt (+ (square x) (square y)))
+         (atan y x))))
+
+(define (make-from-mag-ang-polar r a)
+  (attach-tag 'polar (cons r a)))
+@end lisp
+
+@noindent
+Mỗi bộ chọn tổng quát được cài đặt như một thủ tục kiểm tra thẻ của đối số
+và gọi thủ tục thích hợp để xử lý dữ liệu thuộc kiểu đó. Ví dụ, để thu được
+phần thực của số phức, @code{real-part} kiểm tra thẻ để xác định có nên dùng
+@code{real-part-rectangular} của Ben hay @code{real-part-polar} của Alyssa.
+Trong cả hai trường hợp, chúng ta dùng @code{contents} để trích xuất dữ liệu
+thô, không có thẻ và gửi nó đến thủ tục trực giao hay cực theo yêu cầu:
+
+@lisp
+(define (real-part z)
+  (cond ((rectangular? z)
+         (real-part-rectangular (contents z)))
+        ((polar? z)
+         (real-part-polar (contents z)))
+        (else (error "Unknown type:
+               REAL-PART" z))))
+
+(define (imag-part z)
+  (cond ((rectangular? z)
+         (imag-part-rectangular (contents z)))
+        ((polar? z)
+         (imag-part-polar (contents z)))
+        (else (error "Unknown type:
+               IMAG-PART" z))))
+
+(define (magnitude z)
+  (cond ((rectangular? z)
+         (magnitude-rectangular (contents z)))
+        ((polar? z)
+         (magnitude-polar (contents z)))
+        (else (error "Unknown type:
+               MAGNITUDE" z))))
+
+(define (angle z)
+  (cond ((rectangular? z)
+         (angle-rectangular (contents z)))
+        ((polar? z)
+         (angle-polar (contents z)))
+        (else (error "Unknown type:
+               ANGLE" z))))
+@end lisp
+
+@noindent
+Để cài đặt các phép toán số học số phức, chúng ta có thể sử dụng cùng các thủ
+tục @code{add-complex}, @code{sub-complex}, @code{mul-complex}, và
+@code{div-complex} từ @ref{2.4.1}, vì các bộ chọn chúng gọi là tổng quát, và
+do đó sẽ hoạt động với bất kỳ biểu diễn nào. Ví dụ, thủ tục @code{add-complex}
+vẫn là
+
+@lisp
+(define (add-complex z1 z2)
+  (make-from-real-imag
+   (+ (real-part z1) (real-part z2))
+   (+ (imag-part z1) (imag-part z2))))
+@end lisp
+
+@noindent
+Cuối cùng, chúng ta phải chọn có xây dựng số phức bằng biểu diễn của Ben hay
+biểu diễn của Alyssa. Một lựa chọn hợp lý là xây dựng số trực giao bất cứ khi
+nào chúng ta có phần thực và phần ảo và xây dựng số cực bất cứ khi nào chúng
+ta có độ lớn và góc:
+
+@lisp
+(define (make-from-real-imag x y)
+  (make-from-real-imag-rectangular x y))
+
+(define (make-from-mag-ang r a)
+  (make-from-mag-ang-polar r a))
+@end lisp
+
+@noindent
+Hệ thống số phức kết quả có cấu trúc được hiển thị trong @ref{Figure 2.21}.
+Hệ thống đã được phân rã thành ba phần tương đối độc lập: các phép toán số học
+số phức, cài đặt cực của Alyssa, và cài đặt trực giao của Ben. Các cài đặt cực
+và trực giao có thể đã được viết bởi Ben và Alyssa làm việc riêng biệt, và cả
+hai có thể được sử dụng như các biểu diễn cơ bản bởi lập trình viên thứ ba cài
+đặt các thủ tục số học phức theo giao diện bộ tạo/bộ chọn trừu tượng.
+
+@float
+@anchor{Figure 2.21}
+@ifinfo
+@quotation
+@strong{Figure 2.21:} Structure of the generic complex-arithmetic system.
+
+@example
+    +-------------------------------------------------+
+----| add-complex sub-complex mul-complex div-complex |----
+    +-------------------------------------------------+
+                Complex arithmetic package
+                 +-----------------------+
+                 | real-part   imag-part |
+-----------------|                       |------------------
+                 | magnitude   angle     |
+                 +-----------+-----------+
+           Rectangular       |          Polar
+          representation     |     representation
+-----------------------------+------------------------------
+       List structure and primitive machine arithmetic
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.21a,147mm,,,.std.svg}
+@caption{@strong{Figure 2.21:} Structure of the generic complex-arithmetic system.}
+@end iftex
+@end float
+
+Vì mỗi đối tượng dữ liệu được gắn thẻ kiểu của nó, các bộ chọn hoạt động trên
+dữ liệu theo cách tổng quát. Tức là, mỗi bộ chọn được định nghĩa có hành vi
+phụ thuộc vào kiểu cụ thể của dữ liệu mà nó được áp dụng. Lưu ý cơ chế chung
+để giao diện các biểu diễn riêng biệt: Trong một cài đặt biểu diễn cụ thể (ví
+dụ, gói cực của Alyssa), số phức là một cặp không có kiểu (độ lớn, góc). Khi
+bộ chọn tổng quát hoạt động trên số có kiểu @code{polar}, nó bóc bỏ thẻ và
+truyền nội dung cho mã của Alyssa. Ngược lại, khi Alyssa xây dựng số để sử
+dụng chung, cô ấy gắn thẻ kiểu cho nó để nó có thể được nhận ra một cách thích
+hợp bởi các thủ tục cấp cao hơn. Kỷ luật bóc bỏ và gắn thẻ khi các đối tượng
+dữ liệu được truyền từ cấp này sang cấp khác có thể là chiến lược tổ chức quan
+trọng, như chúng ta sẽ thấy trong @ref{2.5}.

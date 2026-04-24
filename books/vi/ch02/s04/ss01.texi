@@ -1,0 +1,244 @@
+@node	2.4.1, 2.4.2, 2.4, 2.4
+@subsection Biểu Diễn cho Số Phức
+
+Chúng ta sẽ phát triển một hệ thống thực hiện các phép toán số học trên số
+phức như một ví dụ đơn giản nhưng không thực tế của chương trình sử dụng các
+phép toán tổng quát. Chúng ta bắt đầu bằng cách thảo luận về hai biểu diễn
+hợp lý cho số phức như các cặp có thứ tự: dạng trực giao (phần thực và phần
+ảo) và dạng cực (độ lớn và góc).@footnote{Trong các hệ thống tính toán thực
+tế, dạng trực giao được ưu tiên hơn dạng cực hầu hết thời gian vì lỗi làm tròn
+trong chuyển đổi giữa dạng trực giao và dạng cực. Đây là lý do tại sao ví dụ
+số phức không thực tế. Tuy nhiên, nó cung cấp hình minh họa rõ ràng về thiết
+kế hệ thống sử dụng các phép toán tổng quát và là phần giới thiệu tốt cho các
+hệ thống phức tạp hơn sẽ được phát triển sau trong chương này.}
+Phần @ref{2.4.2} sẽ chỉ ra cách cả hai biểu diễn có thể cùng tồn tại trong
+một hệ thống thông qua việc sử dụng thẻ kiểu và các phép toán tổng quát.
+
+Giống như số hữu tỉ, số phức được biểu diễn một cách tự nhiên như các cặp có
+thứ tự. Tập hợp số phức có thể được coi như không gian hai chiều với hai trục
+vuông góc, trục ``thực'' và trục ``ảo''. (Xem @ref{Figure 2.20}.) Từ quan điểm
+này, số phức @math{{z = x + iy}} (trong đó @math{{i^{\kern0.1em 2} = \text{−1}}})
+có thể được coi như điểm trong mặt phẳng có tọa độ thực là @math{x} và tọa
+độ ảo là @math{y}. Cộng số phức rút gọn trong biểu diễn này thành cộng các
+tọa độ:
+@ifinfo
+
+@example
+Real-part(z_1 + z_2) = Real-part(z_1) + Real-part(z_2)
+
+Imaginary-part(z_1 + z_2) = Imaginary-part(z_1) + Imaginary-part(z_2)
+@end example
+
+@end ifinfo
+@tex
+\[ % :46:
+\begin{eqnarray}
+\text{Real-part} (z_1 + z_2) 	    &=& \text{Real-part} (z_1) + \\
+                                    & & \text{Real-part} (z_2),  \\
+\text{Imaginary-part} (z_1 + z_2)   &=& \text{Imaginary-part} (z_1) + \\
+                                    & & \text{Imaginary-part} (z_2).
+\end{eqnarray}
+\]
+@end tex
+
+@float
+@anchor{Figure 2.20}
+@ifinfo
+@strong{Figure 2.20:} Complex numbers as points in the plane.
+
+@example
+ Imaginary
+    ^
+    |
+  y |.........................* z = x + ?y = r e^(?A)
+    |                    __-- .
+    |                __--     .
+    |          r __--         .
+    |        __--             .
+    |    __-- \               .
+    |__--    A |              .
+----+----------+-------------------> Real
+                              x
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.20,147mm,,,.std.svg}
+@caption{@strong{Figure 2.20:} Complex numbers as points in the plane.}
+@end iftex
+@end float
+
+@noindent
+Khi nhân số phức, tự nhiên hơn khi nghĩ theo dạng cực, biểu diễn số phức như
+độ lớn và góc (@math{r} và @math{A} trong @ref{Figure 2.20}). Tích của hai số
+phức là vectơ thu được bằng cách kéo dài một số phức theo độ dài của số kia
+rồi xoay nó theo góc của số kia:
+@ifinfo
+
+@example
+Magnitude(z_1 * z_2) = Magnitude(z_1) * Magnitude(z_2)
+
+Angle(z_1 * z_2) = Angle(z_1) + Angle(z_2)
+@end example
+
+@end ifinfo
+@tex
+\[ % :47:
+\begin{eqnarray}
+  \text{Magnitude} (z_1 \cdot z_2)  &=&
+    \text{Magnitude} (z_1) \cdot \text{Magnitude} (z_2), \\
+  \text{Angle} (z_1 \cdot z_2)      &=&
+    \text{Angle} (z_1) + \text{Angle} (z_2).
+\end{eqnarray}
+\]
+@end tex
+
+@noindent
+Vì vậy, có hai biểu diễn khác nhau cho số phức, phù hợp với các phép toán khác
+nhau. Tuy nhiên, từ quan điểm của người viết chương trình sử dụng số phức,
+nguyên tắc trừu tượng dữ liệu gợi ý rằng tất cả các phép toán thao tác số phức
+nên có sẵn bất kể biểu diễn nào được máy tính sử dụng. Ví dụ, thường hữu ích
+khi có thể tìm độ lớn của số phức được chỉ định bằng tọa độ trực giao. Tương
+tự, thường hữu ích khi có thể xác định phần thực của số phức được chỉ định
+bằng tọa độ cực.
+
+Để thiết kế hệ thống như vậy, chúng ta có thể theo cùng chiến lược trừu tượng
+dữ liệu mà chúng ta đã theo khi thiết kế gói số hữu tỉ trong @ref{2.1.1}.
+Giả sử các phép toán trên số phức được cài đặt theo bốn bộ chọn: @code{real-part},
+@code{imag-part}, @code{magnitude}, và @code{angle}. Cũng giả sử chúng ta có
+hai thủ tục để tạo số phức: @code{make-from-real-imag} trả về số phức với phần
+thực và phần ảo đã cho, và @code{make-from-mag-ang} trả về số phức với độ lớn
+và góc đã cho. Các thủ tục này có tính chất rằng, với bất kỳ số phức @code{z}
+nào, cả
+
+@lisp
+(make-from-real-imag (real-part z)
+                     (imag-part z))
+@end lisp
+
+@noindent
+lẫn
+
+@lisp
+(make-from-mag-ang (magnitude z)
+                   (angle z))
+@end lisp
+
+@noindent
+đều tạo ra số phức bằng @code{z}.
+
+Sử dụng các bộ tạo và bộ chọn này, chúng ta có thể cài đặt số học trên số phức
+sử dụng ``dữ liệu trừu tượng'' được chỉ định bởi các bộ tạo và bộ chọn, giống
+như chúng ta đã làm với số hữu tỉ trong @ref{2.1.1}. Như được hiển thị trong
+các công thức ở trên, chúng ta có thể cộng và trừ số phức theo phần thực và
+phần ảo trong khi nhân và chia số phức theo độ lớn và góc:
+
+@lisp
+(define (add-complex z1 z2)
+  (make-from-real-imag
+   (+ (real-part z1) (real-part z2))
+   (+ (imag-part z1) (imag-part z2))))
+
+(define (sub-complex z1 z2)
+  (make-from-real-imag
+   (- (real-part z1) (real-part z2))
+   (- (imag-part z1) (imag-part z2))))
+
+(define (mul-complex z1 z2)
+  (make-from-mag-ang
+   (* (magnitude z1) (magnitude z2))
+   (+ (angle z1) (angle z2))))
+
+(define (div-complex z1 z2)
+  (make-from-mag-ang
+   (/ (magnitude z1) (magnitude z2))
+   (- (angle z1) (angle z2))))
+@end lisp
+
+@noindent
+Để hoàn thành gói số phức, chúng ta phải chọn một biểu diễn và phải cài đặt
+các bộ tạo và bộ chọn theo các số nguyên thủy và cấu trúc danh sách nguyên
+thủy. Có hai cách rõ ràng để làm điều này: Chúng ta có thể biểu diễn số phức
+ở ``dạng trực giao'' như cặp (phần thực, phần ảo) hoặc ở ``dạng cực'' như cặp
+(độ lớn, góc). Chúng ta sẽ chọn cái nào?
+
+Để làm cho các lựa chọn khác nhau trở nên cụ thể, hãy tưởng tượng có hai lập
+trình viên, Ben Bitdiddle và Alyssa P. Hacker, đang thiết kế độc lập các biểu
+diễn cho hệ thống số phức. Ben chọn biểu diễn số phức ở dạng trực giao. Với
+lựa chọn này, việc chọn phần thực và phần ảo của số phức là đơn giản, cũng như
+xây dựng số phức với phần thực và phần ảo cho trước. Để tìm độ lớn và góc, hoặc
+để xây dựng số phức với độ lớn và góc cho trước, anh ấy sử dụng các hệ thức
+lượng giác
+@ifinfo
+
+@example
+                      __________
+x = r cos A     r = ./ x^2 + y^2
+
+y = r sin A     A = arctan(y,x)
+@end example
+
+@end ifinfo
+@tex
+\[ % :48:
+\begin{eqnarray}
+  x &=& r \cos A, \\
+  y &=& r \sin A, \\
+  r &=& \sqrt{x^2 + y^2,} \\
+  A &=& \arctan(y, x),
+\end{eqnarray}
+\]
+@end tex
+
+@noindent
+liên hệ phần thực và phần ảo @math{{(x, y)}} với độ lớn và góc
+@math{{(r, A)}}.@footnote{Hàm arctangent được đề cập ở đây, được tính bởi thủ
+tục @code{atan} của Scheme, được định nghĩa để nhận hai đối số @math{y} và
+@math{x} và trả về góc có tang là @math{{y / x}}. Dấu của các đối số xác định
+góc phần tư của góc.} Do đó, biểu diễn của Ben được cho bởi các bộ chọn và
+bộ tạo sau:
+
+@lisp
+(define (real-part z) (car z))
+(define (imag-part z) (cdr z))
+
+(define (magnitude z)
+  (sqrt (+ (square (real-part z))
+           (square (imag-part z)))))
+
+(define (angle z)
+  (atan (imag-part z) (real-part z)))
+
+(define (make-from-real-imag x y)
+  (cons x y))
+
+(define (make-from-mag-ang r a)
+  (cons (* r (cos a)) (* r (sin a))))
+@end lisp
+
+@noindent
+Ngược lại, Alyssa chọn biểu diễn số phức ở dạng cực. Với cô ấy, việc chọn
+độ lớn và góc là đơn giản, nhưng cô ấy phải dùng các hệ thức lượng giác để
+thu được phần thực và phần ảo. Biểu diễn của Alyssa là:
+
+@lisp
+(define (real-part z)
+  (* (magnitude z) (cos (angle z))))
+
+(define (imag-part z)
+  (* (magnitude z) (sin (angle z))))
+
+(define (magnitude z) (car z))
+(define (angle z) (cdr z))
+
+(define (make-from-real-imag x y)
+  (cons (sqrt (+ (square x) (square y)))
+        (atan y x)))
+
+(define (make-from-mag-ang r a)
+  (cons r a))
+@end lisp
+
+@noindent
+Kỷ luật trừu tượng dữ liệu đảm bảo rằng cùng cài đặt của @code{add-complex},
+@code{sub-complex}, @code{mul-complex}, và @code{div-complex} sẽ hoạt động với
+biểu diễn của Ben hoặc biểu diễn của Alyssa.

@@ -1,0 +1,453 @@
+@node	2.4.3, 2.5, 2.3, 2.4
+@subsection Lập Trình Hướng Dữ Liệu và Tính Cộng Thêm
+
+Chiến lược chung kiểm tra kiểu của dữ liệu và gọi thủ tục thích hợp được gọi
+là @newterm{phân phối theo kiểu}. Đây là chiến lược mạnh mẽ để đạt được tính
+mô-đun trong thiết kế hệ thống. Mặt khác, việc cài đặt phân phối như trong
+@ref{2.4.2} có hai điểm yếu đáng kể. Một điểm yếu là các thủ tục giao diện
+tổng quát (@code{real-part}, @code{imag-part}, @code{magnitude}, và @code{angle})
+phải biết về tất cả các biểu diễn khác nhau. Ví dụ, giả sử chúng ta muốn kết
+hợp biểu diễn mới cho số phức vào hệ thống số phức. Chúng ta sẽ cần xác định
+biểu diễn mới này với kiểu, rồi thêm mệnh đề vào mỗi thủ tục giao diện tổng
+quát để kiểm tra kiểu mới và áp dụng bộ chọn thích hợp cho biểu diễn đó.
+
+Điểm yếu khác của kỹ thuật là mặc dù các biểu diễn riêng lẻ có thể được thiết
+kế riêng biệt, chúng ta phải đảm bảo rằng không có hai thủ tục nào trong toàn
+bộ hệ thống có cùng tên. Đây là lý do tại sao Ben và Alyssa phải thay đổi tên
+của các thủ tục ban đầu của họ từ @ref{2.4.1}.
+
+Vấn đề cơ bản của cả hai điểm yếu này là kỹ thuật cài đặt giao diện tổng quát
+không @newterm{cộng thêm} được. Người cài đặt các thủ tục bộ chọn tổng quát
+phải sửa đổi các thủ tục đó mỗi khi một biểu diễn mới được cài đặt, và những
+người giao diện các biểu diễn riêng lẻ phải sửa đổi mã của họ để tránh xung
+đột tên. Trong mỗi trường hợp này, những thay đổi phải được thực hiện đối với
+mã là đơn giản, nhưng chúng vẫn phải được thực hiện, và đây là nguồn gốc của
+sự bất tiện và lỗi. Đây không phải là vấn đề lớn đối với hệ thống số phức như
+hiện tại, nhưng giả sử không phải hai mà hàng trăm biểu diễn khác nhau cho số
+phức. Và giả sử có nhiều bộ chọn tổng quát cần duy trì trong giao diện dữ liệu
+trừu tượng. Giả sử, thực ra, không có lập trình viên nào biết tất cả các thủ
+tục giao diện hoặc tất cả các biểu diễn. Vấn đề này thực sự tồn tại và phải
+được giải quyết trong các chương trình như hệ thống quản lý cơ sở dữ liệu quy
+mô lớn.
+
+Những gì chúng ta cần là phương tiện để mô-đun hóa thiết kế hệ thống hơn nữa.
+Điều này được cung cấp bởi kỹ thuật lập trình được gọi là
+@newterm{lập trình hướng dữ liệu}. Để hiểu cách lập trình hướng dữ liệu hoạt
+động, hãy bắt đầu với quan sát rằng bất cứ khi nào chúng ta xử lý một tập hợp
+các phép toán tổng quát chung cho một tập hợp các kiểu khác nhau, chúng ta
+thực chất đang xử lý một bảng hai chiều chứa các phép toán có thể trên một trục
+và các kiểu có thể trên trục kia. Các mục trong bảng là các thủ tục cài đặt mỗi
+phép toán cho mỗi kiểu đối số được trình bày. Trong hệ thống số phức được phát
+triển trong phần trước, sự tương ứng giữa tên phép toán, kiểu dữ liệu và thủ
+tục thực sự được trải rộng trong các mệnh đề có điều kiện khác nhau trong các
+thủ tục giao diện tổng quát. Nhưng cùng thông tin có thể được tổ chức trong bảng,
+như được hiển thị trong @ref{Figure 2.22}.
+
+@float
+@anchor{Figure 2.22}
+@ifinfo
+@quotation
+@strong{Figure 2.22:} Table of operations for the complex-number system.
+
+@example
+           |               Types
+Operations | Polar           | Rectangular
+===========+=================+======================
+real-part  | real-part-polar | real-part-rectangular
+imag-part  | imag-part-polar | imag-part-rectangular
+magnitude  | magnitude-polar | magnitude-rectangular
+angle      | angle-polar     | angle-rectangular
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.22,147mm,,,.std.svg}
+@caption{@strong{Figure 2.22:} Table of operations for the complex-number system.}
+@end iftex
+@end float
+
+@noindent
+Lập trình hướng dữ liệu là kỹ thuật thiết kế các chương trình làm việc trực
+tiếp với bảng như vậy. Trước đây, chúng ta đã cài đặt cơ chế giao diện mã số
+học phức với hai gói biểu diễn như một tập hợp các thủ tục mỗi thủ tục thực
+hiện phân phối rõ ràng theo kiểu. Ở đây chúng ta sẽ cài đặt giao diện như một
+thủ tục đơn dò tra bảng theo tổ hợp tên phép toán và kiểu đối số để tìm thủ
+tục đúng cần áp dụng, rồi áp dụng nó cho nội dung của đối số. Nếu chúng ta làm
+điều này, thì để thêm gói biểu diễn mới vào hệ thống, chúng ta không cần thay
+đổi bất kỳ thủ tục hiện có nào; chúng ta chỉ cần thêm các mục mới vào bảng.
+
+Để cài đặt kế hoạch này, giả sử chúng ta có hai thủ tục, @code{put} và
+@code{get}, để thao tác bảng phép toán-và-kiểu:
+
+@itemize @bullet
+
+@item
+@code{(put ⟨@var{op}⟩ ⟨@var{type}⟩ ⟨@var{item}⟩)} cài đặt
+@code{⟨}@var{item}@code{⟩} vào bảng, được chỉ mục bởi @code{⟨}@var{op}@code{⟩}
+và @code{⟨}@var{type}@code{⟩}.
+
+@item
+@code{(get ⟨@var{op}⟩ ⟨@var{type}⟩)} dò tra mục @code{⟨}@var{op}@code{⟩},
+@code{⟨}@var{type}@code{⟩} trong bảng và trả về phần tử tìm thấy. Nếu không
+tìm thấy phần tử nào, @code{get} trả về false.
+
+@end itemize
+
+@noindent
+Hiện tại, chúng ta có thể giả sử rằng @code{put} và @code{get} được đưa vào
+ngôn ngữ của chúng ta. Trong @ref{Chapter 3} (@ref{3.3.3}) chúng ta sẽ thấy
+cách cài đặt các phép toán này và các phép toán khác để thao tác bảng.
+
+Đây là cách lập trình hướng dữ liệu có thể được sử dụng trong hệ thống số
+phức. Ben, người đã phát triển biểu diễn trực giao, cài đặt mã của anh ấy
+giống như anh ấy đã làm ban đầu. Anh ấy định nghĩa một tập hợp các thủ tục,
+hay một @newterm{gói}, và giao diện chúng với phần còn lại của hệ thống bằng
+cách thêm các mục vào bảng cho hệ thống biết cách hoạt động trên số trực giao.
+Điều này được thực hiện bằng cách gọi thủ tục sau:
+
+@lisp
+(define (install-rectangular-package)
+  @r{;; các thủ tục nội bộ}
+  (define (real-part z) (car z))
+  (define (imag-part z) (cdr z))
+  (define (make-from-real-imag x y)
+    (cons x y))
+  (define (magnitude z)
+    (sqrt (+ (square (real-part z))
+             (square (imag-part z)))))
+  (define (angle z)
+    (atan (imag-part z) (real-part z)))
+  (define (make-from-mag-ang r a)
+    (cons (* r (cos a)) (* r (sin a))))
+  @r{;; giao diện với phần còn lại của hệ thống}
+  (define (tag x)
+    (attach-tag 'rectangular x))
+  (put 'real-part '(rectangular) real-part)
+  (put 'imag-part '(rectangular) imag-part)
+  (put 'magnitude '(rectangular) magnitude)
+  (put 'angle '(rectangular) angle)
+  (put 'make-from-real-imag 'rectangular
+       (lambda (x y)
+         (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'rectangular
+       (lambda (r a)
+         (tag (make-from-mag-ang r a))))
+  'done)
+@end lisp
+
+@noindent
+Lưu ý rằng các thủ tục nội bộ ở đây là các thủ tục từ @ref{2.4.1} mà Ben đã
+viết khi làm việc riêng lẻ. Không cần thay đổi để giao diện chúng với phần còn
+lại của hệ thống. Hơn nữa, vì các định nghĩa thủ tục này là nội bộ của thủ tục
+cài đặt, Ben không cần lo lắng về xung đột tên với các thủ tục khác ngoài gói
+trực giao. Để giao diện chúng với phần còn lại của hệ thống, Ben cài đặt thủ
+tục @code{real-part} của anh ấy dưới tên phép toán @code{real-part} và kiểu
+@code{(rectangular)}, và tương tự cho các bộ chọn khác.@footnote{Chúng ta dùng
+danh sách @code{(rectangular)} thay vì ký hiệu @code{rectangular} để cho phép
+khả năng có các phép toán với nhiều đối số, không phải tất cả đều cùng kiểu.}
+Giao diện cũng định nghĩa các bộ tạo được sử dụng bởi hệ thống bên ngoài.@footnote{Kiểu mà các bộ tạo được cài đặt không cần phải là danh sách vì bộ tạo
+luôn được dùng để tạo đối tượng thuộc một kiểu cụ thể.} Chúng giống hệt với
+các bộ tạo được định nghĩa nội bộ của Ben, ngoại trừ chúng gắn thẻ.
+
+Gói cực của Alyssa là tương tự:
+
+@lisp
+(define (install-polar-package)
+  @r{;; các thủ tục nội bộ}
+  (define (magnitude z) (car z))
+  (define (angle z) (cdr z))
+  (define (make-from-mag-ang r a) (cons r a))
+  (define (real-part z)
+    (* (magnitude z) (cos (angle z))))
+  (define (imag-part z)
+    (* (magnitude z) (sin (angle z))))
+  (define (make-from-real-imag x y)
+    (cons (sqrt (+ (square x) (square y)))
+          (atan y x)))
+  @r{;; giao diện với phần còn lại của hệ thống}
+  (define (tag x) (attach-tag 'polar x))
+  (put 'real-part '(polar) real-part)
+  (put 'imag-part '(polar) imag-part)
+  (put 'magnitude '(polar) magnitude)
+  (put 'angle '(polar) angle)
+  (put 'make-from-real-imag 'polar
+       (lambda (x y)
+         (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'polar
+       (lambda (r a)
+         (tag (make-from-mag-ang r a))))
+  'done)
+@end lisp
+
+@noindent
+Mặc dù cả Ben và Alyssa vẫn dùng các thủ tục ban đầu của họ được định nghĩa
+với cùng tên như nhau (ví dụ, @code{real-part}), các định nghĩa này bây giờ
+là nội bộ của các thủ tục khác nhau (xem @ref{1.1.8}), vì vậy không có xung
+đột tên.
+
+Các bộ chọn số học phức truy cập bảng thông qua thủ tục ``phép toán'' chung
+được gọi là @code{apply-generic}, áp dụng phép toán tổng quát cho một số đối
+số. @code{Apply-generic} tra trong bảng theo tên phép toán và kiểu của các đối
+số và áp dụng thủ tục kết quả nếu có một:@footnote{@code{Apply-generic} sử dụng
+ký hiệu đuôi chấm được mô tả trong @ref{Exercise 2.20}, vì các phép toán tổng
+quát khác nhau có thể nhận số lượng đối số khác nhau. Trong @code{apply-generic},
+@code{op} có giá trị là đối số đầu tiên cho @code{apply-generic} và @code{args}
+có giá trị là danh sách các đối số còn lại.
+
+@code{Apply-generic} cũng sử dụng thủ tục nguyên thủy @code{apply}, nhận hai
+đối số, một thủ tục và một danh sách. @code{Apply} áp dụng thủ tục, sử dụng
+các phần tử trong danh sách làm đối số. Ví dụ,
+
+@lisp
+(apply + (list 1 2 3 4))
+@end lisp
+
+@noindent
+trả về 10.}
+
+@lisp
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tag args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (error
+            "No method for these types:
+             APPLY-GENERIC"
+            (list op type-tags))))))
+@end lisp
+
+@noindent
+Sử dụng @code{apply-generic}, chúng ta có thể định nghĩa các bộ chọn tổng quát
+như sau:
+
+@lisp
+(define (real-part z)
+  (apply-generic 'real-part z))
+(define (imag-part z)
+  (apply-generic 'imag-part z))
+(define (magnitude z)
+  (apply-generic 'magnitude z))
+(define (angle z)
+  (apply-generic 'angle z))
+@end lisp
+
+@noindent
+Lưu ý rằng chúng không thay đổi gì cả nếu một biểu diễn mới được thêm vào hệ
+thống.
+
+Chúng ta cũng có thể trích xuất từ bảng các bộ tạo được sử dụng bởi các chương
+trình bên ngoài các gói để tạo số phức từ phần thực và phần ảo và từ độ lớn và
+góc. Như trong @ref{2.4.2}, chúng ta xây dựng số trực giao bất cứ khi nào chúng
+ta có phần thực và phần ảo, và số cực bất cứ khi nào chúng ta có độ lớn và góc:
+
+@lisp
+(define (make-from-real-imag x y)
+  ((get 'make-from-real-imag
+        'rectangular)
+   x y))
+
+(define (make-from-mag-ang r a)
+  ((get 'make-from-mag-ang
+        'polar)
+   r a))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 2.73}Bài tập 2.73:} @ref{2.3.2} đã mô tả một chương
+trình thực hiện đạo hàm ký hiệu:
+
+@lisp
+(define (deriv exp var)
+  (cond ((number? exp) 0)
+        ((variable? exp)
+         (if (same-variable? exp var) 1 0))
+        ((sum? exp)
+         (make-sum (deriv (addend exp) var)
+                   (deriv (augend exp) var)))
+        ((product? exp)
+         (make-sum
+           (make-product
+            (multiplier exp)
+            (deriv (multiplicand exp) var))
+           (make-product
+            (deriv (multiplier exp) var)
+            (multiplicand exp))))
+        ⟨@var{có thể thêm nhiều quy tắc hơn ở đây}⟩
+        (else (error "unknown expression type:
+                      DERIV" exp))))
+@end lisp
+
+Chúng ta có thể coi chương trình này như thực hiện phân phối theo kiểu của biểu
+thức cần được vi phân. Trong tình huống này, ``thẻ kiểu'' của dữ liệu là ký hiệu
+toán tử đại số (chẳng hạn như @code{+}) và phép toán đang được thực hiện là
+@code{deriv}. Chúng ta có thể biến đổi chương trình này thành phong cách hướng
+dữ liệu bằng cách viết lại thủ tục đạo hàm cơ bản như
+
+@lisp
+(define (deriv exp var)
+   (cond ((number? exp) 0)
+         ((variable? exp)
+           (if (same-variable? exp var)
+               1
+               0))
+         (else ((get 'deriv (operator exp))
+                (operands exp)
+                var))))
+
+(define (operator exp) (car exp))
+(define (operands exp) (cdr exp))
+@end lisp
+
+@enumerate a
+
+@item
+Giải thích những gì đã được thực hiện ở trên. Tại sao chúng ta không thể đồng
+hóa các vị từ @code{number?} và @code{variable?} vào phân phối hướng dữ liệu?
+
+@item
+Viết các thủ tục cho đạo hàm của các tổng và tích, và mã phụ trợ cần thiết để
+cài đặt chúng vào bảng được sử dụng bởi chương trình ở trên.
+
+@item
+Chọn bất kỳ quy tắc vi phân bổ sung nào bạn thích, chẳng hạn như quy tắc cho
+lũy thừa (@ref{Exercise 2.56}), và cài đặt nó vào hệ thống hướng dữ liệu này.
+
+@item
+Trong bộ thao tác đại số đơn giản này, kiểu của biểu thức là toán tử đại số
+liên kết nó lại. Tuy nhiên, giả sử chúng ta lập chỉ mục các thủ tục theo cách
+ngược lại, để dòng phân phối trong @code{deriv} trông như
+
+@lisp
+((get (operator exp) 'deriv)
+ (operands exp) var)
+@end lisp
+
+@noindent
+Những thay đổi tương ứng nào với hệ thống đạo hàm là cần thiết?
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.74}Bài tập 2.74:} Insatiable Enterprises, Inc., là
+một tập đoàn phi tập trung cao bao gồm nhiều bộ phận độc lập nằm rải rác trên
+toàn thế giới. Các cơ sở máy tính của công ty vừa được kết nối với nhau bằng
+một sơ đồ giao diện mạng thông minh làm cho toàn bộ mạng trông với bất kỳ người
+dùng nào như một máy tính duy nhất. Chủ tịch của Insatiable, trong lần đầu tiên
+cố gắng khai thác khả năng của mạng để trích xuất thông tin quản lý từ các tệp
+bộ phận, thất vọng khi phát hiện ra rằng, mặc dù tất cả các tệp bộ phận đã được
+cài đặt như các cấu trúc dữ liệu trong Scheme, cấu trúc dữ liệu cụ thể được sử
+dụng lại khác nhau từ bộ phận này sang bộ phận khác. Một cuộc họp của các giám
+đốc bộ phận được triệu tập gấp để tìm kiếm chiến lược tích hợp các tệp thỏa
+mãn nhu cầu của trụ sở trong khi bảo tồn quyền tự chủ hiện có của các bộ phận.
+
+Hãy chỉ ra cách chiến lược như vậy có thể được cài đặt với lập trình hướng dữ
+liệu. Ví dụ, giả sử rằng hồ sơ nhân sự của mỗi bộ phận bao gồm một tệp duy nhất,
+chứa một tập hợp các bản ghi được khóa theo tên nhân viên. Cấu trúc của tập hợp
+thay đổi từ bộ phận này sang bộ phận khác. Hơn nữa, hồ sơ của mỗi nhân viên tự
+nó là một tập hợp (được cấu trúc khác nhau từ bộ phận này sang bộ phận khác)
+chứa thông tin được khóa theo các định danh như @code{address} và @code{salary}.
+Đặc biệt:
+
+@enumerate a
+
+@item
+Cài đặt cho trụ sở thủ tục @code{get-record} lấy hồ sơ của một nhân viên cụ
+thể từ tệp nhân sự cụ thể. Thủ tục phải áp dụng được cho tệp của bất kỳ bộ
+phận nào. Giải thích cách tệp của các bộ phận riêng lẻ nên được cấu trúc. Đặc
+biệt, thông tin kiểu nào phải được cung cấp?
+
+@item
+Cài đặt cho trụ sở thủ tục @code{get-salary} trả về thông tin lương từ hồ sơ
+của nhân viên cho trước từ bất kỳ tệp nhân sự bộ phận nào. Hồ sơ nên được cấu
+trúc như thế nào để phép toán này hoạt động?
+
+@item
+Cài đặt cho trụ sở thủ tục @code{find-employee-record}. Thủ tục này nên tìm
+kiếm tất cả các tệp bộ phận để tìm hồ sơ của nhân viên cho trước và trả về
+hồ sơ. Giả sử rằng thủ tục này nhận làm đối số tên nhân viên và danh sách tất
+cả các tệp bộ phận.
+
+@item
+Khi Insatiable tiếp quản một công ty mới, những thay đổi nào phải được thực
+hiện để kết hợp thông tin nhân sự mới vào hệ thống trung tâm?
+
+@end enumerate
+@end quotation
+
+@subsubheading Truyền thông điệp
+
+Ý tưởng then chốt của lập trình hướng dữ liệu là xử lý các phép toán tổng quát
+trong các chương trình bằng cách xử lý rõ ràng các bảng phép toán-và-kiểu, như
+bảng trong @ref{Figure 2.22}. Phong cách lập trình chúng ta đã sử dụng trong
+@ref{2.4.2} tổ chức việc phân phối theo kiểu bắt buộc bằng cách để mỗi phép
+toán tự xử lý việc phân phối của nó. Thực chất, điều này phân rã bảng phép
+toán-và-kiểu thành các hàng, với mỗi thủ tục phép toán tổng quát biểu diễn
+một hàng của bảng.
+
+Một chiến lược cài đặt thay thế là phân rã bảng thành các cột và, thay vì sử
+dụng ``các phép toán thông minh'' phân phối theo kiểu dữ liệu, làm việc với
+``các đối tượng dữ liệu thông minh'' phân phối theo tên phép toán. Chúng ta có
+thể làm điều này bằng cách sắp xếp để đối tượng dữ liệu, chẳng hạn như số trực
+giao, được biểu diễn như thủ tục nhận làm đầu vào tên phép toán bắt buộc và
+thực hiện phép toán được chỉ ra. Trong kỷ luật như vậy, @code{make-from-real-imag}
+có thể được viết như
+
+@lisp
+(define (make-from-real-imag x y)
+  (define (dispatch op)
+    (cond ((eq? op 'real-part) x)
+          ((eq? op 'imag-part) y)
+          ((eq? op 'magnitude)
+           (sqrt (+ (square x) (square y))))
+          ((eq? op 'angle) (atan y x))
+          (else
+           (error "Unknown op:
+            MAKE-FROM-REAL-IMAG" op))))
+  dispatch)
+@end lisp
+
+@noindent
+Thủ tục @code{apply-generic} tương ứng, áp dụng phép toán tổng quát cho một
+đối số, bây giờ đơn giản chỉ đưa tên phép toán cho đối tượng dữ liệu và để
+đối tượng tự thực hiện công việc:@footnote{Một hạn chế của tổ chức này là nó
+chỉ cho phép các thủ tục tổng quát có một đối số.}
+
+@lisp
+(define (apply-generic op arg) (arg op))
+@end lisp
+
+@noindent
+Lưu ý rằng giá trị trả về bởi @code{make-from-real-imag} là một thủ tục---thủ
+tục @code{dispatch} nội bộ. Đây là thủ tục được gọi khi @code{apply-generic}
+yêu cầu thực hiện phép toán.
+
+Phong cách lập trình này được gọi là @newterm{truyền thông điệp}. Tên bắt nguồn
+từ hình ảnh rằng đối tượng dữ liệu là một thực thể nhận tên phép toán được yêu
+cầu như một ``thông điệp.'' Chúng ta đã thấy một ví dụ về truyền thông điệp
+trong @ref{2.1.3}, nơi chúng ta đã thấy cách @code{cons}, @code{car}, và
+@code{cdr} có thể được định nghĩa không có đối tượng dữ liệu nào mà chỉ có các
+thủ tục. Ở đây chúng ta thấy rằng truyền thông điệp không phải là thủ thuật
+toán học mà là kỹ thuật hữu ích để tổ chức các hệ thống với các phép toán tổng
+quát. Trong phần còn lại của chương này, chúng ta sẽ tiếp tục sử dụng lập trình
+hướng dữ liệu, thay vì truyền thông điệp, để thảo luận về các phép toán số học
+tổng quát. Trong @ref{Chapter 3} chúng ta sẽ quay lại truyền thông điệp và sẽ
+thấy rằng nó có thể là công cụ mạnh mẽ để cấu trúc các chương trình mô phỏng.
+
+@quotation
+@strong{@anchor{Exercise 2.75}Bài tập 2.75:} Cài đặt bộ tạo
+@code{make-from-mag-ang} theo phong cách truyền thông điệp. Thủ tục này nên
+tương tự như thủ tục @code{make-from-real-imag} được nêu ở trên.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.76}Bài tập 2.76:} Khi một hệ thống lớn với các
+phép toán tổng quát phát triển, có thể cần các kiểu đối tượng dữ liệu mới hoặc
+các phép toán mới. Với mỗi trong ba chiến lược---các phép toán tổng quát với
+phân phối rõ ràng, phong cách hướng dữ liệu, và phong cách truyền thông điệp---hãy
+mô tả những thay đổi phải được thực hiện với hệ thống để thêm các kiểu mới hoặc
+các phép toán mới. Tổ chức nào sẽ thích hợp nhất cho hệ thống trong đó các kiểu
+mới thường phải được thêm vào? Tổ chức nào sẽ thích hợp nhất cho hệ thống trong
+đó các phép toán mới thường phải được thêm vào?
+@end quotation
