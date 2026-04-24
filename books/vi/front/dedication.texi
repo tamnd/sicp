@@ -1,0 +1,25 @@
+@node    Dedication, Foreword, UTF, Top
+@unnumbered Lời Đề Tặng
+
+Cuốn sách này được dành tặng, với lòng kính trọng và ngưỡng mộ, cho tinh thần đang
+hiện hữu trong máy tính.
+
+@quotation
+``Tôi nghĩ điều vô cùng quan trọng là chúng ta trong ngành khoa học máy tính phải
+giữ cho việc lập trình luôn vui vẻ. Khi mới bắt đầu, nó thật sự rất thú vị. Tất
+nhiên, đôi khi khách hàng trả tiền cũng gặp phải rắc rối, và dần dần chúng ta bắt
+đầu xem trọng những phàn nàn của họ. Chúng ta bắt đầu cảm thấy như thể mình thực
+sự phải chịu trách nhiệm về việc sử dụng các máy móc này một cách thành công, không
+có lỗi, hoàn hảo. Tôi không nghĩ vậy. Tôi nghĩ chúng ta có trách nhiệm mở rộng
+giới hạn của chúng, đưa chúng theo những hướng mới, và giữ cho ngôi nhà luôn vui
+vẻ. Tôi hy vọng ngành khoa học máy tính không bao giờ đánh mất cảm giác vui vẻ. Trên
+hết, tôi hy vọng chúng ta không trở thành những nhà truyền giáo. Đừng cảm thấy như
+mình là người bán Kinh Thánh. Thế giới đã có quá nhiều người như vậy rồi. Những gì
+bạn biết về máy tính, người khác sẽ học được. Đừng cảm thấy rằng chìa khóa thành
+công trong lập trình chỉ nằm trong tay bạn. Điều trong tay bạn, tôi nghĩ và hy
+vọng, là trí tuệ: khả năng nhìn nhận cỗ máy như nhiều hơn những gì bạn thấy lúc
+ban đầu, và bạn có thể làm cho nó trở nên vĩ đại hơn.''
+
+@noindent
+---Alan J. Perlis (1 tháng 4 năm 1922 -- 7 tháng 2 năm 1990)
+@end quotation

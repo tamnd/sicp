@@ -1,0 +1,157 @@
+@node    Foreword, Preface, Dedication, Top
+@unnumbered Lời Tựa
+
+Các nhà giáo dục, tướng lĩnh, chuyên gia dinh dưỡng, nhà tâm lý học, và cha mẹ đều
+lập trình. Quân đội, học sinh, và một số xã hội được lập trình. Việc tấn công các
+bài toán lớn đòi hỏi một loạt các chương trình, hầu hết trong số đó ra đời dọc đường.
+Các chương trình này đầy ắp những vấn đề có vẻ đặc thù với bài toán đang xét. Để
+thấu hiểu lập trình như một hoạt động trí tuệ đích thực, bạn phải chuyển sang lập
+trình máy tính; bạn phải đọc và viết các chương trình máy tính---thật nhiều trong số
+đó. Chương trình nói về điều gì hay phục vụ ứng dụng nào không quan trọng lắm. Điều
+quan trọng là chúng hoạt động tốt như thế nào và chúng kết hợp với các chương trình
+khác ra sao trong việc tạo ra những chương trình lớn hơn. Người lập trình phải tìm
+kiếm cả sự hoàn hảo của từng phần lẫn sự đầy đủ của tổng thể. Trong cuốn sách này,
+việc sử dụng từ ``chương trình'' tập trung vào việc tạo ra, thực thi và nghiên cứu
+các chương trình được viết bằng một phương ngữ của Lisp để chạy trên máy tính số.
+Dùng Lisp, chúng ta không hạn chế những gì có thể lập trình, mà chỉ hạn chế ký hiệu
+dùng để mô tả chương trình.
+
+Sự giao tiếp của chúng ta với chủ đề của cuốn sách này liên quan đến ba tiêu điểm
+hiện tượng: tâm trí con người, tập hợp các chương trình máy tính, và máy tính. Mọi
+chương trình máy tính đều là một mô hình, được hình thành trong tâm trí, của một quá
+trình thực hay tinh thần. Những quá trình này, nảy sinh từ kinh nghiệm và tư duy của
+con người, là vô số về số lượng, phức tạp về chi tiết, và ở bất kỳ thời điểm nào cũng
+chỉ được hiểu một phần. Chúng hiếm khi được mô hình hóa đến mức làm chúng ta hoàn
+toàn thỏa mãn bởi các chương trình máy tính. Do đó, dù các chương trình của chúng ta
+được tạo thủ công một cách cẩn thận---những tập hợp ký hiệu rời rạc, những bức khảm
+ghép từ các hàm đan xen---chúng vẫn liên tục tiến hóa: chúng ta thay đổi chúng khi
+nhận thức về mô hình ngày càng sâu sắc hơn, mở rộng hơn, tổng quát hơn cho đến khi
+mô hình cuối cùng đạt đến một vị trí ổn định tạm thời bên trong một mô hình khác mà
+chúng ta lại tiếp tục vật lộn. Nguồn cảm hứng phấn khích gắn liền với lập trình máy
+tính chính là sự triển khai không ngừng trong tâm trí và trên máy tính của các cơ
+chế được biểu đạt dưới dạng chương trình và sự bùng nổ nhận thức mà chúng tạo ra.
+Nếu nghệ thuật diễn giải những giấc mơ của chúng ta, thì máy tính thực thi chúng
+dưới dạng chương trình!
+
+Với tất cả sức mạnh của mình, máy tính vẫn là một ông chủ khắt khe. Các chương trình
+của nó phải chính xác, và những gì chúng ta muốn nói phải được nói một cách chính xác
+đến từng chi tiết. Như trong mọi hoạt động biểu tượng khác, chúng ta tin vào sự đúng
+đắn của chương trình thông qua lập luận. Bản thân Lisp có thể được gán một ngữ nghĩa
+(một mô hình khác, nhân tiện), và nếu chức năng của một chương trình có thể được đặc
+tả, chẳng hạn trong phép tính vị từ, thì các phương pháp chứng minh của logic có
+thể được dùng để đưa ra một lập luận về tính đúng đắn được chấp nhận. Thật không may,
+khi các chương trình ngày càng lớn và phức tạp, như chúng hầu như luôn vậy, tính đầy
+đủ, nhất quán và đúng đắn của chính các đặc tả cũng trở nên đáng ngờ, khiến cho các
+lập luận hình thức đầy đủ về tính đúng đắn hiếm khi đi kèm với các chương trình lớn.
+Vì các chương trình lớn lớn lên từ các chương trình nhỏ, điều then chốt là chúng ta
+phát triển được một kho vũ khí gồm các cấu trúc chương trình tiêu chuẩn mà chúng ta
+đã tin chắc về tính đúng đắn---chúng ta gọi chúng là thành ngữ---và học cách kết
+hợp chúng thành các cấu trúc lớn hơn bằng các kỹ thuật tổ chức đã được chứng minh.
+Các kỹ thuật này được bàn luận kỹ lưỡng trong cuốn sách này, và sự hiểu biết về
+chúng là thiết yếu để tham gia vào sự nghiệp Prometheus được gọi là lập trình. Hơn
+bất cứ điều gì khác, việc khám phá và nắm vững các kỹ thuật tổ chức mạnh mẽ thúc đẩy
+khả năng của chúng ta trong việc tạo ra những chương trình lớn, có ý nghĩa. Ngược lại,
+vì viết những chương trình lớn đòi hỏi rất nhiều công sức, chúng ta được khích lệ
+tìm ra những phương pháp mới để giảm khối lượng hàm và chi tiết cần đưa vào các
+chương trình lớn.
+
+Không giống như chương trình, máy tính phải tuân theo các quy luật vật lý. Nếu chúng
+muốn thực hiện nhanh---vài nano giây mỗi lần chuyển trạng thái---chúng chỉ có thể
+truyền điện tử đi những khoảng cách nhỏ (tối đa @math{{1 {1\over2}}} feet). Nhiệt
+lượng tỏa ra bởi vô số thiết bị tập trung trong không gian nhỏ phải được tản đi. Một
+nghệ thuật kỹ thuật tinh tế đã được phát triển để cân bằng giữa sự đa chức năng và
+mật độ thiết bị. Dù sao, phần cứng luôn hoạt động ở mức nguyên thủy hơn so với mức
+mà chúng ta muốn lập trình. Các quá trình biến đổi các chương trình Lisp của chúng ta
+thành các chương trình ``máy'' bản thân chúng là những mô hình trừu tượng mà chúng
+ta lập trình. Việc nghiên cứu và tạo ra chúng đem lại rất nhiều hiểu biết về các
+chương trình tổ chức gắn liền với việc lập trình các mô hình tùy ý. Dĩ nhiên bản
+thân máy tính cũng có thể được mô hình hóa như vậy. Hãy suy nghĩ về điều này: hành
+vi của phần tử chuyển mạch vật lý nhỏ nhất được mô hình hóa bởi cơ học lượng tử,
+được mô tả bằng các phương trình vi phân mà hành vi chi tiết của chúng được nắm bắt
+bởi các xấp xỉ số được biểu diễn trong các chương trình máy tính chạy trên các máy
+tính được cấu thành từ @dots{}!
+
+Không chỉ đơn thuần là sự tiện lợi chiến thuật khi xác định riêng biệt ba tiêu điểm.
+Dù người ta nói rằng tất cả đều nằm trong đầu, sự phân tách logic này tạo ra sự tăng
+tốc trong giao tiếp ký hiệu giữa ba tiêu điểm, mà sự phong phú, sinh động và tiềm
+năng của nó chỉ bị vượt qua trong trải nghiệm của con người bởi sự tiến hóa của
+sự sống. Tốt nhất là mối quan hệ giữa các tiêu điểm luôn trong trạng thái ổn định
+tạm thời. Các máy tính không bao giờ đủ lớn hay đủ nhanh. Mỗi bước đột phá trong
+công nghệ phần cứng dẫn đến các dự án lập trình hoành tráng hơn, các nguyên tắc
+tổ chức mới và sự làm giàu của các mô hình trừu tượng. Mỗi người đọc nên định kỳ
+tự hỏi ``Hướng đến điều gì, hướng đến điều gì?''---nhưng đừng hỏi quá thường xuyên
+kẻo bạn bỏ lỡ niềm vui của việc lập trình vì cái táo bón của triết lý đắng cay.
+
+Trong số các chương trình chúng ta viết, một số (nhưng không bao giờ là đủ) thực
+hiện một chức năng toán học chính xác như sắp xếp hay tìm giá trị lớn nhất của một
+dãy số, xác định tính nguyên thủy, hay tìm căn bậc hai. Chúng ta gọi những chương
+trình như vậy là thuật toán, và rất nhiều điều đã biết về hành vi tối ưu của chúng,
+đặc biệt liên quan đến hai tham số quan trọng là thời gian thực thi và yêu cầu lưu
+trữ dữ liệu. Người lập trình nên có được những thuật toán tốt và thành ngữ. Dù một
+số chương trình không thể có đặc tả chính xác, người lập trình vẫn có trách nhiệm
+ước lượng và luôn cố gắng cải thiện hiệu năng của chúng.
+
+Lisp là một ngôn ngữ lâu bền, đã được sử dụng khoảng một phần tư thế kỷ. Trong số
+các ngôn ngữ lập trình đang hoạt động, chỉ có Fortran có tuổi thọ dài hơn. Cả hai
+ngôn ngữ đều hỗ trợ nhu cầu lập trình của những lĩnh vực ứng dụng quan trọng,
+Fortran cho tính toán khoa học và kỹ thuật còn Lisp cho trí tuệ nhân tạo. Hai lĩnh
+vực này tiếp tục quan trọng, và các lập trình viên của chúng gắn bó đến mức Lisp
+và Fortran có thể vẫn được sử dụng tích cực trong ít nhất một phần tư thế kỷ nữa.
+
+Lisp thay đổi. Phương ngữ Scheme được dùng trong văn bản này đã tiến hóa từ Lisp
+gốc và khác với Lisp gốc ở một số điểm quan trọng, bao gồm phạm vi tĩnh cho việc
+ràng buộc biến và cho phép các hàm trả về hàm như giá trị. Trong cấu trúc ngữ nghĩa,
+Scheme gần gũi với Algol 60 không kém Lisp thời kỳ đầu. Algol 60, không bao giờ
+còn là ngôn ngữ hoạt động nữa, vẫn sống trong gen của Scheme và Pascal. Sẽ khó tìm
+được hai ngôn ngữ là đồng tiền giao tiếp của hai nền văn hóa khác biệt hơn những
+nền văn hóa tụ họp xung quanh hai ngôn ngữ này. Pascal dùng để xây dựng các kim
+tự tháp---những cấu trúc đồ sộ, ngoạn mục, tĩnh tại được xây dựng bởi các đạo quân
+đẩy những khối đá nặng vào đúng chỗ. Lisp dùng để xây dựng sinh vật---những cấu
+trúc đồ sộ, ngoạn mục, năng động được xây dựng bởi các nhóm nhỏ lắp ghép vô số
+sinh vật đơn giản đang biến đổi vào đúng chỗ. Các nguyên tắc tổ chức được sử dụng
+là giống nhau trong cả hai trường hợp, ngoại trừ một điểm khác biệt vô cùng quan
+trọng: Chức năng có thể xuất khẩu tùy ý được trao cho từng lập trình viên Lisp riêng
+lẻ lớn hơn một bậc độ lớn so với những gì có thể tìm thấy trong các dự án Pascal.
+Các chương trình Lisp làm phình to thư viện bằng các hàm mà tính hữu dụng vượt qua
+ứng dụng đã tạo ra chúng. Danh sách, cấu trúc dữ liệu bản địa của Lisp, chủ yếu
+chịu trách nhiệm cho sự tăng trưởng về tính hữu dụng đó. Cấu trúc đơn giản và khả
+năng áp dụng tự nhiên của danh sách được phản ánh trong các hàm có tính phi đặc
+thù đáng kinh ngạc. Trong Pascal, vô vàn cấu trúc dữ liệu có thể khai báo được
+tạo ra sự chuyên môn hóa trong các hàm, điều này cản trở và trừng phạt sự hợp tác
+tình cờ. Tốt hơn là có 100 hàm hoạt động trên một cấu trúc dữ liệu hơn là có 10
+hàm hoạt động trên 10 cấu trúc dữ liệu. Kết quả là kim tự tháp phải đứng vững trong
+thiên niên kỷ; sinh vật phải tiến hóa hoặc diệt vong.
+
+Để minh họa sự khác biệt này, hãy so sánh cách xử lý tài liệu và bài tập trong
+cuốn sách này với bất kỳ cuốn sách khóa học đầu tiên nào dùng Pascal. Đừng ảo tưởng
+rằng đây là một văn bản chỉ có thể tiêu hóa được ở @abbr{MIT}, đặc thù cho dòng
+người được tìm thấy ở đó. Đây chính xác là những gì một cuốn sách nghiêm túc về lập
+trình Lisp phải có, bất kể học sinh là ai hay nó được dùng ở đâu.
+
+Lưu ý rằng đây là một văn bản về lập trình, khác với hầu hết các cuốn sách Lisp,
+vốn được dùng như sự chuẩn bị cho công việc trong trí tuệ nhân tạo. Dù sao, các
+mối quan tâm lập trình then chốt của kỹ thuật phần mềm và trí tuệ nhân tạo có xu
+hướng hội tụ khi các hệ thống đang nghiên cứu ngày càng lớn hơn. Điều này giải thích
+tại sao có sự quan tâm ngày càng tăng đến Lisp bên ngoài lĩnh vực trí tuệ nhân tạo.
+
+Như có thể mong đợi từ các mục tiêu của mình, nghiên cứu trí tuệ nhân tạo tạo ra
+nhiều vấn đề lập trình quan trọng. Trong các nền văn hóa lập trình khác, lượng vấn
+đề này sinh ra các ngôn ngữ mới. Thực vậy, trong bất kỳ nhiệm vụ lập trình rất lớn
+nào, một nguyên tắc tổ chức hữu ích là kiểm soát và cô lập lưu lượng trong các mô
+đun nhiệm vụ thông qua việc phát minh ngôn ngữ. Các ngôn ngữ này có xu hướng trở
+nên ít nguyên thủy hơn khi người ta tiếp cận các ranh giới của hệ thống nơi chúng
+ta con người tương tác nhiều nhất. Kết quả là những hệ thống như vậy chứa các hàm
+xử lý ngôn ngữ phức tạp được nhân rộng nhiều lần. Lisp có cú pháp và ngữ nghĩa đơn
+giản đến mức phân tích cú pháp có thể được xử lý như một nhiệm vụ cơ bản. Do đó,
+công nghệ phân tích cú pháp hầu như không đóng vai trò gì trong các chương trình
+Lisp, và việc xây dựng các bộ xử lý ngôn ngữ hiếm khi là trở ngại cho tốc độ tăng
+trưởng và thay đổi của các hệ thống Lisp lớn. Cuối cùng, chính sự đơn giản trong
+cú pháp và ngữ nghĩa này chịu trách nhiệm cho gánh nặng và tự do mà tất cả các
+lập trình viên Lisp gánh chịu. Không có chương trình Lisp nào có kích thước vượt
+quá vài dòng mà có thể được viết mà không bão hòa với các hàm tùy ý. Hãy phát minh
+và lắp ghép; hãy bực bội và phát minh lại! Chúng ta cùng nâng ly chào người lập
+trình viên Lisp viết suy nghĩ của mình trong những tổ ngoặc đơn.
+
+@noindent
+Alan J. Perlis@*
+New Haven, Connecticut

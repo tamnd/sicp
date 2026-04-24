@@ -1,0 +1,71 @@
+@node    UTF, Dedication, Top, Top
+@unnumbered Định dạng Texinfo Không chính thức
+
+Đây là cuốn sách @abbr{SICP} ấn bản thứ hai,@* từ Định dạng Texinfo Không chính thức.
+
+Có thể bạn đang đọc nó trong trình duyệt siêu văn bản Info, chẳng hạn như chế độ Info
+của Emacs. Ngoài ra bạn cũng có thể đọc phiên bản được định dạng bằng @TeX{} trên màn
+hình hoặc máy in, dù điều đó có vẻ hơi kỳ lạ. Và nếu đem in ra, thì còn tốn kém nữa.
+
+Định dạng @abbr{HTML}-và-@abbr{GIF} chính thức được phân phối tự do đã được Lytha Ayth
+chuyển đổi thủ công sang Định dạng Texinfo Không chính thức (@abbr{UTF}) phiên bản 1,
+trong một cuối tuần dài mê mải với Emacs vào tháng Tư năm 2001.
+
+@abbr{UTF} dễ tìm kiếm hơn định dạng @abbr{HTML}. Nó cũng thân thiện hơn nhiều với
+những người dùng máy tính cấu hình thấp, chẳng hạn như các máy PC dựa trên '386 được
+quyên tặng. Về lý thuyết, một máy 386 có thể chạy đồng thời Linux, Emacs và một trình
+thông dịch Scheme, nhưng hầu hết các máy 386 có lẽ không thể vừa chạy thêm Netscape
+lẫn hệ thống X Window mà không khiến các lập trình viên trẻ thiếu kinh phí phải làm
+quen sớm với khái niệm @newterm{thrashing}. @abbr{UTF} cũng có thể vừa khít trên đĩa
+mềm 1.44@abbr{MB} không nén, điều này rất tiện khi cài @abbr{UTF} trên các PC không
+có kết nối Internet hoặc @abbr{LAN}.
+
+Việc chuyển đổi sang Texinfo là một phép dịch trực tiếp, trong phạm vi có thể. Giống
+như quá trình chuyển từ @TeX{} sang @abbr{HTML}, công việc này không tránh khỏi một
+số lỗi phát sinh. Trong trường hợp của Định dạng Texinfo Không chính thức, các hình
+vẽ đã trải qua một sự hồi sinh nghiệp dư của nghệ thuật @abbr{ASCII} đã bị thất
+truyền. Ngoài ra, hoàn toàn có thể một số lỗi mơ hồ đã xuất hiện trong quá trình
+chuyển đổi các chỉ số trên (`^') và chỉ số dưới (`_') dày đặc. Việc phân biệt
+@emph{cái nào} được coi là bài tập dành cho bạn đọc. Ít nhất thì chúng tôi không đặt
+các phi hành gia dũng cảm của mình vào rủi ro bằng cách mã hóa ký hiệu
+@emph{lớn-hơn-hoặc-bằng} là @code{<u>&gt;</u>}.
+
+Nếu bạn chỉnh sửa @file{sicp.texi} để sửa lỗi hoặc cải thiện nghệ thuật @abbr{ASCII},
+hãy cập nhật dòng @code{@@set utfversion @value{utfversion}} để phản ánh thay đổi của
+bạn. Ví dụ, nếu bạn bắt đầu từ phiên bản @code{1} của Lytha và tên bạn là Bob, bạn
+có thể đặt tên các phiên bản kế tiếp của mình là @code{1.bob1}, @code{1.bob2},
+@dots{} @code{1.bob@i{n}}. Hãy cập nhật cả @code{utfversiondate}. Nếu bạn muốn phân
+phối phiên bản của mình trên Web, việc nhúng chuỗi ``sicp.texi'' ở đâu đó trong tệp
+hoặc trang Web sẽ giúp người khác dễ tìm thấy hơn qua các công cụ tìm kiếm.
+
+Định dạng Texinfo Không chính thức được tin là phù hợp với tinh thần của phiên bản
+@abbr{HTML} được phân phối tự do một cách hào phóng. Nhưng không ai biết khi nào
+đội quân luật sư của ai đó cần việc làm và sinh sự vì một điều gì đó vô hại, vì vậy
+hãy suy nghĩ kỹ trước khi dùng tên đầy đủ của bạn hoặc phân phối các định dạng Info,
+@abbr{DVI}, PostScript hay @abbr{PDF} có thể nhúng tên tài khoản hoặc tên máy của bạn.
+@i{Peath, Lytha Ayth}
+
+@b{Phụ lục:} Xem thêm các bài giảng video về @abbr{SICP} của Abelson và Sussman:
+tại @url{http://groups.csail.mit.edu/mac/classes/6.001/abelson-sussman-lectures/, @abbr{MIT CSAIL}} hoặc
+@url{http://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-001-structure-and-interpretation-of-computer-programs-spring-2005/video-lectures/, @abbr{MIT OCW}}.
+
+@b{Phụ lục thứ hai:} Phần trên là lời giới thiệu gốc về @abbr{UTF} từ năm 2001.
+Mười năm sau, @abbr{UTF} đã được biến đổi: các ký hiệu và công thức toán học được
+sắp chữ đúng cách, và các hình vẽ được thực hiện bằng đồ họa vector. Các công thức
+văn bản gốc và hình vẽ @abbr{ASCII} vẫn còn trong mã nguồn Texinfo, nhưng chỉ hiển
+thị khi biên dịch ra đầu ra Info. Vào buổi bình minh của đầu đọc sách điện tử và
+máy tính bảng, đọc @abbr{PDF} trên màn hình chính thức không còn là điều ngớ ngẩn
+nữa. Thưởng thức nhé!
+@i{A.R, tháng 5 năm 2011}
+
+@b{Phụ lục thứ ba:} Mọi thứ đi theo vòng xoáy. Chúng tôi đã khám phá sức mạnh của
+Texinfo và LaTeX trong việc sắp chữ sách @abbr{PDF}. Nay đến lúc quay lại với
+@abbr{HTML}. Lần này sẽ là @abbr{HTML5}. ``Đó có thể là nơi nguy hiểm, nhưng đó là
+hy vọng cuối cùng và tốt nhất của chúng ta cho hòa bình.'' (Sinclair,
+@cite{@w{Babylon 5}}.) Hòa bình có còn sau những cuộc chiến trình duyệt? Dù sao,
+mục tiêu của dự án là tiếp cận chất lượng đầu ra của LaTeX bằng cách sử dụng bộ công
+cụ @abbr{HTML5}. JavaScript, @abbr{CSS3}, @abbr{SVG}, MathJax, MathML và phông chữ
+web được sử dụng ở đây. Do tính chất thử nghiệm của công việc này, sẽ có một số lỗi
+và trục trặc trên một số trình duyệt. Sự hỗ trợ về kỹ thuật và nghệ thuật rất được
+hoan nghênh. Trong khi đó, hãy tận hưởng cuốn sách và khởi động một @abbr{REPL}!
+@i{A.R, tháng 1 năm 2014}
