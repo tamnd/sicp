@@ -1,0 +1,122 @@
+@node	1.1.1, 1.1.2, 1.1, 1.1
+@subsection Biểu Thức
+
+Một cách dễ dàng để bắt đầu lập trình là xem xét một số tương tác điển hình với
+trình thông dịch cho phương ngữ Scheme của Lisp. Hãy tưởng tượng bạn đang ngồi
+trước một màn hình máy tính. Bạn gõ một @newterm{biểu thức}, và trình thông dịch
+phản hồi bằng cách hiển thị kết quả @newterm{đánh giá} biểu thức đó.
+
+Một loại biểu thức nguyên thủy mà bạn có thể gõ là một con số. (Chính xác hơn, biểu
+thức bạn gõ bao gồm các chữ số biểu diễn con số đó trong cơ số 10.) Nếu bạn đưa
+cho Lisp một con số
+
+@lisp
+486
+@end lisp
+
+@noindent
+trình thông dịch sẽ phản hồi bằng cách in ra@footnote{Xuyên suốt cuốn sách này,
+khi chúng ta muốn nhấn mạnh sự phân biệt giữa đầu vào được gõ bởi người dùng và
+phản hồi được in bởi trình thông dịch, chúng ta sẽ hiển thị cái sau bằng ký tự
+nghiêng.}
+
+@lisp
+@i{486}
+@end lisp
+
+@noindent
+Các biểu thức biểu diễn số có thể được kết hợp với một biểu thức biểu diễn thủ tục
+nguyên thủy (chẳng hạn như @code{+} hay @code{*}) để tạo thành một biểu thức phức
+hợp biểu diễn việc áp dụng thủ tục đó lên các con số đó. Ví @w{dụ}:
+
+@lisp
+(+ 137 349)
+@i{486}
+
+(- 1000 334)
+@i{666}
+
+(* 5 99)
+@i{495}
+
+(/ 10 5)
+@i{2}
+
+(+ 2.7 10)
+@i{12.7}
+@end lisp
+
+@noindent
+Các biểu thức như thế này, được tạo thành bằng cách bao quanh một danh sách các biểu
+thức trong dấu ngoặc đơn để biểu thị việc áp dụng thủ tục, được gọi là
+@newterm{tổ hợp}. Phần tử ngoài cùng bên trái trong danh sách được gọi là
+@newterm{toán tử}, và các phần tử còn lại được gọi là @newterm{toán hạng}. Giá trị
+của một tổ hợp thu được bằng cách áp dụng thủ tục được chỉ định bởi toán tử lên
+các @newterm{đối số} là giá trị của các toán hạng.
+
+Quy ước đặt toán tử bên trái các toán hạng được gọi là @newterm{ký hiệu tiền tố},
+và có thể gây khó hiểu một chút lúc đầu vì nó khác đáng kể so với quy ước toán học
+thông thường. Tuy nhiên, ký hiệu tiền tố có một số ưu điểm. Một trong số đó là nó
+có thể chứa các thủ tục nhận một số lượng đối số tùy ý, như trong các ví dụ sau:
+
+@lisp
+(+ 21 35 12 7)
+@i{75}
+
+(* 25 4 12)
+@i{1200}
+@end lisp
+
+@noindent
+Không thể có sự mơ hồ nào, vì toán tử luôn là phần tử ngoài cùng bên trái và toàn
+bộ tổ hợp được giới hạn bởi dấu ngoặc đơn.
+
+Ưu điểm thứ hai của ký hiệu tiền tố là nó mở rộng theo cách đơn giản để cho phép các
+tổ hợp được @i{lồng nhau}, tức là có các tổ hợp mà các phần tử của chúng bản thân
+chúng là các tổ hợp:
+
+@lisp
+(+ (* 3 5) (- 10 6))
+@i{19}
+@end lisp
+
+@noindent
+Không có giới hạn (về nguyên tắc) về độ sâu của việc lồng nhau như vậy và về độ
+phức tạp tổng thể của các biểu thức mà trình thông dịch Lisp có thể đánh giá. Chính
+chúng ta là những người bị nhầm lẫn bởi các biểu thức vẫn còn tương đối đơn giản
+như
+
+@lisp
+(+ (* 3 (+ (* 2 4) (+ 3 5))) (+ (- 10 7) 6))
+@end lisp
+
+@noindent
+mà trình thông dịch sẽ sẵn sàng đánh giá là 57. Chúng ta có thể tự giúp mình bằng
+cách viết biểu thức đó theo dạng
+
+@lisp
+(+ (* 3
+      (+ (* 2 4)
+         (+ 3 5)))
+   (+ (- 10 7)
+      6))
+@end lisp
+
+@noindent
+theo quy ước định dạng được gọi là @newterm{in đẹp}, trong đó mỗi tổ hợp dài được
+viết sao cho các toán hạng được căn chỉnh theo chiều dọc. Các thụt lề kết quả hiển
+thị rõ ràng cấu trúc của biểu thức.@footnote{Các hệ thống Lisp thường cung cấp các
+tính năng để hỗ trợ người dùng trong việc định dạng biểu thức. Hai tính năng đặc
+biệt hữu ích là một tính năng tự động thụt lề đến vị trí in đẹp thích hợp bất cứ
+khi nào một dòng mới được bắt đầu và một tính năng làm nổi bật dấu ngoặc đơn trái
+tương ứng bất cứ khi nào dấu ngoặc đơn phải được gõ.}
+
+Ngay cả với các biểu thức phức tạp, trình thông dịch luôn hoạt động trong cùng chu
+kỳ cơ bản: Nó đọc một biểu thức từ màn hình, đánh giá biểu thức và in kết quả. Chế
+độ hoạt động này thường được diễn đạt bằng cách nói rằng trình thông dịch chạy trong
+một @newterm{vòng lặp đọc-đánh-giá-in}. Hãy chú ý đặc biệt rằng không cần phải
+hướng dẫn rõ ràng cho trình thông dịch để in giá trị của biểu thức.@footnote{Lisp
+tuân theo quy ước rằng mọi biểu thức đều có một giá trị. Quy ước này, cùng với danh
+tiếng cũ của Lisp là ngôn ngữ kém hiệu quả, là nguồn gốc của câu nói đùa của Alan
+Perlis (phỏng theo Oscar Wilde) rằng ``Các lập trình viên Lisp biết giá trị của mọi
+thứ nhưng không biết chi phí của bất cứ thứ gì.''}

@@ -1,0 +1,70 @@
+@node	1.1, 1.2, Chapter 1, Chapter 1
+@section Các Yếu Tố của Lập Trình
+
+Một ngôn ngữ lập trình mạnh mẽ không chỉ đơn thuần là phương tiện để hướng dẫn máy
+tính thực hiện các nhiệm vụ. Ngôn ngữ còn đóng vai trò như một khung để chúng ta
+tổ chức những ý tưởng về các quá trình. Do đó, khi mô tả một ngôn ngữ, chúng ta
+cần chú ý đặc biệt đến những phương tiện mà ngôn ngữ cung cấp để kết hợp các ý
+tưởng đơn giản thành những ý tưởng phức tạp hơn. Mọi ngôn ngữ mạnh mẽ đều có ba
+cơ chế để thực hiện điều này:
+
+@itemize @bullet
+
+@item @b{biểu thức nguyên thủy},
+đại diện cho những thực thể đơn giản nhất mà ngôn ngữ quan tâm,
+
+@item @b{phương tiện kết hợp},
+qua đó các phần tử phức hợp được xây dựng từ các phần tử đơn giản hơn, và
+
+@item @b{phương tiện trừu tượng hóa},
+qua đó các phần tử phức hợp có thể được đặt tên và thao tác như các đơn vị.
+
+@end itemize
+
+@noindent
+Trong lập trình, chúng ta xử lý hai loại phần tử: thủ tục và dữ liệu. (Sau này
+chúng ta sẽ khám phá ra rằng chúng thực ra không hoàn toàn khác biệt.) Một cách
+không chính thức, dữ liệu là ``những thứ'' mà chúng ta muốn thao tác, còn thủ tục
+là mô tả các quy tắc để thao tác dữ liệu. Do đó, bất kỳ ngôn ngữ lập trình mạnh
+mẽ nào cũng phải có khả năng mô tả dữ liệu nguyên thủy và thủ tục nguyên thủy, và
+phải có các phương pháp để kết hợp và trừu tượng hóa thủ tục và dữ liệu.
+
+Trong chương này, chúng ta sẽ chỉ xử lý dữ liệu số đơn giản để có thể tập trung
+vào các quy tắc xây dựng thủ tục.@footnote{Việc đặc trưng hóa các số như ``dữ liệu
+đơn giản'' là một sự lừa dối trắng trợn. Trên thực tế, việc xử lý các số là một
+trong những khía cạnh phức tạp và khó hiểu nhất của bất kỳ ngôn ngữ lập trình nào.
+Một số vấn đề điển hình liên quan là: Một số hệ thống máy tính phân biệt
+@newterm{số nguyên}, chẳng hạn như 2, với @newterm{số thực}, chẳng hạn như 2.71.
+Số thực 2.00 có khác số nguyên 2 không? Các phép toán số học dùng cho số nguyên có
+giống với các phép toán dùng cho số thực không? 6 chia cho 2 cho ra 3 hay 3.0? Số
+lớn nhất chúng ta có thể biểu diễn là bao nhiêu? Chúng ta có thể biểu diễn bao nhiêu
+chữ số thập phân độ chính xác? Phạm vi của số nguyên có giống phạm vi của số thực
+không? Trên và ngoài những câu hỏi này, tất nhiên, còn có một tập hợp các vấn đề
+liên quan đến lỗi làm tròn và cắt ngắn---toàn bộ khoa học phân tích số. Vì trọng
+tâm của chúng ta trong cuốn sách này là về thiết kế chương trình quy mô lớn hơn
+là các kỹ thuật số, chúng ta sẽ bỏ qua những vấn đề này. Các ví dụ số trong chương
+này sẽ thể hiện hành vi làm tròn thông thường mà người ta quan sát thấy khi sử dụng
+các phép toán số học bảo tồn một số lượng hạn chế các chữ số thập phân độ chính
+xác trong các phép toán không nguyên.} Trong các chương sau, chúng ta sẽ thấy rằng
+những quy tắc tương tự này cho phép chúng ta xây dựng các thủ tục để thao tác dữ
+liệu phức hợp.
+
+@menu
+* 1.1.1::            Biểu Thức
+* 1.1.2::            Đặt Tên và Môi Trường
+* 1.1.3::            Đánh Giá Các Tổ Hợp
+* 1.1.4::            Thủ Tục Phức Hợp
+* 1.1.5::            Mô Hình Thay Thế cho Áp Dụng Thủ Tục
+* 1.1.6::            Biểu Thức Điều Kiện và Vị Từ
+* 1.1.7::            Ví Dụ: Căn Bậc Hai theo Phương Pháp Newton
+* 1.1.8::            Thủ Tục như Trừu Tượng Hộp Đen
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi
+@include ss05.texi
+@include ss06.texi
+@include ss07.texi
+@include ss08.texi

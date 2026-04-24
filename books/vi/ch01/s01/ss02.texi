@@ -1,0 +1,65 @@
+@node	1.1.2, 1.1.3, 1.1.1, 1.1
+@subsection Đặt Tên và Môi Trường
+
+Một khía cạnh quan trọng của ngôn ngữ lập trình là các phương tiện nó cung cấp để
+sử dụng tên để tham chiếu đến các đối tượng tính toán. Chúng ta nói rằng tên xác
+định một @newterm{biến} mà @newterm{giá trị} của nó là đối tượng.
+
+Trong phương ngữ Scheme của Lisp, chúng ta đặt tên cho các thứ bằng @code{define}.
+Gõ
+
+@lisp
+(define size 2)
+@end lisp
+
+@noindent
+khiến trình thông dịch kết hợp giá trị 2 với tên @code{size}.@footnote{Trong cuốn
+sách này, chúng ta không hiển thị phản hồi của trình thông dịch khi đánh giá các
+định nghĩa, vì điều này phụ thuộc cao vào cài đặt.} Sau khi tên @code{size} đã được
+kết hợp với số 2, chúng ta có thể tham chiếu đến giá trị 2 bằng tên:
+
+@lisp
+size
+@i{2}
+
+(* 5 size)
+@i{10}
+@end lisp
+
+@noindent
+Sau đây là các ví dụ thêm về việc sử dụng @code{define}:
+
+@lisp
+(define pi 3.14159)
+(define radius 10)
+
+(* pi (* radius radius))
+@i{314.159}
+
+(define circumference (* 2 pi radius))
+
+circumference
+@i{62.8318}
+@end lisp
+
+@noindent
+@code{Define} là phương tiện trừu tượng hóa đơn giản nhất của ngôn ngữ chúng ta,
+vì nó cho phép chúng ta sử dụng các tên đơn giản để tham chiếu đến kết quả của các
+phép toán phức hợp, chẳng hạn như @code{circumference} (chu vi) được tính ở trên.
+Nói chung, các đối tượng tính toán có thể có cấu trúc rất phức tạp, và sẽ rất bất
+tiện nếu phải nhớ và lặp lại các chi tiết của chúng mỗi khi chúng ta muốn sử dụng
+chúng. Thực vậy, các chương trình phức tạp được xây dựng bằng cách xây dựng, từng
+bước một, các đối tượng tính toán ngày càng phức tạp. Trình thông dịch làm cho việc
+xây dựng chương trình từng bước này đặc biệt thuận tiện vì các kết hợp tên-đối tượng
+có thể được tạo ra dần dần trong các tương tác kế tiếp. Tính năng này khuyến khích
+việc phát triển và kiểm thử chương trình theo từng bước và chịu trách nhiệm lớn cho
+thực tế rằng một chương trình Lisp thường bao gồm một số lượng lớn các thủ tục tương
+đối đơn giản.
+
+Nên rõ ràng rằng khả năng kết hợp các giá trị với các ký hiệu và sau đó truy xuất
+chúng có nghĩa là trình thông dịch phải duy trì một loại bộ nhớ nào đó để theo dõi
+các cặp tên-đối tượng. Bộ nhớ này được gọi là @newterm{môi trường} (chính xác hơn
+là @newterm{môi trường toàn cục}, vì chúng ta sẽ thấy sau này rằng một phép tính có
+thể liên quan đến một số môi trường khác nhau).@footnote{@ref{Chapter 3} sẽ chỉ ra
+rằng khái niệm về môi trường này là then chốt, cả để hiểu cách trình thông dịch hoạt
+động và để cài đặt các trình thông dịch.}
