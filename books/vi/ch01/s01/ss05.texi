@@ -1,0 +1,174 @@
+@node	1.1.5, 1.1.6, 1.1.4, 1.1
+@subsection Mô Hình Thay Thế cho Áp Dụng Thủ Tục
+
+Để đánh giá một tổ hợp mà toán tử của nó đặt tên cho một thủ tục phức hợp, trình
+thông dịch thực hiện quá trình gần giống như đối với các tổ hợp mà toán tử của chúng
+đặt tên cho các thủ tục nguyên thủy, như chúng ta đã mô tả trong @ref{1.1.3}. Tức
+là, trình thông dịch đánh giá các phần tử của tổ hợp và áp dụng thủ tục (là giá trị
+của toán tử của tổ hợp) lên các đối số (là giá trị của các toán hạng của tổ hợp).
+
+Chúng ta có thể giả sử rằng cơ chế áp dụng các thủ tục nguyên thủy lên đối số được
+tích hợp vào trình thông dịch. Đối với các thủ tục phức hợp, quá trình áp dụng như
+sau:
+
+@quotation
+Để áp dụng một thủ tục phức hợp lên các đối số, hãy đánh giá thân của thủ tục với
+mỗi tham số hình thức được thay thế bằng đối số tương ứng.
+@end quotation
+
+@noindent
+Để minh họa quá trình này, hãy đánh giá tổ hợp
+
+@lisp
+(f 5)
+@end lisp
+
+@noindent
+trong đó @code{f} là thủ tục được định nghĩa trong @ref{1.1.4}. Chúng ta bắt đầu
+bằng cách lấy lại thân của @code{f}:
+
+@lisp
+(sum-of-squares (+ a 1) (* a 2))
+@end lisp
+
+@noindent
+Sau đó chúng ta thay thế tham số hình thức @code{a} bằng đối số 5:
+
+@lisp
+(sum-of-squares (+ 5 1) (* 5 2))
+@end lisp
+
+@noindent
+Do đó bài toán rút gọn về đánh giá một tổ hợp với hai toán hạng và một toán tử
+@code{sum-of-squares}. Đánh giá tổ hợp này liên quan đến ba bài toán con. Chúng ta
+phải đánh giá toán tử để lấy thủ tục cần áp dụng, và chúng ta phải đánh giá các
+toán hạng để lấy các đối số. Bây giờ @code{(+ 5 1)} tạo ra 6 và @code{(* 5 2)} tạo
+ra 10, vì vậy chúng ta phải áp dụng thủ tục @code{sum-of-squares} lên 6 và 10. Các
+giá trị này được thay thế cho các tham số hình thức @code{x} và @code{y} trong thân
+của @code{sum-of-squares}, rút gọn biểu thức về
+
+@lisp
+(+ (square 6) (square 10))
+@end lisp
+
+@noindent
+Nếu chúng ta sử dụng định nghĩa của @code{square}, điều này rút gọn về
+
+@lisp
+(+ (* 6 6) (* 10 10))
+@end lisp
+
+@noindent
+rút gọn bằng phép nhân về
+
+@lisp
+(+ 36 100)
+@end lisp
+
+@noindent
+và cuối cùng về
+
+@lisp
+136
+@end lisp
+
+@noindent
+Quá trình chúng ta vừa mô tả được gọi là @newterm{mô hình thay thế} cho việc áp
+dụng thủ tục. Nó có thể được coi là mô hình xác định ``ý nghĩa'' của việc áp dụng
+thủ tục, trong phạm vi các thủ tục trong chương này. Tuy nhiên, có hai điểm cần
+nhấn mạnh:
+
+@itemize @bullet
+
+@item
+Mục đích của sự thay thế là để giúp chúng ta suy nghĩ về việc áp dụng thủ tục,
+không phải để cung cấp mô tả về cách trình thông dịch thực sự hoạt động. Các trình
+thông dịch thông thường không đánh giá việc áp dụng thủ tục bằng cách thao tác văn
+bản của thủ tục để thay thế giá trị cho các tham số hình thức. Trong thực tế, ``sự
+thay thế'' được thực hiện bằng cách sử dụng môi trường cục bộ cho các tham số hình
+thức. Chúng ta sẽ thảo luận điều này đầy đủ hơn trong @ref{Chapter 3} và
+@ref{Chapter 4} khi chúng ta xem xét việc cài đặt một trình thông dịch một cách chi
+tiết.
+
+@item
+Trong suốt cuốn sách này, chúng ta sẽ trình bày một chuỗi các mô hình ngày càng
+phức tạp hơn về cách các trình thông dịch hoạt động, lên đến đỉnh điểm với một cài
+đặt hoàn chỉnh của trình thông dịch và trình biên dịch trong @ref{Chapter 5}. Mô
+hình thay thế chỉ là đầu tiên trong số các mô hình này---một cách để bắt đầu suy
+nghĩ một cách hình thức về quá trình đánh giá. Nói chung, khi mô hình hóa các hiện
+tượng trong khoa học và kỹ thuật, chúng ta bắt đầu với các mô hình đơn giản hóa,
+không đầy đủ. Khi chúng ta xem xét mọi thứ chi tiết hơn, những mô hình đơn giản này
+trở nên không đủ và phải được thay thế bằng các mô hình tinh vi hơn. Mô hình thay
+thế cũng không ngoại lệ. Đặc biệt, khi chúng ta đề cập trong @ref{Chapter 3} việc
+sử dụng các thủ tục với ``dữ liệu có thể thay đổi'', chúng ta sẽ thấy rằng mô hình
+thay thế bị phá vỡ và phải được thay thế bằng một mô hình áp dụng thủ tục phức tạp
+hơn.@footnote{Mặc dù ý tưởng thay thế đơn giản, nhưng hóa ra việc đưa ra định nghĩa
+toán học nghiêm ngặt về quá trình thay thế lại phức tạp đáng ngạc nhiên. Vấn đề nảy
+sinh từ khả năng nhầm lẫn giữa các tên được sử dụng cho các tham số hình thức của
+thủ tục và các tên (có thể giống nhau) được sử dụng trong các biểu thức mà thủ tục
+có thể được áp dụng. Thực vậy, có một lịch sử dài về các định nghĩa sai về
+@newterm{thay thế} trong tài liệu về logic và ngữ nghĩa lập trình. Xem @ref{Stoy
+1977} để có thảo luận cẩn thận về thay thế.}
+
+@end itemize
+
+@subsubheading Thứ tự ứng dụng so với thứ tự bình thường
+
+Theo mô tả về đánh giá trong @ref{1.1.3}, trình thông dịch trước tiên đánh giá toán
+tử và toán hạng rồi áp dụng thủ tục kết quả lên các đối số kết quả. Đây không phải
+là cách duy nhất để thực hiện đánh giá. Một mô hình đánh giá thay thế sẽ không đánh
+giá các toán hạng cho đến khi giá trị của chúng được cần. Thay vào đó, nó sẽ trước
+tiên thay thế các biểu thức toán hạng cho các tham số cho đến khi nó thu được một
+biểu thức chỉ liên quan đến các toán tử nguyên thủy, và sau đó mới thực hiện đánh
+giá. Nếu chúng ta sử dụng phương pháp này, việc đánh giá @code{(f 5)} sẽ tiến hành
+theo chuỗi mở rộng
+
+@lisp
+(sum-of-squares (+ 5 1) (* 5 2))
+
+(+ (square (+ 5 1))
+   (square (* 5 2)))
+
+(+ (* (+ 5 1) (+ 5 1))
+   (* (* 5 2) (* 5 2)))
+@end lisp
+
+@noindent
+theo sau là các rút gọn
+
+@lisp
+(+ (* 6 6)
+   (* 10 10))
+
+(+ 36 100)
+
+136
+@end lisp
+
+@noindent
+Điều này cho kết quả giống với mô hình đánh giá trước đó của chúng ta, nhưng quá
+trình thì khác. Đặc biệt, các đánh giá @code{(+ 5 1)} và @code{(* 5 2)} mỗi cái
+được thực hiện hai lần ở đây, tương ứng với việc rút gọn biểu thức @code{(* x x)}
+với @code{x} được thay thế tương ứng bởi @code{(+ 5 1)} và @code{(* 5 2)}.
+
+Phương pháp đánh giá ``mở rộng hoàn toàn rồi rút gọn'' thay thế này được gọi là
+@newterm{đánh giá thứ tự bình thường}, trái ngược với phương pháp ``đánh giá các
+đối số rồi áp dụng'' mà trình thông dịch thực sự sử dụng, được gọi là @newterm{đánh
+giá thứ tự ứng dụng}. Có thể chứng minh rằng, đối với các ứng dụng thủ tục có thể
+được mô hình hóa bằng thay thế (bao gồm tất cả các thủ tục trong hai chương đầu của
+cuốn sách này) và tạo ra các giá trị hợp lệ, đánh giá thứ tự bình thường và thứ tự
+ứng dụng tạo ra cùng giá trị. (Xem @ref{Exercise 1.5} để có ví dụ về giá trị
+``không hợp lệ'' nơi đánh giá thứ tự bình thường và thứ tự ứng dụng không cho cùng
+kết quả.)
+
+Lisp sử dụng đánh giá thứ tự ứng dụng, một phần vì hiệu quả bổ sung thu được từ
+việc tránh đánh giá nhiều lần các biểu thức như những biểu thức được minh họa với
+@code{(+ 5 1)} và @code{(* 5 2)} ở trên và, quan trọng hơn, vì đánh giá thứ tự
+bình thường trở nên phức tạp hơn nhiều khi chúng ta rời khỏi lĩnh vực của các thủ
+tục có thể được mô hình hóa bằng thay thế. Mặt khác, đánh giá thứ tự bình thường
+có thể là một công cụ cực kỳ có giá trị, và chúng ta sẽ điều tra một số hàm ý của
+nó trong @ref{Chapter 3} và @ref{Chapter 4}.@footnote{Trong @ref{Chapter 3} chúng
+ta sẽ giới thiệu @newterm{xử lý luồng}, đây là cách xử lý các cấu trúc dữ liệu
+``vô hạn'' rõ ràng bằng cách kết hợp một dạng hạn chế của đánh giá thứ tự bình
+thường. Trong @ref{4.2} chúng ta sẽ sửa đổi trình thông dịch Scheme để tạo ra một
+biến thể thứ tự bình thường của Scheme.}

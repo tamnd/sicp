@@ -1,0 +1,125 @@
+@node	1.1.4, 1.1.5, 1.1.3, 1.1
+@subsection Thủ Tục Phức Hợp
+
+Chúng ta đã xác định trong Lisp một số phần tử phải xuất hiện trong bất kỳ ngôn ngữ
+lập trình mạnh mẽ nào:
+
+@itemize @bullet
+
+@item
+Các số và phép toán số học là dữ liệu nguyên thủy và thủ tục nguyên thủy.
+
+@item
+Sự lồng nhau của các tổ hợp cung cấp một phương tiện để kết hợp các phép toán.
+
+@item
+Các định nghĩa kết hợp tên với giá trị cung cấp một phương tiện trừu tượng hóa
+hạn chế.
+
+@end itemize
+
+@noindent
+Bây giờ chúng ta sẽ tìm hiểu về @newterm{định nghĩa thủ tục}, một kỹ thuật trừu
+tượng hóa mạnh mẽ hơn nhiều qua đó một phép toán phức hợp có thể được đặt tên và
+sau đó được tham chiếu như một đơn vị.
+
+Chúng ta bắt đầu bằng cách xem xét cách diễn đạt ý tưởng về ``bình phương''. Chúng
+ta có thể nói: ``Để bình phương một cái gì đó, hãy nhân nó với chính nó.'' Điều này
+được diễn đạt trong ngôn ngữ của chúng ta như
+
+@lisp
+(define (square x) (* x x))
+@end lisp
+
+@noindent
+Chúng ta có thể hiểu điều này theo cách sau:
+
+@example
+(define (square x)    (*       x       x))
+  |      |      |      |       |       |
+ Để bình phương một cái gì đó, nhân  nó với chính nó.
+@end example
+
+@noindent
+Chúng ta có ở đây một @newterm{thủ tục phức hợp}, được đặt tên là @code{square}
+(bình phương). Thủ tục biểu diễn phép toán nhân một cái gì đó với chính nó. Thứ
+cần được nhân được đặt một tên cục bộ, @code{x}, đóng vai trò giống như đại từ
+đóng trong ngôn ngữ tự nhiên. Đánh giá định nghĩa tạo ra thủ tục phức hợp này và
+kết hợp nó với tên @code{square}.@footnote{Hãy chú ý rằng có hai phép toán khác
+nhau đang được kết hợp ở đây: chúng ta đang tạo thủ tục và chúng ta đang đặt tên
+@code{square} cho nó. Điều quan trọng, thực ra là rất quan trọng, là có thể tách
+biệt hai khái niệm này---tạo thủ tục mà không đặt tên cho chúng, và đặt tên cho các
+thủ tục đã được tạo. Chúng ta sẽ thấy cách làm điều này trong @ref{1.3.2}.}
+
+Dạng chung của định nghĩa thủ tục là
+
+@lisp
+(define (⟨@var{name}⟩ ⟨@var{formal parameters}⟩) ⟨@var{body}⟩)
+@end lisp
+
+@noindent
+@code{⟨}@var{name}@code{⟩} là ký hiệu được kết hợp với định nghĩa thủ tục trong môi
+trường.@footnote{Xuyên suốt cuốn sách này, chúng ta sẽ mô tả cú pháp chung của các
+biểu thức bằng cách sử dụng các ký hiệu in nghiêng được giới hạn bởi các dấu ngoặc
+nhọn---ví dụ, @code{⟨}@var{name}@code{⟩}---để biểu thị các ``vị trí'' trong biểu
+thức cần được điền vào khi biểu thức như vậy thực sự được sử dụng.}
+@code{⟨}@var{@w{formal} @w{parameters}}@code{⟩} là các tên được sử dụng trong thân
+thủ tục để tham chiếu đến các đối số tương ứng của thủ tục. @code{⟨}@var{body}@code{⟩}
+là một biểu thức sẽ mang lại giá trị của việc áp dụng thủ tục khi các tham số hình
+thức được thay thế bằng các đối số thực tế mà thủ tục được áp dụng lên.@footnote{Nói
+chung hơn, thân của thủ tục có thể là một chuỗi biểu thức. Trong trường hợp đó, trình
+thông dịch đánh giá từng biểu thức trong chuỗi lần lượt và trả về giá trị của biểu
+thức cuối cùng như giá trị của việc áp dụng thủ tục.} @code{⟨}@var{name}@code{⟩}
+và @code{⟨}@var{formal parameters}@code{⟩} được nhóm trong dấu ngoặc đơn, giống như
+chúng sẽ xuất hiện trong một lời gọi thực tế đến thủ tục đang được định nghĩa.
+
+Sau khi đã định nghĩa @code{square}, chúng ta có thể sử dụng nó:
+
+@lisp
+(square 21)
+@i{441}
+
+(square (+ 2 5))
+@i{49}
+
+(square (square 3))
+@i{81}
+@end lisp
+
+@noindent
+Chúng ta cũng có thể sử dụng @code{square} như một khối xây dựng trong việc định
+nghĩa các thủ tục khác. Ví dụ, @math{x^2 + y^2} có thể được diễn đạt là
+
+@lisp
+(+ (square x) (square y))
+@end lisp
+
+@noindent
+Chúng ta có thể dễ dàng định nghĩa một thủ tục @code{sum-of-squares} (tổng bình
+phương) mà, với bất kỳ hai số nào làm đối số, tạo ra tổng bình phương của chúng:
+
+@lisp
+(define (sum-of-squares x y)
+  (+ (square x) (square y)))
+
+(sum-of-squares 3 4)
+@i{25}
+@end lisp
+
+@noindent
+Bây giờ chúng ta có thể sử dụng @code{sum-of-squares} như một khối xây dựng trong
+việc xây dựng thêm các thủ tục:
+
+@lisp
+(define (f a)
+  (sum-of-squares (+ a 1) (* a 2)))
+
+(f 5)
+@i{136}
+@end lisp
+
+@noindent
+Các thủ tục phức hợp được sử dụng theo cùng cách như các thủ tục nguyên thủy. Thực
+vậy, người ta không thể biết bằng cách nhìn vào định nghĩa của @code{sum-of-squares}
+ở trên liệu @code{square} có được tích hợp vào trình thông dịch, như @code{+} và
+@code{*}, hay được định nghĩa như một thủ tục phức hợp.
