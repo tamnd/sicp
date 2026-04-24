@@ -1,0 +1,212 @@
+@node	3.1.2, 3.1.3, 3.1.1, 3.1
+@subsection Lợi Ích của Việc Đưa Vào Phép Gán
+
+Như chúng ta sẽ thấy, việc đưa phép gán vào ngôn ngữ lập trình của chúng ta dẫn
+chúng ta vào một mê lưới các vấn đề khái niệm khó. Tuy nhiên, việc xem các hệ
+thống như các tập hợp các đối tượng với trạng thái cục bộ là một kỹ thuật mạnh
+mẽ để duy trì thiết kế mô-đun. Như một ví dụ đơn giản, hãy xem xét thiết kế của
+thủ tục @code{rand} mà khi được gọi, sẽ trả về một số nguyên được chọn ngẫu nhiên.
+
+Không hoàn toàn rõ ràng ý nghĩa của ``được chọn ngẫu nhiên'' là gì. Những gì
+chúng ta có lẽ muốn là các lời gọi liên tiếp đến @code{rand} tạo ra một chuỗi
+số có tính chất thống kê của phân phối đều. Chúng ta sẽ không thảo luận về các
+phương pháp tạo ra các chuỗi phù hợp ở đây. Thay vào đó, hãy giả sử rằng chúng
+ta có một thủ tục @code{rand-update} có tính chất là nếu chúng ta bắt đầu với
+một số @math{x_1} và lập thành
+
+@lisp
+@var{x₂} = (rand-update @var{x₁})
+@var{x₃} = (rand-update @var{x₂})
+@end lisp
+
+@noindent
+thì chuỗi giá trị @math{x_1}, @math{x_2}, @math{x_3}, @dots{} sẽ có các tính
+chất thống kê mong muốn.@footnote{Một cách phổ biến để cài đặt @code{rand-update}
+là dùng quy tắc @math{x} được cập nhật thành @math{{ax + b}} theo modulo @math{m},
+trong đó @math{a}, @math{b}, và @math{m} là các số nguyên được chọn thích hợp.
+Chương 3 của @ref{Knuth 1981} bao gồm một thảo luận mở rộng về các kỹ thuật tạo
+ra các chuỗi số ngẫu nhiên và xác lập các tính chất thống kê của chúng. Lưu ý
+rằng thủ tục @code{rand-update} tính toán một hàm toán học: Với cùng một đầu vào
+hai lần, nó tạo ra cùng một đầu ra. Do đó, chuỗi số được tạo ra bởi
+@code{rand-update} chắc chắn không phải là ``ngẫu nhiên'', nếu bằng ``ngẫu nhiên''
+chúng ta khăng định rằng mỗi số trong chuỗi không liên quan đến số trước đó.
+Mối quan hệ giữa ``tính ngẫu nhiên thực sự'' và các chuỗi được gọi là
+@newterm{giả ngẫu nhiên}, được tạo ra bởi các tính toán được xác định rõ nhưng
+có các tính chất thống kê phù hợp, là một câu hỏi phức tạp liên quan đến các
+vấn đề khó trong toán học và triết học. Kolmogorov, Solomonoff, và Chaitin đã
+đạt được tiến bộ lớn trong việc làm rõ các vấn đề này; một thảo luận có thể tìm
+thấy trong @ref{Chaitin 1975}.}
+
+Chúng ta có thể cài đặt @code{rand} như một thủ tục với biến trạng thái cục bộ
+@code{x} được khởi tạo với một giá trị cố định @code{random-init}. Mỗi lần gọi
+đến @code{rand} tính toán @code{rand-update} của giá trị hiện tại của @code{x},
+trả về giá trị này như số ngẫu nhiên, và cũng lưu trữ giá trị này như giá trị
+mới của @code{x}.
+
+@lisp
+(define rand
+  (let ((x random-init))
+    (lambda () (set! x (rand-update x)) x)))
+@end lisp
+
+@noindent
+Tất nhiên, chúng ta có thể tạo ra cùng chuỗi số ngẫu nhiên mà không cần dùng
+phép gán bằng cách đơn giản gọi @code{rand-update} trực tiếp. Tuy nhiên, điều
+này có nghĩa là bất kỳ phần nào trong chương trình của chúng ta sử dụng số ngẫu
+nhiên đều phải ghi nhớ một cách rõ ràng giá trị hiện tại của @code{x} để truyền
+như một đối số cho @code{rand-update}. Để nhận ra sự bất tiện này như thế nào,
+hãy xem xét việc sử dụng số ngẫu nhiên để cài đặt một kỹ thuật được gọi là
+@newterm{mô phỏng Monte Carlo}.
+
+Phương pháp Monte Carlo bao gồm việc chọn ngẫu nhiên các thí nghiệm mẫu từ một
+tập hợp lớn và sau đó đưa ra các kết luận dựa trên các xác suất được ước tính từ
+việc lập bảng kết quả của những thí nghiệm đó. Ví dụ, chúng ta có thể xấp xỉ
+@math{\pi} bằng cách sử dụng thực tế rằng @math{{6/\pi^2}} là xác suất để hai số
+nguyên được chọn ngẫu nhiên không có nhân tử chung; tức là, ước số chung lớn nhất
+của chúng sẽ là 1.@footnote{Định lý này là của E. Ces@`aro. Xem phần 4.5.2 của
+@ref{Knuth 1981} để thảo luận và chứng minh.} Để thu được xấp xỉ đến @math{\pi},
+chúng ta thực hiện một số lượng lớn các thí nghiệm. Trong mỗi thí nghiệm, chúng
+ta chọn hai số nguyên ngẫu nhiên và thực hiện kiểm tra để xem liệu @abbr{GCD}
+của chúng có bằng 1 không. Tỷ lệ lần mà kiểm tra được thông qua cho chúng ta
+ước tính về @math{{6/\pi^2}}, và từ đó chúng ta thu được xấp xỉ đến @math{\pi}.
+
+Cốt lõi của chương trình của chúng ta là thủ tục @code{monte-carlo}, nhận làm
+đối số số lần thử thí nghiệm, cùng với thí nghiệm, được biểu diễn như một thủ
+tục không có đối số sẽ trả về đúng hoặc sai mỗi khi nó chạy. @code{Monte-carlo}
+chạy thí nghiệm cho số lần thử được chỉ định và trả về một số cho biết tỷ lệ
+các lần thử mà thí nghiệm được tìm thấy là đúng.
+
+@lisp
+(define (estimate-pi trials)
+  (sqrt (/ 6 (monte-carlo trials
+                          cesaro-test))))
+(define (cesaro-test)
+   (= (gcd (rand) (rand)) 1))
+
+(define (monte-carlo trials experiment)
+  (define (iter trials-remaining trials-passed)
+    (cond ((= trials-remaining 0)
+           (/ trials-passed trials))
+          ((experiment)
+           (iter (- trials-remaining 1)
+                 (+ trials-passed 1)))
+          (else
+           (iter (- trials-remaining 1)
+                 trials-passed))))
+  (iter trials 0))
+@end lisp
+
+@noindent
+Bây giờ hãy thử cùng phép tính bằng cách dùng @code{rand-update} trực tiếp thay
+vì @code{rand}, theo cách chúng ta sẽ bị buộc phải tiến hành nếu chúng ta không
+dùng phép gán để mô hình hóa trạng thái cục bộ:
+
+@lisp
+(define (estimate-pi trials)
+  (sqrt (/ 6 (random-gcd-test trials
+                              random-init))))
+
+(define (random-gcd-test trials initial-x)
+  (define (iter trials-remaining
+                trials-passed
+                x)
+    (let ((x1 (rand-update x)))
+      (let ((x2 (rand-update x1)))
+        (cond ((= trials-remaining 0)
+               (/ trials-passed trials))
+              ((= (gcd x1 x2) 1)
+               (iter (- trials-remaining 1)
+                     (+ trials-passed 1)
+                     x2))
+              (else
+               (iter (- trials-remaining 1)
+                     trials-passed
+                     x2))))))
+  (iter trials 0 initial-x))
+@end lisp
+
+@noindent
+Mặc dù chương trình vẫn còn đơn giản, nhưng nó phản ánh một số vi phạm đau đớn
+về tính mô-đun. Trong phiên bản đầu tiên của chương trình, sử dụng @code{rand},
+chúng ta có thể biểu diễn phương pháp Monte Carlo trực tiếp như một thủ tục
+@code{monte-carlo} tổng quát nhận làm đối số một thủ tục @code{experiment} tùy
+ý. Trong phiên bản thứ hai của chương trình, không có trạng thái cục bộ cho bộ
+tạo số ngẫu nhiên, @code{random-gcd-test} phải xử lý rõ ràng các số ngẫu nhiên
+@code{x1} và @code{x2} và tái chế @code{x2} qua vòng lặp lặp như đầu vào mới
+cho @code{rand-update}. Việc xử lý rõ ràng các số ngẫu nhiên này đan xen cấu
+trúc tích lũy kết quả kiểm tra với thực tế là thí nghiệm cụ thể của chúng ta
+sử dụng hai số ngẫu nhiên, trong khi các thí nghiệm Monte Carlo khác có thể sử
+dụng một hoặc ba số ngẫu nhiên. Ngay cả thủ tục cấp cao nhất @code{estimate-pi}
+cũng phải lo lắng về việc cung cấp một số ngẫu nhiên ban đầu. Thực tế là nội bộ
+của bộ tạo số ngẫu nhiên bị rò rỉ ra các phần khác của chương trình khiến chúng
+ta khó có thể cô lập ý tưởng Monte Carlo sao cho nó có thể được áp dụng cho các
+nhiệm vụ khác. Trong phiên bản đầu tiên của chương trình, phép gán đóng gói trạng
+thái của bộ tạo số ngẫu nhiên trong thủ tục @code{rand}, sao cho chi tiết về tạo
+số ngẫu nhiên vẫn độc lập với phần còn lại của chương trình.
+
+Hiện tượng tổng quát được minh họa bởi ví dụ Monte Carlo là: Từ góc độ của một
+phần của một quá trình phức tạp, các phần khác có vẻ như thay đổi theo thời gian.
+Chúng có trạng thái cục bộ thay đổi theo thời gian được ẩn giấu. Nếu chúng ta
+muốn viết các chương trình máy tính mà cấu trúc của chúng phản ánh sự phân rã
+này, chúng ta tạo ra các đối tượng tính toán (như tài khoản ngân hàng và bộ tạo
+số ngẫu nhiên) mà hành vi của chúng thay đổi theo thời gian. Chúng ta mô hình
+hóa trạng thái bằng các biến trạng thái cục bộ, và chúng ta mô hình hóa sự thay
+đổi của trạng thái bằng các phép gán cho các biến đó.
+
+Có xu hướng kết thúc cuộc thảo luận này bằng cách nói rằng, bằng cách đưa vào
+phép gán và kỹ thuật ẩn giấu trạng thái trong các biến cục bộ, chúng ta có thể
+cấu trúc các hệ thống theo cách mô-đun hơn so với khi tất cả trạng thái phải
+được thao tác một cách rõ ràng, bằng cách truyền các tham số bổ sung. Đáng tiếc,
+như chúng ta sẽ thấy, câu chuyện không đơn giản như vậy.
+
+@quotation
+@strong{@anchor{Exercise 3.5}Bài tập 3.5:} @newterm{Tích phân Monte Carlo} là
+một phương pháp ước tính các tích phân xác định bằng mô phỏng Monte Carlo. Hãy
+xem xét việc tính diện tích của một vùng không gian được mô tả bởi vị từ
+@math{{P(x, y)}} là đúng cho các điểm @math{{(x, y)}} trong vùng và sai cho các
+điểm không trong vùng. Ví dụ, vùng nằm trong một hình tròn bán kính 3 tâm tại
+(5, 7) được mô tả bởi vị từ kiểm tra xem @math{{(x - 5)^2} + {(y - 7)^2 \le 3^2}}.
+Để ước tính diện tích của vùng được mô tả bởi một vị từ như vậy, hãy bắt đầu
+bằng cách chọn một hình chữ nhật chứa vùng. Ví dụ, một hình chữ nhật với các
+góc đối diện theo đường chéo tại (2, 4) và (8, 10) chứa hình tròn ở trên. Tích
+phân mong muốn là diện tích của phần hình chữ nhật nằm trong vùng. Chúng ta có
+thể ước tính tích phân bằng cách chọn ngẫu nhiên các điểm @math{{(x, y)}} nằm
+trong hình chữ nhật, và kiểm tra @math{{P(x, y)}} cho mỗi điểm để xác định xem
+điểm có nằm trong vùng không. Nếu chúng ta thử điều này với nhiều điểm, thì tỷ
+lệ điểm nằm trong vùng sẽ cho ước tính về tỷ lệ hình chữ nhật nằm trong vùng.
+Do đó, nhân tỷ lệ này với diện tích toàn bộ hình chữ nhật sẽ cho ước tính về
+tích phân.
+
+Cài đặt tích phân Monte Carlo như một thủ tục @code{estimate-integral} nhận làm
+đối số một vị từ @code{P}, các giới hạn trên và dưới @code{x1}, @code{x2},
+@code{y1}, và @code{y2} cho hình chữ nhật, và số lần thử cần thực hiện để tạo ra
+ước tính. Thủ tục của bạn nên dùng cùng thủ tục @code{monte-carlo} đã được dùng
+ở trên để ước tính @math{\pi}. Dùng @code{estimate-integral} của bạn để tạo ra
+ước tính của @math{\pi} bằng cách đo diện tích của một hình tròn đơn vị.
+
+Bạn sẽ thấy hữu ích khi có một thủ tục trả về một số được chọn ngẫu nhiên từ
+một phạm vi cho trước. Thủ tục @code{random-in-range} sau đây cài đặt điều này
+dưới dạng thủ tục @code{random} được dùng trong @ref{1.2.6}, trả về một số không
+âm nhỏ hơn đầu vào của nó.@footnote{@abbr{MIT} Scheme cung cấp thủ tục như vậy.
+Nếu @code{random} được cho một số nguyên chính xác (như trong @ref{1.2.6}) nó
+trả về một số nguyên chính xác, nhưng nếu nó được cho một giá trị thập phân (như
+trong bài tập này) nó trả về một giá trị thập phân.}
+
+@lisp
+(define (random-in-range low high)
+  (let ((range (- high low)))
+    (+ low (random range))))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.6}Bài tập 3.6:} Rất hữu ích khi có thể đặt lại bộ
+tạo số ngẫu nhiên để tạo ra một chuỗi bắt đầu từ một giá trị cho trước. Thiết
+kế thủ tục @code{rand} mới được gọi với một đối số là ký hiệu @code{generate}
+hoặc ký hiệu @code{reset} và hoạt động như sau: @code{(rand 'generate)} tạo ra
+một số ngẫu nhiên mới; @code{((rand 'reset) ⟨@var{new-value}⟩)} đặt lại biến
+trạng thái nội bộ thành @code{⟨}@var{new-value}@code{⟩} được chỉ định. Như vậy,
+bằng cách đặt lại trạng thái, người ta có thể tạo ra các chuỗi có thể lặp lại.
+Những chuỗi này rất tiện khi kiểm tra và gỡ lỗi các chương trình sử dụng số
+ngẫu nhiên.
+@end quotation

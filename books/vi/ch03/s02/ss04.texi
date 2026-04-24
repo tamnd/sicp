@@ -1,0 +1,168 @@
+@node	3.2.4, 3.3, 3.1, 3.2
+@subsection Định Nghĩa Nội Bộ
+
+Phần @ref{1.1.8} đã giới thiệu ý tưởng rằng các thủ tục có thể có các định
+nghĩa nội bộ, do đó dẫn đến cấu trúc khối như trong thủ tục tính căn bậc hai
+sau:
+
+@lisp
+(define (sqrt x)
+  (define (good-enough? guess)
+    (< (abs (- (square guess) x)) 0.001))
+  (define (improve guess)
+    (average guess (/ x guess)))
+  (define (sqrt-iter guess)
+    (if (good-enough? guess)
+        guess
+        (sqrt-iter (improve guess))))
+  (sqrt-iter 1.0))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có thể dùng mô hình môi trường để xem tại sao các định nghĩa
+nội bộ này hoạt động như mong muốn. @ref{Figure 3.11} cho thấy thời điểm trong
+quá trình định giá biểu thức @code{(sqrt 2)} khi thủ tục nội bộ
+@code{good-enough?} đã được gọi lần đầu tiên với @code{guess} bằng 1.
+
+@float
+@anchor{Figure 3.11}
+@ifinfo
+@strong{Figure 3.11:} @code{Sqrt} procedure with internal definitions.
+
+@example
+          +--------------------------------------------------+
+global -->| sqrt: --+                                        |
+env       |         |                                        |
+          +---------|----------------------------------------+
+                    V       ^                   ^
+                .---.---.   |                   |
+     +----------+-O | O-+---+        +----------+------------+
+     |          `---^---'            | x: 2                  |
+     V                         E1 -->| good-enough?: -+      |
+parameters: x                        | improve: ...   |      |
+body: (define good-enough? ...)      | sqrt-iter: ... |      |
+      (define improve ...)           +----------------|------+
+      (define sqrt-iter ...)          ^  ^            |     ^
+      (sqrt-iter 1.0)                 |  |            V     |
+                            +---------++ |        .---.---. |
+                      E2 -->| guess: 1 | |        | O | O-+-+
+                            +----------+ |        `-|-^---'
+                      call to sqrt-iter  |          |
+                                         |          V
+                               +---------++    parameters: guess
+                         E3 -->| guess: 1 |    body: (< (abs ...)
+                               +----------+             ...)
+                         call to good-enough?
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.11b,147mm,,,.std.svg}
+@caption{@strong{Figure 3.11:} @code{Sqrt} procedure with internal definitions.}
+@end iftex
+@end float
+
+Hãy quan sát cấu trúc của môi trường. @code{Sqrt} là một ký hiệu trong môi
+trường toàn cục được ràng buộc với một đối tượng thủ tục mà môi trường liên kết
+của nó là môi trường toàn cục. Khi @code{sqrt} được gọi, một môi trường mới E1
+được hình thành, phụ thuộc vào môi trường toàn cục, trong đó tham số @code{x}
+được ràng buộc với 2. Thân của @code{sqrt} sau đó được định giá trong E1. Vì
+biểu thức đầu tiên trong thân của @code{sqrt} là
+
+@lisp
+(define (good-enough? guess)
+  (< (abs (- (square guess) x)) 0.001))
+@end lisp
+
+@noindent
+việc định giá biểu thức này định nghĩa thủ tục @code{good-enough?} trong môi
+trường E1. Nói chính xác hơn, ký hiệu @code{good-enough?} đã được thêm vào khung
+đầu tiên của E1, được ràng buộc với một đối tượng thủ tục mà môi trường liên kết
+của nó là E1. Tương tự, @code{improve} và @code{sqrt-iter} được định nghĩa như
+các thủ tục trong E1. Để ngắn gọn, @ref{Figure 3.11} chỉ hiển thị đối tượng thủ
+tục cho @code{good-enough?}.
+
+@noindent
+Sau khi các thủ tục cục bộ được định nghĩa, biểu thức @code{(sqrt-iter 1.0)}
+được định giá, vẫn trong môi trường E1. Vì vậy đối tượng thủ tục được ràng buộc
+với @code{sqrt-iter} trong E1 được gọi với 1 như một đối số. Điều này tạo ra một
+môi trường E2 trong đó @code{guess}, tham số của @code{sqrt-iter}, được ràng buộc
+với 1. @code{Sqrt-iter} lần lượt gọi @code{good-enough?} với giá trị của
+@code{guess} (từ E2) như đối số cho @code{good-enough?}. Điều này thiết lập một
+môi trường khác, E3, trong đó @code{guess} (tham số của @code{good-enough?}) được
+ràng buộc với 1. Mặc dù @code{sqrt-iter} và @code{good-enough?} đều có tham số
+được đặt tên là @code{guess}, đây là hai biến cục bộ riêng biệt nằm trong các
+khung khác nhau. Ngoài ra, E2 và E3 đều có E1 là môi trường bao quanh của chúng,
+vì các thủ tục @code{sqrt-iter} và @code{good-enough?} đều có E1 là phần môi
+trường của chúng. Một hệ quả của điều này là ký hiệu @code{x} xuất hiện trong
+thân của @code{good-enough?} sẽ tham chiếu ràng buộc của @code{x} xuất hiện
+trong E1, cụ thể là giá trị của @code{x} mà thủ tục @code{sqrt} ban đầu đã
+được gọi.
+
+Mô hình môi trường do đó giải thích hai tính chất then chốt làm cho định nghĩa
+thủ tục cục bộ là một kỹ thuật hữu ích để mô-đun hóa các chương trình:
+
+@itemize @bullet
+
+@item
+Tên của các thủ tục cục bộ không gây xung đột với các tên bên ngoài thủ tục bao
+quanh, vì các tên thủ tục cục bộ sẽ được ràng buộc trong khung mà thủ tục tạo
+ra khi nó chạy, thay vì được ràng buộc trong môi trường toàn cục.
+
+@item
+Các thủ tục cục bộ có thể truy cập các đối số của thủ tục bao quanh, đơn giản
+bằng cách dùng các tên tham số như biến tự do. Điều này là vì thân của thủ tục
+cục bộ được định giá trong một môi trường phụ thuộc vào môi trường định giá cho
+thủ tục bao quanh.
+
+@end itemize
+
+@quotation
+@strong{@anchor{Exercise 3.11}Bài tập 3.11:} Trong @ref{3.2.3} chúng ta đã thấy
+cách mô hình môi trường mô tả hành vi của các thủ tục với trạng thái cục bộ. Bây
+giờ chúng ta đã thấy cách các định nghĩa nội bộ hoạt động. Một thủ tục truyền
+thông điệp điển hình chứa cả hai khía cạnh này. Hãy xem xét thủ tục tài khoản
+ngân hàng từ @ref{3.1.1}:
+
+@lisp
+(define (make-account balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance
+                        amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (define (dispatch m)
+    (cond ((eq? m 'withdraw) withdraw)
+          ((eq? m 'deposit) deposit)
+          (else (error "Unknown request:
+                        MAKE-ACCOUNT"
+                       m))))
+  dispatch)
+@end lisp
+
+Hiển thị cấu trúc môi trường được tạo ra bởi chuỗi các tương tác
+
+@lisp
+(define acc (make-account 50))
+
+((acc 'deposit) 40)
+@i{90}
+
+((acc 'withdraw) 60)
+@i{30}
+@end lisp
+
+Trạng thái cục bộ cho @code{acc} được giữ ở đâu? Giả sử chúng ta định nghĩa
+một tài khoản khác
+
+@lisp
+(define acc2 (make-account 100))
+@end lisp
+
+Các trạng thái cục bộ cho hai tài khoản được giữ tách biệt như thế nào? Những
+phần nào của cấu trúc môi trường được chia sẻ giữa @code{acc} và @code{acc2}?
+@end quotation

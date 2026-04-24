@@ -1,0 +1,45 @@
+@node	3.1, 3.2, Chapter 3, Chapter 3
+@section Gán Giá Trị và Trạng Thái Cục Bộ
+
+Chúng ta thường nhìn nhận thế giới là tập hợp các đối tượng độc lập, mỗi đối
+tượng có một trạng thái thay đổi theo thời gian. Một đối tượng được gọi là
+``có trạng thái'' nếu hành vi của nó bị ảnh hưởng bởi lịch sử của nó. Ví dụ,
+một tài khoản ngân hàng có trạng thái ở chỗ câu trả lời cho câu hỏi ``Tôi có
+thể rút $100 không?'' phụ thuộc vào lịch sử các giao dịch gửi và rút tiền.
+Chúng ta có thể đặc trưng trạng thái của một đối tượng bằng một hoặc nhiều
+@newterm{biến trạng thái}, những biến này cùng nhau duy trì đủ thông tin về lịch
+sử để xác định hành vi hiện tại của đối tượng. Trong một hệ thống ngân hàng đơn
+giản, chúng ta có thể đặc trưng trạng thái của một tài khoản bằng số dư hiện
+tại thay vì phải nhớ toàn bộ lịch sử các giao dịch của tài khoản.
+
+Trong một hệ thống bao gồm nhiều đối tượng, các đối tượng hiếm khi hoàn toàn
+độc lập với nhau. Mỗi đối tượng có thể ảnh hưởng đến trạng thái của các đối
+tượng khác thông qua các tương tác, những tương tác này phục vụ để ghép nối các
+biến trạng thái của một đối tượng với các biến trạng thái của các đối tượng khác.
+Thật vậy, quan điểm cho rằng một hệ thống bao gồm các đối tượng riêng biệt hữu
+ích nhất khi các biến trạng thái của hệ thống có thể được nhóm thành các hệ con
+ghép nối chặt chẽ mà chỉ ghép nối lỏng lẻo với các hệ con khác.
+
+Quan điểm về hệ thống này có thể là một khuôn khổ mạnh mẽ để tổ chức các mô
+hình tính toán của hệ thống. Để một mô hình như vậy có tính mô-đun, nó phải
+được phân rã thành các đối tượng tính toán mô hình hóa các đối tượng thực tế
+trong hệ thống. Mỗi đối tượng tính toán phải có @newterm{biến trạng thái cục bộ}
+riêng của nó mô tả trạng thái của đối tượng thực tế. Vì các trạng thái của các
+đối tượng trong hệ thống được mô hình hóa thay đổi theo thời gian, các biến trạng
+thái của các đối tượng tính toán tương ứng cũng phải thay đổi. Nếu chúng ta chọn
+mô hình hóa luồng thời gian trong hệ thống bằng thời gian trôi qua trong máy
+tính, thì chúng ta phải có cách xây dựng các đối tượng tính toán mà hành vi của
+chúng thay đổi khi các chương trình của chúng ta chạy. Đặc biệt, nếu chúng ta
+muốn mô hình hóa các biến trạng thái bằng các tên ký hiệu thông thường trong
+ngôn ngữ lập trình, thì ngôn ngữ phải cung cấp một @newterm{toán tử gán}
+để cho phép chúng ta thay đổi giá trị được liên kết với một tên.
+
+@menu
+* 3.1.1::            Biến Trạng Thái Cục Bộ
+* 3.1.2::            Lợi Ích của Việc Đưa Vào Phép Gán
+* 3.1.3::            Chi Phí của Việc Đưa Vào Phép Gán
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi

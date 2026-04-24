@@ -1,0 +1,341 @@
+@node	3.1.1, 3.1.2, 3.1, 3.1
+@subsection Biến Trạng Thái Cục Bộ
+
+Để minh họa ý nghĩa của việc có một đối tượng tính toán với trạng thái thay đổi
+theo thời gian, hãy mô hình hóa tình huống rút tiền từ một tài khoản ngân hàng.
+Chúng ta sẽ thực hiện điều này bằng một thủ tục @code{withdraw} (rút tiền), nhận
+một đối số là @code{amount} (số tiền) cần rút. Nếu trong tài khoản có đủ tiền để
+đáp ứng việc rút tiền, thì @code{withdraw} nên trả về số dư còn lại sau khi rút.
+Nếu không, @code{withdraw} nên trả về thông báo @emph{Insufficient funds}. Ví dụ,
+nếu chúng ta bắt đầu với $100 trong tài khoản, chúng ta nên thu được chuỗi phản
+hồi sau đây khi sử dụng @code{withdraw}:
+
+@lisp
+(withdraw 25)
+@i{75}
+
+(withdraw 25)
+@i{50}
+
+(withdraw 60)
+@i{"Insufficient funds"}
+
+(withdraw 15)
+@i{35}
+@end lisp
+
+@noindent
+Hãy quan sát rằng biểu thức @code{(withdraw 25)}, được định giá hai lần, cho ra
+các giá trị khác nhau. Đây là một loại hành vi mới của thủ tục. Cho đến nay, tất
+cả các thủ tục của chúng ta đều có thể được xem như các đặc tả để tính toán các
+hàm toán học. Một lời gọi đến một thủ tục tính toán giá trị của hàm được áp dụng
+cho các đối số đã cho, và hai lời gọi đến cùng một thủ tục với cùng các đối số
+luôn tạo ra cùng một kết quả.@footnote{Thực ra, điều này không hoàn toàn đúng.
+Một ngoại lệ là bộ tạo số ngẫu nhiên trong @ref{1.2.6}. Một ngoại lệ khác liên
+quan đến các bảng phép toán/kiểu mà chúng ta đã giới thiệu trong @ref{2.4.3},
+trong đó giá trị của hai lời gọi đến @code{get} với cùng các đối số phụ thuộc
+vào các lời gọi đến @code{put} ở giữa. Mặt khác, cho đến khi chúng ta giới thiệu
+phép gán, chúng ta không có cách nào để tự tạo ra các thủ tục như vậy.}
+
+Để cài đặt @code{withdraw}, chúng ta có thể dùng một biến @code{balance} (số dư)
+để chỉ ra số dư tiền trong tài khoản và định nghĩa @code{withdraw} là một thủ
+tục truy cập @code{balance}. Thủ tục @code{withdraw} kiểm tra xem @code{balance}
+có ít nhất bằng @code{amount} đã yêu cầu không. Nếu có, @code{withdraw} giảm
+@code{balance} đi @code{amount} và trả về giá trị mới của @code{balance}. Nếu
+không, @code{withdraw} trả về thông báo @emph{Insufficient funds}. Đây là các
+định nghĩa của @code{balance} và @code{withdraw}:
+
+@lisp
+(define balance 100)
+
+(define (withdraw amount)
+  (if (>= balance amount)
+      (begin (set! balance (- balance amount))
+             balance)
+      "Insufficient funds"))
+@end lisp
+
+@noindent
+Việc giảm @code{balance} được thực hiện bằng biểu thức
+
+@lisp
+(set! balance (- balance amount))
+@end lisp
+
+@noindent
+Biểu thức này dùng dạng đặc biệt @code{set!}, có cú pháp là
+
+@lisp
+(set! ⟨@var{name}⟩ ⟨@var{new-value}⟩)
+@end lisp
+
+@noindent
+Ở đây @code{⟨}@var{name}@code{⟩} là một ký hiệu và @code{⟨}@var{new-value}@code{⟩} là
+bất kỳ biểu thức nào. @code{Set!} thay đổi @code{⟨}@var{name}@code{⟩} sao cho giá trị
+của nó là kết quả thu được bằng cách định giá @code{⟨}@var{new-value}@code{⟩}. Trong
+trường hợp này, chúng ta đang thay đổi @code{balance} sao cho giá trị mới của nó
+sẽ là kết quả của việc trừ @code{amount} từ giá trị trước đó của
+@code{balance}.@footnote{Giá trị của một biểu thức @code{set!} phụ thuộc vào cài
+đặt. @code{Set!} chỉ nên được sử dụng vì tác dụng của nó, không phải vì giá trị
+của nó.
+
+Tên @code{set!} phản ánh một quy ước đặt tên được sử dụng trong Scheme: Các
+phép toán thay đổi giá trị của các biến (hoặc thay đổi cấu trúc dữ liệu, như
+chúng ta sẽ thấy trong @ref{3.3}) được đặt tên kết thúc bằng dấu chấm than.
+Điều này tương tự như quy ước chỉ định các vị từ bằng tên kết thúc bằng dấu
+chấm hỏi.}
+
+@code{Withdraw} cũng dùng dạng đặc biệt @code{begin} để khiến hai biểu thức
+được định giá trong trường hợp kiểm tra @code{if} là đúng: đầu tiên giảm
+@code{balance} và sau đó trả về giá trị của @code{balance}. Nói chung, khi định
+giá biểu thức
+
+@lisp
+(begin ⟨@var{exp₁}⟩ ⟨@var{exp₂}⟩ @r{…} ⟨@var{expₖ}⟩)
+@end lisp
+
+@noindent
+sẽ khiến các biểu thức @math{{⟨exp_1⟩}} đến @math{{⟨exp_k⟩}} được định giá theo
+trình tự và giá trị của biểu thức cuối cùng @math{{⟨exp_k⟩}} được trả về là giá
+trị của toàn bộ dạng @code{begin}.@footnote{Chúng ta đã dùng @code{begin} ngầm
+trong các chương trình của mình, vì trong Scheme thân của một thủ tục có thể là
+một chuỗi các biểu thức. Ngoài ra, phần @code{⟨}@var{consequent}@code{⟩} của mỗi
+mệnh đề trong một biểu thức @code{cond} có thể là một chuỗi các biểu thức thay
+vì một biểu thức duy nhất.}
+
+Mặc dù @code{withdraw} hoạt động như mong muốn, biến @code{balance} đặt ra một
+vấn đề. Như đã đặc tả ở trên, @code{balance} là một tên được định nghĩa trong
+môi trường toàn cục và có thể truy cập tự do để kiểm tra hoặc sửa đổi bởi bất
+kỳ thủ tục nào. Sẽ tốt hơn nhiều nếu chúng ta có thể làm cho @code{balance} là
+nội bộ của @code{withdraw}, sao cho @code{withdraw} sẽ là thủ tục duy nhất có
+thể truy cập @code{balance} trực tiếp và bất kỳ thủ tục nào khác chỉ có thể
+truy cập @code{balance} gián tiếp (thông qua các lời gọi đến @code{withdraw}).
+Điều này sẽ mô hình hóa chính xác hơn khái niệm rằng @code{balance} là một biến
+trạng thái cục bộ được sử dụng bởi @code{withdraw} để theo dõi trạng thái của
+tài khoản.
+
+Chúng ta có thể làm cho @code{balance} là nội bộ của @code{withdraw} bằng cách
+viết lại định nghĩa như sau:
+
+@lisp
+(define new-withdraw
+  (let ((balance 100))
+    (lambda (amount)
+      (if (>= balance amount)
+          (begin (set! balance
+                       (- balance amount))
+                 balance)
+          "Insufficient funds"))))
+@end lisp
+
+@noindent
+Những gì chúng ta đã làm ở đây là dùng @code{let} để thiết lập một môi trường
+với một biến cục bộ @code{balance}, được gán giá trị ban đầu là 100. Trong môi
+trường cục bộ này, chúng ta dùng @code{lambda} để tạo một thủ tục nhận
+@code{amount} làm đối số và hoạt động giống như thủ tục @code{withdraw} trước đó
+của chúng ta. Thủ tục này---được trả về là kết quả của việc định giá biểu thức
+@code{let}---là @code{new-withdraw}, hoạt động chính xác theo cùng cách như
+@code{withdraw} nhưng biến @code{balance} của nó không thể truy cập bởi bất kỳ
+thủ tục nào khác.@footnote{Trong biệt ngữ ngôn ngữ lập trình, biến @code{balance}
+được gọi là @newterm{được đóng gói} bên trong thủ tục @code{new-withdraw}. Đóng
+gói phản ánh nguyên tắc thiết kế hệ thống tổng quát được gọi là @newterm{nguyên
+tắc che giấu}: Người ta có thể làm cho một hệ thống mô-đun hơn và mạnh mẽ hơn
+bằng cách bảo vệ các phần của hệ thống khỏi nhau; tức là bằng cách chỉ cung cấp
+quyền truy cập thông tin cho những phần của hệ thống có ``nhu cầu biết.''}
+
+Kết hợp @code{set!} với các biến cục bộ là kỹ thuật lập trình tổng quát mà
+chúng ta sẽ dùng để xây dựng các đối tượng tính toán với trạng thái cục bộ.
+Đáng tiếc, việc sử dụng kỹ thuật này đặt ra một vấn đề nghiêm trọng: Khi chúng
+ta lần đầu tiên giới thiệu các thủ tục, chúng ta cũng đã giới thiệu mô hình thay
+thế của định giá (@ref{1.1.5}) để cung cấp một cách diễn giải ý nghĩa của việc
+áp dụng thủ tục. Chúng ta đã nói rằng việc áp dụng một thủ tục nên được diễn
+giải là định giá thân của thủ tục với các tham số hình thức được thay thế bằng
+các giá trị của chúng. Vấn đề là, ngay khi chúng ta đưa phép gán vào ngôn ngữ
+của mình, thay thế không còn là mô hình đầy đủ về áp dụng thủ tục nữa. (Chúng
+ta sẽ thấy tại sao như vậy trong @ref{3.1.3}.) Do đó, về mặt kỹ thuật tại thời
+điểm này chúng ta không có cách nào để hiểu tại sao thủ tục @code{new-withdraw}
+hoạt động như đã khẳng định. Để thực sự hiểu một thủ tục như @code{new-withdraw},
+chúng ta sẽ cần phát triển một mô hình mới về áp dụng thủ tục. Trong @ref{3.2}
+chúng ta sẽ giới thiệu mô hình như vậy, cùng với giải thích về @code{set!} và
+các biến cục bộ. Nhưng trước tiên, chúng ta hãy xem xét một số biến thể về chủ
+đề được thiết lập bởi @code{new-withdraw}.
+
+Thủ tục sau đây, @code{make-withdraw}, tạo ra ``các bộ xử lý rút tiền.'' Tham số
+hình thức @code{balance} trong @code{make-withdraw} chỉ định số tiền ban đầu trong
+tài khoản.@footnote{Trái ngược với @code{new-withdraw} ở trên, chúng ta không cần
+dùng @code{let} để biến @code{balance} thành biến cục bộ, vì các tham số hình thức
+đã là cục bộ. Điều này sẽ rõ hơn sau khi thảo luận về mô hình môi trường của
+định giá trong @ref{3.2}. (Xem thêm @ref{Exercise 3.10}.)}
+
+@lisp
+(define (make-withdraw balance)
+  (lambda (amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance amount))
+               balance)
+        "Insufficient funds")))
+@end lisp
+
+@noindent
+@code{Make-withdraw} có thể được sử dụng như sau để tạo ra hai đối tượng
+@code{W1} và @code{W2}:
+
+@lisp
+(define W1 (make-withdraw 100))
+(define W2 (make-withdraw 100))
+
+(W1 50)
+@i{50}
+
+(W2 70)
+@i{30}
+
+(W2 40)
+@i{"Insufficient funds"}
+
+(W1 40)
+@i{10}
+@end lisp
+
+@noindent
+Hãy quan sát rằng @code{W1} và @code{W2} là các đối tượng hoàn toàn độc lập,
+mỗi đối tượng có biến trạng thái cục bộ @code{balance} riêng của nó. Việc rút
+tiền từ cái này không ảnh hưởng đến cái kia.
+
+Chúng ta cũng có thể tạo ra các đối tượng xử lý cả việc gửi tiền lẫn rút tiền,
+và do đó chúng ta có thể biểu diễn các tài khoản ngân hàng đơn giản. Đây là một
+thủ tục trả về một ``đối tượng tài khoản ngân hàng'' với số dư ban đầu được chỉ
+định:
+
+@lisp
+(define (make-account balance)
+  (define (withdraw amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance amount))
+               balance)
+        "Insufficient funds"))
+  (define (deposit amount)
+    (set! balance (+ balance amount))
+    balance)
+  (define (dispatch m)
+    (cond ((eq? m 'withdraw) withdraw)
+          ((eq? m 'deposit) deposit)
+          (else (error "Unknown request:
+                 MAKE-ACCOUNT" m))))
+  dispatch)
+@end lisp
+
+@noindent
+Mỗi lần gọi @code{make-account} thiết lập một môi trường với biến trạng thái cục
+bộ @code{balance}. Trong môi trường này, @code{make-account} định nghĩa các thủ
+tục @code{deposit} và @code{withdraw} truy cập @code{balance} và một thủ tục bổ
+sung @code{dispatch} nhận một ``thông điệp'' làm đầu vào và trả về một trong hai
+thủ tục cục bộ. Bản thân thủ tục @code{dispatch} được trả về là giá trị biểu
+diễn đối tượng tài khoản ngân hàng. Đây chính xác là phong cách lập trình
+@newterm{truyền thông điệp} mà chúng ta đã thấy trong @ref{2.4.3}, mặc dù ở đây
+chúng ta đang dùng nó kết hợp với khả năng sửa đổi các biến cục bộ.
+
+@code{Make-account} có thể được sử dụng như sau:
+
+@lisp
+(define acc (make-account 100))
+
+((acc 'withdraw) 50)
+@i{50}
+
+((acc 'withdraw) 60)
+@i{"Insufficient funds"}
+
+((acc 'deposit) 40)
+@i{90}
+
+((acc 'withdraw) 60)
+@i{30}
+@end lisp
+
+@noindent
+Mỗi lời gọi đến @code{acc} trả về thủ tục @code{deposit} hoặc @code{withdraw}
+được định nghĩa cục bộ, sau đó được áp dụng cho @code{amount} đã chỉ định. Như
+trong trường hợp của @code{make-withdraw}, một lời gọi khác đến @code{make-account}
+
+@lisp
+(define acc2 (make-account 100))
+@end lisp
+
+@noindent
+sẽ tạo ra một đối tượng tài khoản hoàn toàn riêng biệt, duy trì @code{balance}
+cục bộ riêng của nó.
+
+@quotation
+@strong{@anchor{Exercise 3.1}Bài tập 3.1:} Một @newterm{bộ tích lũy} là một thủ
+tục được gọi lặp đi lặp lại với một đối số số duy nhất và tích lũy các đối số
+của nó thành một tổng. Mỗi lần được gọi, nó trả về tổng đã tích lũy hiện tại.
+Viết thủ tục @code{make-accumulator} tạo ra các bộ tích lũy, mỗi bộ duy trì một
+tổng độc lập. Đầu vào của @code{make-accumulator} phải chỉ định giá trị ban đầu
+của tổng; ví dụ
+
+@lisp
+(define A (make-accumulator 5))
+
+(A 10)
+@i{15}
+
+(A 10)
+@i{25}
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.2}Bài tập 3.2:} Trong các ứng dụng kiểm thử phần
+mềm, rất hữu ích khi có thể đếm số lần một thủ tục đã cho được gọi trong quá
+trình tính toán. Viết thủ tục @code{make-monitored} nhận làm đầu vào một thủ
+tục, @code{f}, bản thân nó nhận một đầu vào. Kết quả trả về bởi
+@code{make-monitored} là thủ tục thứ ba, gọi là @code{mf}, theo dõi số lần nó
+đã được gọi bằng cách duy trì một bộ đếm nội bộ. Nếu đầu vào cho @code{mf} là
+ký hiệu đặc biệt @code{how-many-calls?}, thì @code{mf} trả về giá trị của bộ
+đếm. Nếu đầu vào là ký hiệu đặc biệt @code{reset-count}, thì @code{mf} đặt lại
+bộ đếm về không. Đối với bất kỳ đầu vào nào khác, @code{mf} trả về kết quả của
+việc gọi @code{f} trên đầu vào đó và tăng bộ đếm. Ví dụ, chúng ta có thể tạo
+một phiên bản được theo dõi của thủ tục @code{sqrt}:
+
+@lisp
+(define s (make-monitored sqrt))
+
+(s 100)
+@i{10}
+
+(s 'how-many-calls?)
+@i{1}
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.3}Bài tập 3.3:} Sửa đổi thủ tục @code{make-account}
+sao cho nó tạo ra các tài khoản được bảo vệ bằng mật khẩu. Tức là,
+@code{make-account} nên nhận một ký hiệu làm đối số bổ sung, như trong
+
+@lisp
+(define acc
+  (make-account 100 'secret-password))
+@end lisp
+
+Đối tượng tài khoản kết quả chỉ nên xử lý một yêu cầu nếu nó đi kèm với mật
+khẩu mà tài khoản đã được tạo ra, và nếu không nên trả về một lời phàn nàn:
+
+@lisp
+((acc 'secret-password 'withdraw) 40)
+@i{60}
+
+((acc 'some-other-password 'deposit) 50)
+@i{"Incorrect password"}
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.4}Bài tập 3.4:} Sửa đổi thủ tục @code{make-account}
+của @ref{Exercise 3.3} bằng cách thêm một biến trạng thái cục bộ khác sao cho,
+nếu một tài khoản được truy cập hơn bảy lần liên tiếp với mật khẩu không đúng,
+nó gọi thủ tục @code{call-the-cops}.
+@end quotation

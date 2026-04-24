@@ -1,0 +1,330 @@
+@node	3.2.3, 3.2.4, 3.2.2, 3.2
+@subsection Khung như Kho Chứa Trạng Thái Cục Bộ
+
+Chúng ta có thể chuyển sang mô hình môi trường để xem cách các thủ tục và phép
+gán có thể được dùng để biểu diễn các đối tượng với trạng thái cục bộ. Như một
+ví dụ, hãy xem xét ``bộ xử lý rút tiền'' từ @ref{3.1.1} được tạo ra bằng cách
+gọi thủ tục
+
+@lisp
+(define (make-withdraw balance)
+  (lambda (amount)
+    (if (>= balance amount)
+        (begin (set! balance
+                     (- balance amount))
+               balance)
+        "Insufficient funds")))
+@end lisp
+
+@noindent
+Hãy mô tả việc định giá
+
+@lisp
+(define W1 (make-withdraw 100))
+@end lisp
+
+@noindent
+tiếp theo là
+
+@lisp
+(W1 50)
+@i{50}
+@end lisp
+
+@noindent
+@ref{Figure 3.6} cho thấy kết quả của việc định nghĩa thủ tục @code{make-withdraw}
+trong môi trường toàn cục. Điều này tạo ra một đối tượng thủ tục chứa một con
+trỏ đến môi trường toàn cục. Cho đến nay, điều này không khác gì so với các ví
+dụ chúng ta đã thấy, ngoại trừ thân của thủ tục bản thân là một biểu thức λ.
+
+@float
+@anchor{Figure 3.6}
+@ifinfo
+@quotation
+@strong{Figure 3.6:} Result of defining @code{make-withdraw} in the global environment.
+
+@example
+          +---------------------------+
+global -->| make-withdraw: --+        |
+env       +------------------|--------+
+                             |      ^
+                             V      |
+                         .---.---.  |
+                         | O | O-+--+
+                         `-|-^---'
+                           |
+                           V
+         parameters: balance
+         body: (lambda (amount)
+                 (if (>= balance amount)
+                     (begin (set! balance
+                                  (- balance amount))
+                            balance)
+                     "Insufficient funds"))
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.6c,128mm,,,.std.svg}
+@caption{@strong{Figure 3.6:} Result of defining @code{make-withdraw} in the global environment.}
+@end iftex
+@end float
+
+@noindent
+Phần thú vị của phép tính xảy ra khi chúng ta áp dụng thủ tục @code{make-withdraw}
+vào một đối số:
+
+@lisp
+(define W1 (make-withdraw 100))
+@end lisp
+
+@noindent
+Chúng ta bắt đầu, như thường lệ, bằng cách thiết lập một môi trường E1 trong đó
+tham số hình thức @code{balance} được ràng buộc với đối số 100. Trong môi trường
+này, chúng ta định giá thân của @code{make-withdraw}, cụ thể là biểu thức λ.
+Điều này tạo ra một đối tượng thủ tục mới, mà mã của nó được chỉ định bởi
+@code{lambda} và môi trường của nó là E1, môi trường trong đó @code{lambda} được
+định giá để tạo ra thủ tục. Đối tượng thủ tục kết quả là giá trị được trả về bởi
+lời gọi đến @code{make-withdraw}. Giá trị này được ràng buộc với @code{W1} trong
+môi trường toàn cục, vì bản thân @code{define} đang được định giá trong môi
+trường toàn cục. @ref{Figure 3.7} cho thấy cấu trúc môi trường kết quả.
+
+@float
+@anchor{Figure 3.7}
+@ifinfo
+@strong{Figure 3.7:} Result of evaluating @code{(define W1 (make-withdraw 100))}.
+
+@example
+          +-----------------------------------------------+
+          | make-withdraw: -----------------------+       |
+global -->|                                       |       |
+          | W1: --+                               |       |
+          +-------|-------------------------------|-------+
+                  |                ^              |     ^
+                  |                |              V     |
+                  |        +-------+------+   .---.---. |
+                  |  E1 -->| balance: 100 |   | O | O-+-+
+                  |        +--------------+   `-|-^---'
+                  V                ^            |
+              .---.---.            |            V
+            +-+-O | O-+------------+    parameters: balance
+            | `---^---'                 body: ...
+            V
+    parameters: amount
+    body: (if (>= balance amount)
+              (begin (set! balance (- balance amount))
+                     balance)
+              "Insufficient funds")
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.7b,145mm,,,.std.svg}
+@caption{@strong{Figure 3.7:} Result of evaluating @code{(define W1 (make-withdraw 100))}.}
+@end iftex
+@end float
+
+Bây giờ chúng ta có thể phân tích điều xảy ra khi @code{W1} được áp dụng vào
+một đối số:
+
+@lisp
+(W1 50)
+@i{50}
+@end lisp
+
+@noindent
+Chúng ta bắt đầu bằng cách xây dựng một khung trong đó @code{amount}, tham số
+hình thức của @code{W1}, được ràng buộc với đối số 50. Điểm quan trọng cần quan
+sát là khung này có môi trường bao quanh không phải là môi trường toàn cục, mà
+là môi trường E1, vì đây là môi trường được chỉ định bởi đối tượng thủ tục
+@code{W1}. Trong môi trường mới này, chúng ta định giá thân của thủ tục:
+
+@lisp
+(if (>= balance amount)
+    (begin (set! balance (- balance amount))
+           balance)
+    "Insufficient funds")
+@end lisp
+
+@noindent
+Cấu trúc môi trường kết quả được hiển thị trong @ref{Figure 3.8}. Biểu thức đang
+được định giá tham chiếu cả @code{amount} và @code{balance}. @code{Amount} sẽ
+được tìm thấy trong khung đầu tiên trong môi trường, trong khi @code{balance}
+sẽ được tìm thấy bằng cách đi theo con trỏ môi trường bao quanh đến E1.
+
+@float
+@anchor{Figure 3.8}
+@ifinfo
+@strong{Figure 3.8:} Environments created by applying the procedure object @code{W1}.
+
+@example
+          +---------------------------------------------------+
+          | make-withdraw: ...                                |
+global -->|                                                   |
+env       | W1: --+                                           |
+          +-------|-------------------------------------------+
+                  |               ^
+                  |               |
+                  |       +-------+------+ Here is the balance
+                  | E1 -->| balance: 100 | that will be changed
+                  |       +--------------+ by the set!.
+                  V               ^   ^
+              .---.---.           |   +----+
+              | O | O-+-----------+        |
+              `-|-^---'             +------+-----+
+                |                   | amount: 50 |
+                V                   +------------+
+      parameters: amount   (if (>= balance amount)
+      body: ...                (begin (set! balance
+                                            (- balance amount))
+                                      balance)
+                               "Insufficient funds")
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.8c,145mm,,,.std.svg}
+@caption{@strong{Figure 3.8:} Environments created by applying the procedure object @code{W1}.}
+@end iftex
+@end float
+
+Khi @code{set!} được thực thi, ràng buộc của @code{balance} trong E1 được thay
+đổi. Khi hoàn thành lời gọi đến @code{W1}, @code{balance} là 50, và khung chứa
+@code{balance} vẫn được trỏ đến bởi đối tượng thủ tục @code{W1}. Khung ràng buộc
+@code{amount} (trong đó chúng ta đã thực thi mã thay đổi @code{balance}) không
+còn liên quan nữa, vì lời gọi thủ tục đã xây dựng nó đã kết thúc, và không có
+con trỏ nào đến khung đó từ các phần khác của môi trường. Lần tiếp theo @code{W1}
+được gọi, điều này sẽ xây dựng một khung mới ràng buộc @code{amount} và có môi
+trường bao quanh là E1. Chúng ta thấy rằng E1 phục vụ như ``nơi chứa'' lưu giữ
+biến trạng thái cục bộ cho đối tượng thủ tục @code{W1}. @ref{Figure 3.9} cho thấy
+tình huống sau lời gọi đến @code{W1}.
+
+@float
+@anchor{Figure 3.9}
+@ifinfo
+@strong{Figure 3.9:} Environments after the call to @code{W1}.
+
+@example
+           +------------------------------------+
+           | make-withdraw: ...                 |
+global --->|                                    |
+env        | W1: --+                            |
+           +-------|----------------------------+
+                   |                   ^
+                   |                   |
+                   |            +------+------+
+                   |     E1 --->| balance: 50 |
+                   |            +-------------+
+                   V                   ^
+               .---.---.               |
+               | O | O-+---------------+
+               `-|-^---'
+                 |
+                 V
+          parameters: amount
+          body: ...
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.9b,147mm,,,.std.svg}
+@caption{@strong{Figure 3.9:} Environments after the call to @code{W1}.}
+@end iftex
+@end float
+
+Hãy quan sát điều xảy ra khi chúng ta tạo ra một đối tượng ``rút tiền'' thứ hai
+bằng cách thực hiện một lời gọi khác đến @code{make-withdraw}:
+
+@lisp
+(define W2 (make-withdraw 100))
+@end lisp
+
+@noindent
+Điều này tạo ra cấu trúc môi trường của @ref{Figure 3.10}, cho thấy @code{W2}
+là một đối tượng thủ tục, tức là một cặp với một số mã và một môi trường. Môi
+trường E2 cho @code{W2} được tạo ra bởi lời gọi đến @code{make-withdraw}. Nó
+chứa một khung với ràng buộc cục bộ riêng của nó cho @code{balance}. Mặt khác,
+@code{W1} và @code{W2} có cùng mã: mã được chỉ định bởi biểu thức λ trong
+thân của @code{make-withdraw}.@footnote{Liệu @code{W1} và @code{W2} có chia sẻ
+cùng mã vật lý được lưu trữ trong máy tính, hay mỗi cái giữ một bản sao của mã,
+là chi tiết của cài đặt. Đối với trình thông dịch chúng ta cài đặt trong
+@ref{Chapter 4}, mã trên thực tế được chia sẻ.} Chúng ta thấy ở đây tại sao
+@code{W1} và @code{W2} hoạt động như các đối tượng độc lập. Các lời gọi đến
+@code{W1} tham chiếu biến trạng thái @code{balance} được lưu trữ trong E1, trong
+khi các lời gọi đến @code{W2} tham chiếu @code{balance} được lưu trữ trong E2.
+Do đó, các thay đổi đối với trạng thái cục bộ của một đối tượng không ảnh hưởng
+đến đối tượng kia.
+
+@float
+@anchor{Figure 3.10}
+@ifinfo
+@strong{Figure 3.10:} Using @code{(define W2 (make-withdraw 100))} to create a second object.
+
+@example
+         +-------------------------------------------------+
+         | make-withdraw: ...                              |
+global ->| W2: ---------------------------+                |
+env      | W1: --+                        |                |
+         +-------|------------------------|----------------+
+                 |              ^         |              ^
+                 |              |         |              |
+                 |       +------+------+  |       +------+-------+
+                 |  E1 ->| balance: 50 |  |  E2 ->| balance: 100 |
+                 |       +-------------+  |       +--------------+
+                 V              ^         V              ^
+             .---.---.          |     .---.---.          |
+             | O | O-+----------+     | O | O-+----------+
+             `-|-^---'                `-|-^---'
+               | +----------------------+
+               V V
+        parameters: amount
+        body: ...
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.10b,147mm,,,.std.svg}
+@caption{@strong{Figure 3.10:} Using @code{(define W2 (make-withdraw 100))} to create a second object.}
+@end iftex
+@end float
+
+@quotation
+@strong{@anchor{Exercise 3.10}Bài tập 3.10:} Trong thủ tục @code{make-withdraw},
+biến cục bộ @code{balance} được tạo ra như một tham số của @code{make-withdraw}.
+Chúng ta cũng có thể tạo ra biến trạng thái cục bộ một cách rõ ràng, bằng cách
+dùng @code{let}, như sau:
+
+@lisp
+(define (make-withdraw initial-amount)
+  (let ((balance initial-amount))
+    (lambda (amount)
+      (if (>= balance amount)
+          (begin (set! balance
+                       (- balance amount))
+                 balance)
+          "Insufficient funds"))))
+@end lisp
+
+Nhớ lại từ @ref{1.3.2} rằng @code{let} chỉ là đường cú pháp cho một lời gọi
+thủ tục:
+
+@lisp
+(let ((⟨@var{var}⟩ ⟨@var{exp}⟩)) ⟨@var{body}⟩)
+@end lisp
+
+@noindent
+được diễn giải như một cú pháp thay thế cho
+
+@lisp
+((lambda (⟨@var{var}⟩) ⟨@var{body}⟩) ⟨@var{exp}⟩)
+@end lisp
+
+Dùng mô hình môi trường để phân tích phiên bản thay thế này của
+@code{make-withdraw}, vẽ các hình tương tự các hình ở trên để minh họa các tương
+tác
+
+@lisp
+(define W1 (make-withdraw 100))
+(W1 50)
+(define W2 (make-withdraw 100))
+@end lisp
+
+Chỉ ra rằng hai phiên bản của @code{make-withdraw} tạo ra các đối tượng với
+cùng hành vi. Các cấu trúc môi trường khác nhau như thế nào giữa hai phiên bản?
+@end quotation

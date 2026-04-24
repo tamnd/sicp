@@ -1,0 +1,102 @@
+@node	3.2, 3.3, 3.1, Chapter 3
+@section Mô Hình Môi Trường của Định Giá
+
+Khi chúng ta giới thiệu các thủ tục phức hợp trong @ref{Chapter 1}, chúng ta đã
+dùng mô hình thay thế của định giá (@ref{1.1.5}) để định nghĩa ý nghĩa của việc
+áp dụng một thủ tục vào các đối số:
+
+@itemize @bullet
+
+@item
+Để áp dụng một thủ tục phức hợp vào các đối số, định giá thân của thủ tục với
+mỗi tham số hình thức được thay thế bằng đối số tương ứng.
+
+@end itemize
+
+@noindent
+Khi chúng ta chấp nhận phép gán trong ngôn ngữ lập trình của mình, định nghĩa
+như vậy không còn đầy đủ nữa. Đặc biệt, @ref{3.1.3} đã lập luận rằng, khi có
+phép gán, một biến không còn có thể được coi là chỉ là một tên của một giá trị.
+Thay vào đó, một biến phải bằng cách nào đó chỉ định một ``nơi chứa'' trong đó
+các giá trị có thể được lưu trữ. Trong mô hình định giá mới của chúng ta, những
+nơi chứa này sẽ được duy trì trong các cấu trúc được gọi là @newterm{môi trường}.
+
+Một môi trường là một chuỗi các @newterm{khung}. Mỗi khung là một bảng (có thể
+rỗng) các @newterm{ràng buộc}, liên kết tên biến với các giá trị tương ứng của
+chúng. (Một khung đơn có thể chứa nhiều nhất một ràng buộc cho bất kỳ biến nào.)
+Mỗi khung cũng có một con trỏ đến @newterm{môi trường bao quanh} của nó, trừ
+khi, cho mục đích thảo luận, khung được coi là @newterm{toàn cục}. @newterm{Giá
+trị của một biến} đối với một môi trường là giá trị được cho bởi ràng buộc của
+biến trong khung đầu tiên trong môi trường chứa ràng buộc cho biến đó. Nếu không
+có khung nào trong chuỗi chỉ định ràng buộc cho biến, thì biến được gọi là
+@newterm{không được ràng buộc} trong môi trường.
+
+@ref{Figure 3.1} cho thấy một cấu trúc môi trường đơn giản bao gồm ba khung,
+được gắn nhãn I, II, và III. Trong sơ đồ, A, B, C, và D là các con trỏ đến môi
+trường. C và D trỏ đến cùng một môi trường. Các biến @code{z} và @code{x} được
+ràng buộc trong khung II, trong khi @code{y} và @code{x} được ràng buộc trong
+khung I. Giá trị của @code{x} trong môi trường D là 3. Giá trị của @code{x} đối
+với môi trường B cũng là 3. Điều này được xác định như sau: Chúng ta kiểm tra
+khung đầu tiên trong chuỗi (khung III) và không tìm thấy ràng buộc cho @code{x},
+vì vậy chúng ta tiến đến môi trường bao quanh D và tìm thấy ràng buộc trong
+khung I. Mặt khác, giá trị của @code{x} trong môi trường A là 7, vì khung đầu
+tiên trong chuỗi (khung II) chứa ràng buộc của @code{x} với 7. Đối với môi
+trường A, ràng buộc của @code{x} với 7 trong khung II được gọi là @newterm{che
+khuất} ràng buộc của @code{x} với 3 trong khung I.
+
+@float
+@anchor{Figure 3.1}
+@ifinfo
+@quotation
+@strong{Figure 3.1:} A simple environment structure.
+
+@example
+           +--------+
+           |      I |
+           | x: 3   |
+           | y: 5   |
+           +--------+
+              ^  ^
+              |  |
+            C |  | D
++---------+   |  |   +----------+
+|      II |   |  |   |      III |
+| z: 6    +---+  +---+ m: 1     |
+| x: 7    |          | y: 2     |
++---------+          +----------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.1b,69mm,,,.std.svg}
+@caption{@strong{Figure 3.1:} A simple environment structure.}
+@end iftex
+@end float
+
+@noindent
+Môi trường là yếu tố thiết yếu trong quá trình định giá, vì nó xác định ngữ
+cảnh mà trong đó một biểu thức nên được định giá. Thật vậy, người ta có thể nói
+rằng các biểu thức trong một ngôn ngữ lập trình tự chúng không có bất kỳ ý nghĩa
+nào. Thay vào đó, một biểu thức có được ý nghĩa chỉ đối với một môi trường nào
+đó trong đó nó được định giá. Ngay cả việc diễn giải một biểu thức đơn giản như
+@code{(+ 1 1)} cũng phụ thuộc vào sự hiểu biết rằng người ta đang hoạt động trong
+một ngữ cảnh trong đó @code{+} là ký hiệu cho phép cộng. Vì vậy, trong mô hình
+định giá của chúng ta, chúng ta sẽ luôn nói về việc định giá một biểu thức đối
+với một môi trường nào đó. Để mô tả các tương tác với trình thông dịch, chúng ta
+sẽ giả sử rằng có một môi trường toàn cục, bao gồm một khung duy nhất (không có
+môi trường bao quanh) bao gồm các giá trị cho các ký hiệu được liên kết với các
+thủ tục nguyên thủy. Ví dụ, ý tưởng rằng @code{+} là ký hiệu cho phép cộng được
+nắm bắt bằng cách nói rằng ký hiệu @code{+} được ràng buộc trong môi trường toàn
+cục với thủ tục cộng nguyên thủy.
+
+@menu
+* 3.2.1::            Các Quy Tắc Định Giá
+* 3.2.2::            Áp Dụng Các Thủ Tục Đơn Giản
+* 3.2.3::            Khung như Kho Chứa Trạng Thái Cục Bộ
+* 3.2.4::            Định Nghĩa Nội Bộ
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi

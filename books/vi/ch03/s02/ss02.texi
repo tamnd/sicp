@@ -1,0 +1,163 @@
+@node	3.2.2, 3.2.3, 3.2.1, 3.2
+@subsection Áp Dụng Các Thủ Tục Đơn Giản
+
+Khi chúng ta giới thiệu mô hình thay thế trong @ref{1.1.5}, chúng ta đã chỉ ra
+cách tổ hợp @code{(f 5)} định giá thành 136, cho các định nghĩa thủ tục sau:
+
+@lisp
+(define (square x)
+  (* x x))
+(define (sum-of-squares x y)
+  (+ (square x) (square y)))
+(define (f a)
+  (sum-of-squares (+ a 1) (* a 2)))
+@end lisp
+
+@noindent
+Chúng ta có thể phân tích cùng ví dụ bằng mô hình môi trường. @ref{Figure 3.4}
+cho thấy ba đối tượng thủ tục được tạo ra bằng cách định giá các định nghĩa của
+@code{f}, @code{square}, và @code{sum-of-squares} trong môi trường toàn cục. Mỗi
+đối tượng thủ tục bao gồm một số mã, cùng với con trỏ đến môi trường toàn cục.
+
+@float
+@anchor{Figure 3.4}
+@ifinfo
+@strong{Figure 3.4:} Procedure objects in the global frame.
+
+@example
+          +--------------------------------------------+
+          | sum-of-squares:                            |
+global -->| square:                                    |
+env       | f: --+                                     |
+          +------|--------------+--------------+-------+
+                 |     ^        |     ^        |     ^
+                 |     |        |     |        |     |
+                 V     |        V     |        V     |
+             .---.---. |    .---.---. |    .---.---. |
+             | O | O-+-+    | O | O-+-+    | O | O-+-+
+             `-|-^---'      `-|-^---'      `-|-^---'
+               |              |              |
+               V              V              V
+   parameters: a          parameters: x  parameters: x, y
+   body: (sum-of-squares  body: (* x x)  body: (+ (square x)
+           (+ a 1)                                (square y))
+           (* a 2))
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.4b,132mm,,,.std.svg}
+@caption{@strong{Figure 3.4:} Procedure objects in the global frame.}
+@end iftex
+@end float
+
+@noindent
+Trong @ref{Figure 3.5} chúng ta thấy cấu trúc môi trường được tạo ra bằng cách
+định giá biểu thức @code{(f 5)}. Lời gọi đến @code{f} tạo ra một môi trường mới
+E1 bắt đầu với một khung trong đó @code{a}, tham số hình thức của @code{f}, được
+ràng buộc với đối số 5. Trong E1, chúng ta định giá thân của @code{f}:
+
+@lisp
+(sum-of-squares (+ a 1) (* a 2))
+@end lisp
+
+@float
+@anchor{Figure 3.5}
+@ifinfo
+@strong{Figure 3.5:} Environments created by evaluating
+@code{(f 5)} using the procedures in @ref{Figure 3.4}.
+
+@example
+          +-----------------------------------------------------+
+global -->|                                                     |
+env       +-----------------------------------------------------+
+            ^              ^                ^               ^
+(f 5)       |              |                |               |
+        +------+       +-------+        +------+        +-------+
+  E1 -->| a: 5 |  E2 ->| x: 6  |  E3 -->| x: 6 |  E4 -->| x: 10 |
+        |      |       | y: 10 |        |      |        |       |
+        +------+       +-------+        +------+        +-------+
+   (sum-of-squares   (+ (square x)       (* x x)         (* x x)
+     (+ a 1)            (square u))
+     (+ a 2))
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.5b,142mm,,,.std.svg}
+@caption{@strong{Figure 3.5:} Environments created by evaluating @code{(f 5)} @w{using} the procedures in @ref{Figure 3.4}.}
+@end iftex
+@end float
+
+@noindent
+Để định giá tổ hợp này, chúng ta trước tiên định giá các biểu thức con. Biểu thức
+con đầu tiên, @code{sum-of-squares}, có giá trị là một đối tượng thủ tục. (Hãy
+chú ý cách giá trị này được tìm thấy: Chúng ta trước tiên tìm trong khung đầu
+tiên của E1, không chứa ràng buộc cho @code{sum-of-squares}. Sau đó chúng ta tiến
+đến môi trường bao quanh, tức là môi trường toàn cục, và tìm thấy ràng buộc được
+hiển thị trong @ref{Figure 3.4}.) Hai biểu thức con còn lại được định giá bằng
+cách áp dụng các phép toán nguyên thủy @code{+} và @code{*} để định giá hai tổ
+hợp @code{(+ a 1)} và @code{(* a 2)} để thu được 6 và 10, tương ứng.
+
+@noindent
+Bây giờ chúng ta áp dụng đối tượng thủ tục @code{sum-of-squares} vào các đối số
+6 và 10. Điều này dẫn đến một môi trường mới E2 trong đó các tham số hình thức
+@code{x} và @code{y} được ràng buộc với các đối số. Trong E2 chúng ta định giá
+tổ hợp @code{(+ (square x) (square y))}. Điều này dẫn chúng ta đến định giá
+@code{(square x)}, trong đó @code{square} được tìm thấy trong khung toàn cục và
+@code{x} là 6. Một lần nữa, chúng ta thiết lập một môi trường mới, E3, trong đó
+@code{x} được ràng buộc với 6, và trong đó chúng ta định giá thân của
+@code{square}, là @code{(* x x)}. Cũng như một phần của việc áp dụng
+@code{sum-of-squares}, chúng ta phải định giá biểu thức con @code{(square y)},
+trong đó @code{y} là 10. Lời gọi thứ hai đến @code{square} này tạo ra một môi
+trường khác, E4, trong đó @code{x}, tham số hình thức của @code{square}, được
+ràng buộc với 10. Và trong E4 chúng ta phải định giá @code{(* x x)}.
+
+Điểm quan trọng cần quan sát là mỗi lời gọi đến @code{square} tạo ra một môi
+trường mới chứa ràng buộc cho @code{x}. Chúng ta có thể thấy ở đây cách các
+khung khác nhau phục vụ để giữ riêng biệt các biến cục bộ khác nhau đều được đặt
+tên là @code{x}. Hãy chú ý rằng mỗi khung được tạo ra bởi @code{square} trỏ đến
+môi trường toàn cục, vì đây là môi trường được chỉ định bởi đối tượng thủ tục
+@code{square}.
+
+Sau khi các biểu thức con được định giá, các kết quả được trả về. Các giá trị
+được tạo ra bởi hai lời gọi đến @code{square} được cộng bởi @code{sum-of-squares},
+và kết quả này được trả về bởi @code{f}. Vì trọng tâm của chúng ta ở đây là các
+cấu trúc môi trường, chúng ta sẽ không dừng lại ở cách các giá trị trả về này
+được truyền từ lời gọi này sang lời gọi khác; tuy nhiên, đây cũng là một khía
+cạnh quan trọng của quá trình định giá, và chúng ta sẽ trở lại nó chi tiết trong
+@ref{Chapter 5}.
+
+@quotation
+@strong{@anchor{Exercise 3.9}Bài tập 3.9:} Trong @ref{1.2.1} chúng ta đã dùng
+mô hình thay thế để phân tích hai thủ tục tính giai thừa, một phiên bản đệ quy
+
+@lisp
+(define (factorial n)
+  (if (= n 1)
+      1
+      (* n (factorial (- n 1)))))
+@end lisp
+
+@noindent
+và một phiên bản lặp
+
+@lisp
+(define (factorial n)
+  (fact-iter 1 1 n))
+
+(define (fact-iter product
+                   counter
+                   max-count)
+  (if (> counter max-count)
+      product
+      (fact-iter (* counter product)
+                 (+ counter 1)
+                 max-count)))
+@end lisp
+
+Hiển thị các cấu trúc môi trường được tạo ra bằng cách định giá @code{(factorial 6)}
+bằng cách dùng từng phiên bản của thủ tục @code{factorial}.@footnote{Mô hình môi
+trường sẽ không làm rõ khẳng định của chúng ta trong @ref{1.2.1} rằng trình thông
+dịch có thể thực thi một thủ tục như @code{fact-iter} trong một lượng không gian
+không đổi bằng cách dùng đệ quy đuôi. Chúng ta sẽ thảo luận về đệ quy đuôi khi
+chúng ta xử lý cấu trúc điều khiển của trình thông dịch trong @ref{5.4}.}
+@end quotation

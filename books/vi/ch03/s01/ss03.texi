@@ -1,0 +1,376 @@
+@node	3.1.3, 3.2, Chapter 3, 3.1
+@subsection Chi Phí của Việc Đưa Vào Phép Gán
+
+Như chúng ta đã thấy, phép toán @code{set!} cho phép chúng ta mô hình hóa các
+đối tượng có trạng thái cục bộ. Tuy nhiên, ưu điểm này đi kèm với một cái giá.
+Ngôn ngữ lập trình của chúng ta không còn có thể được diễn giải theo mô hình thay
+thế của áp dụng thủ tục mà chúng ta đã giới thiệu trong @ref{1.1.5}. Hơn nữa,
+không có mô hình đơn giản nào với các tính chất toán học ``đẹp'' có thể là khuôn
+khổ đầy đủ để xử lý các đối tượng và phép gán trong các ngôn ngữ lập trình.
+
+Miễn là chúng ta không sử dụng các phép gán, hai lần định giá cùng một thủ tục
+với cùng các đối số sẽ tạo ra cùng một kết quả, vì vậy các thủ tục có thể được
+xem như tính toán các hàm toán học. Lập trình không có bất kỳ sử dụng phép gán
+nào, như chúng ta đã làm trong suốt hai chương đầu của cuốn sách này, theo đó
+được biết đến như @newterm{lập trình hàm}.
+
+Để hiểu cách phép gán làm phức tạp vấn đề, hãy xem xét một phiên bản đơn giản
+hóa của thủ tục @code{make-withdraw} từ @ref{3.1.1} không bận tâm kiểm tra số
+tiền không đủ:
+
+@lisp
+(define (make-simplified-withdraw balance)
+  (lambda (amount)
+    (set! balance (- balance amount))
+    balance))
+
+(define W (make-simplified-withdraw 25))
+
+(W 20)
+@i{5}
+
+(W 10)
+@i{-5}
+@end lisp
+
+@noindent
+So sánh thủ tục này với thủ tục @code{make-decrementer} sau đây, không dùng
+@code{set!}:
+
+@lisp
+(define (make-decrementer balance)
+  (lambda (amount)
+    (- balance amount)))
+@end lisp
+
+@noindent
+@code{Make-decrementer} trả về một thủ tục trừ đầu vào của nó từ một lượng
+@code{balance} được chỉ định, nhưng không có hiệu ứng tích lũy qua các lần gọi
+liên tiếp, như với @code{make-simplified-withdraw}:
+
+@lisp
+(define D (make-decrementer 25))
+
+(D 20)
+@i{5}
+
+(D 10)
+@i{15}
+@end lisp
+
+@noindent
+Chúng ta có thể dùng mô hình thay thế để giải thích cách hoạt động của
+@code{make-decrementer}. Ví dụ, hãy phân tích việc định giá biểu thức
+
+@lisp
+((make-decrementer 25) 20)
+@end lisp
+
+@noindent
+Chúng ta đầu tiên đơn giản hóa toán tử của tổ hợp bằng cách thay 25 cho
+@code{balance} trong thân của @code{make-decrementer}. Điều này rút gọn biểu
+thức thành
+
+@lisp
+((lambda (amount) (- 25 amount)) 20)
+@end lisp
+
+@noindent
+Bây giờ chúng ta áp dụng toán tử bằng cách thay 20 cho @code{amount} trong thân
+của biểu thức @code{lambda}:
+
+@lisp
+(- 25 20)
+@end lisp
+
+@noindent
+Câu trả lời cuối cùng là 5.
+
+Tuy nhiên, hãy quan sát điều xảy ra nếu chúng ta thử phân tích thay thế tương
+tự với @code{make-simplified-withdraw}:
+
+@lisp
+((make-simplified-withdraw 25) 20)
+@end lisp
+
+@noindent
+Chúng ta đầu tiên đơn giản hóa toán tử bằng cách thay 25 cho @code{balance}
+trong thân của @code{make-simplified-withdraw}. Điều này rút gọn biểu thức
+thành@footnote{Chúng ta không thay thế cho lần xuất hiện @code{balance} trong
+biểu thức @code{set!} vì @code{⟨}@var{name}@code{⟩} trong một @code{set!} không
+được định giá. Nếu chúng ta thay thế cho nó, chúng ta sẽ nhận được
+@code{(set! 25 (- 25 amount))}, điều này không có ý nghĩa.}
+
+@lisp
+((lambda (amount)
+   (set! balance (- 25 amount)) 25)
+ 20)
+@end lisp
+
+@noindent
+Bây giờ chúng ta áp dụng toán tử bằng cách thay 20 cho @code{amount} trong thân
+của biểu thức @code{lambda}:
+
+@lisp
+(set! balance (- 25 20)) 25
+@end lisp
+
+@noindent
+Nếu chúng ta tuân theo mô hình thay thế, chúng ta sẽ phải nói rằng ý nghĩa của
+việc áp dụng thủ tục là đầu tiên đặt @code{balance} thành 5 và sau đó trả về 25
+là giá trị của biểu thức. Điều này cho câu trả lời sai. Để có được câu trả lời
+đúng, chúng ta sẽ phải bằng cách nào đó phân biệt lần xuất hiện đầu tiên của
+@code{balance} (trước tác dụng của @code{set!}) với lần xuất hiện thứ hai của
+@code{balance} (sau tác dụng của @code{set!}), và mô hình thay thế không thể
+làm điều này.
+
+Vấn đề ở đây là thay thế về cơ bản dựa trên khái niệm rằng các ký hiệu trong
+ngôn ngữ của chúng ta về bản chất là tên của các giá trị. Nhưng ngay khi chúng
+ta đưa vào @code{set!} và ý tưởng rằng giá trị của một biến có thể thay đổi, một
+biến không còn đơn giản là một tên nữa. Bây giờ một biến bằng cách nào đó đề cập
+đến một nơi có thể lưu trữ một giá trị, và giá trị được lưu trữ tại nơi đó có
+thể thay đổi. Trong @ref{3.2} chúng ta sẽ thấy cách các môi trường đóng vai trò
+``nơi chứa'' này trong mô hình tính toán của chúng ta.
+
+@subsubheading Đồng nhất và thay đổi
+
+Vấn đề nổi lên ở đây sâu sắc hơn là sự phá vỡ đơn thuần của một mô hình tính
+toán cụ thể. Ngay khi chúng ta đưa vào sự thay đổi trong các mô hình tính toán
+của chúng ta, nhiều khái niệm trước đây đơn giản trở nên có vấn đề. Hãy xem xét
+khái niệm hai thứ là ``giống nhau''.
+
+Giả sử chúng ta gọi @code{make-decrementer} hai lần với cùng một đối số để tạo
+ra hai thủ tục:
+
+@lisp
+(define D1 (make-decrementer 25))
+(define D2 (make-decrementer 25))
+@end lisp
+
+@noindent
+@code{D1} và @code{D2} có giống nhau không? Một câu trả lời chấp nhận được là có,
+vì @code{D1} và @code{D2} có cùng hành vi tính toán---mỗi cái là một thủ tục trừ
+đầu vào của nó từ 25. Trên thực tế, @code{D1} có thể được thay thế cho @code{D2}
+trong bất kỳ tính toán nào mà không thay đổi kết quả.
+
+Hãy so sánh điều này với việc tạo hai lời gọi đến @code{make-simplified-withdraw}:
+
+@lisp
+(define W1 (make-simplified-withdraw 25))
+(define W2 (make-simplified-withdraw 25))
+@end lisp
+
+@noindent
+@code{W1} và @code{W2} có giống nhau không? Chắc chắn không, vì các lời gọi đến
+@code{W1} và @code{W2} có các tác dụng khác nhau, như được hiển thị bởi chuỗi
+tương tác sau:
+
+@lisp
+(W1 20)
+@i{5}
+
+(W1 20)
+@i{-15}
+
+(W2 20)
+@i{5}
+@end lisp
+
+@noindent
+Mặc dù @code{W1} và @code{W2} là ``bằng nhau'' theo nghĩa là cả hai đều được tạo
+ra bằng cách định giá cùng một biểu thức, @code{(make-simplified-withdraw 25)},
+nhưng không đúng khi @code{W1} có thể được thay thế cho @code{W2} trong bất kỳ
+biểu thức nào mà không thay đổi kết quả định giá biểu thức.
+
+Một ngôn ngữ hỗ trợ khái niệm ``các thứ bằng nhau có thể được thay thế cho nhau''
+trong một biểu thức mà không thay đổi giá trị của biểu thức được gọi là
+@newterm{trong suốt tham chiếu}. Tính trong suốt tham chiếu bị vi phạm khi chúng
+ta đưa @code{set!} vào ngôn ngữ máy tính của mình. Điều này làm cho việc xác định
+khi nào chúng ta có thể đơn giản hóa các biểu thức bằng cách thay thế các biểu
+thức tương đương trở nên khó khăn. Do đó, lý luận về các chương trình sử dụng
+phép gán trở nên khó khăn hơn rất nhiều.
+
+Một khi chúng ta từ bỏ tính trong suốt tham chiếu, khái niệm ý nghĩa của các
+đối tượng tính toán là ``giống nhau'' trở nên khó nắm bắt một cách hình thức.
+Thật vậy, ý nghĩa của ``giống nhau'' trong thế giới thực mà các chương trình của
+chúng ta mô hình hóa hầu như không rõ ràng trong chính nó. Nói chung, chúng ta
+chỉ có thể xác định rằng hai đối tượng có vẻ giống hệt nhau thực sự là ``đối
+tượng đó'' chỉ bằng cách sửa đổi một đối tượng và sau đó quan sát xem đối tượng
+kia có thay đổi theo cùng cách hay không. Nhưng làm thế nào chúng ta có thể biết
+liệu một đối tượng đã ``thay đổi'' ngoài việc quan sát ``đối tượng đó'' hai lần
+và xem liệu một số tính chất của đối tượng có khác nhau giữa hai lần quan sát
+không? Vì vậy, chúng ta không thể xác định ``sự thay đổi'' mà không có một khái
+niệm @emph{a priori} về ``đồng nhất'', và chúng ta không thể xác định đồng nhất
+mà không quan sát các tác dụng của sự thay đổi.
+
+Như một ví dụ về cách vấn đề này phát sinh trong lập trình, hãy xem xét tình
+huống trong đó Peter và Paul có tài khoản ngân hàng $100. Có sự khác biệt đáng
+kể giữa việc mô hình hóa điều này như
+
+@lisp
+(define peter-acc (make-account 100))
+(define paul-acc (make-account 100))
+@end lisp
+
+@noindent
+và mô hình hóa nó như
+
+@lisp
+(define peter-acc (make-account 100))
+(define paul-acc peter-acc)
+@end lisp
+
+@noindent
+Trong tình huống đầu tiên, hai tài khoản ngân hàng là riêng biệt. Các giao dịch
+của Peter sẽ không ảnh hưởng đến tài khoản của Paul, và ngược lại. Trong tình
+huống thứ hai, tuy nhiên, chúng ta đã định nghĩa @code{paul-acc} là @emph{cùng
+một thứ} với @code{peter-acc}. Thực tế, Peter và Paul bây giờ có tài khoản ngân
+hàng chung, và nếu Peter rút tiền từ @code{peter-acc} Paul sẽ thấy ít tiền hơn
+trong @code{paul-acc}. Hai tình huống tương tự nhưng khác biệt này có thể gây
+nhầm lẫn trong việc xây dựng các mô hình tính toán. Với tài khoản chung, đặc
+biệt, có thể đặc biệt gây nhầm lẫn khi có một đối tượng (tài khoản ngân hàng)
+có hai tên khác nhau (@code{peter-acc} và @code{paul-acc}); nếu chúng ta đang tìm
+kiếm tất cả các nơi trong chương trình mà @code{paul-acc} có thể bị thay đổi,
+chúng ta phải nhớ cũng xem xét những thứ thay đổi
+@code{peter-acc}.@footnote{Hiện tượng một đối tượng tính toán duy nhất được truy
+cập bởi nhiều hơn một tên được gọi là @newterm{bí danh}. Tình huống tài khoản
+ngân hàng chung minh họa một ví dụ rất đơn giản về bí danh. Trong @ref{3.3}
+chúng ta sẽ thấy các ví dụ phức tạp hơn nhiều, chẳng hạn như các cấu trúc dữ
+liệu phức hợp ``riêng biệt'' chia sẻ các phần. Lỗi có thể xảy ra trong các
+chương trình của chúng ta nếu chúng ta quên rằng một thay đổi đối với một đối
+tượng cũng có thể, như ``tác dụng phụ'', thay đổi một đối tượng ``khác'' vì hai
+đối tượng ``khác nhau'' thực ra là một đối tượng duy nhất xuất hiện dưới các
+bí danh khác nhau. Các lỗi được gọi là @newterm{lỗi tác dụng phụ} này rất khó
+định vị và phân tích đến mức một số người đề xuất rằng các ngôn ngữ lập trình
+nên được thiết kế sao cho không cho phép tác dụng phụ hoặc bí danh
+(@ref{Lampson et al. 1981}; @ref{Morris et al. 1980}).}
+
+Với tham chiếu đến các nhận xét trên về ``đồng nhất'' và ``thay đổi'', hãy quan
+sát rằng nếu Peter và Paul chỉ có thể kiểm tra số dư ngân hàng của họ, và không
+thể thực hiện các phép toán thay đổi số dư, thì vấn đề liệu hai tài khoản có
+riêng biệt hay không sẽ không có ý nghĩa. Nói chung, miễn là chúng ta không bao
+giờ sửa đổi các đối tượng dữ liệu, chúng ta có thể coi một đối tượng dữ liệu
+phức hợp là chính xác tổng thể các phần của nó. Ví dụ, một số hữu tỉ được xác
+định bằng cách cho tử số và mẫu số của nó. Nhưng quan điểm này không còn hợp lệ
+khi có sự thay đổi, nơi một đối tượng dữ liệu phức hợp có một ``danh tính'' là
+thứ gì đó khác với các phần mà nó được tạo thành. Một tài khoản ngân hàng vẫn là
+``cùng một'' tài khoản ngân hàng ngay cả khi chúng ta thay đổi số dư bằng cách
+rút tiền; ngược lại, chúng ta có thể có hai tài khoản ngân hàng khác nhau với
+cùng thông tin trạng thái. Sự phức tạp này là hệ quả, không phải của ngôn ngữ
+lập trình của chúng ta, mà là nhận thức của chúng ta về tài khoản ngân hàng như
+một đối tượng. Ví dụ, chúng ta thường không coi một số hữu tỉ là một đối tượng
+có thể thay đổi với danh tính, chẳng hạn như chúng ta có thể thay đổi tử số và
+vẫn có ``cùng'' số hữu tỉ.
+
+@subsubheading Những cạm bẫy của lập trình mệnh lệnh
+
+Trái ngược với lập trình hàm, lập trình sử dụng rộng rãi phép gán được gọi là
+@newterm{lập trình mệnh lệnh}. Ngoài việc đặt ra các vấn đề về mô hình tính toán,
+các chương trình được viết theo phong cách mệnh lệnh còn dễ bị lỗi không thể xảy
+ra trong các chương trình hàm. Ví dụ, hãy nhớ lại chương trình giai thừa lặp
+từ @ref{1.2.1}:
+
+@lisp
+(define (factorial n)
+  (define (iter product counter)
+    (if (> counter n)
+        product
+        (iter (* counter product)
+              (+ counter 1))))
+  (iter 1 1))
+@end lisp
+
+@noindent
+Thay vì truyền đối số trong vòng lặp nội bộ, chúng ta có thể áp dụng phong cách
+mệnh lệnh hơn bằng cách dùng phép gán rõ ràng để cập nhật giá trị của các biến
+@code{product} và @code{counter}:
+
+@lisp
+(define (factorial n)
+  (let ((product 1)
+        (counter 1))
+    (define (iter)
+      (if (> counter n)
+          product
+          (begin (set! product (* counter
+                                  product))
+                 (set! counter (+ counter 1))
+                 (iter))))
+    (iter)))
+@end lisp
+
+@noindent
+Điều này không thay đổi kết quả được tạo ra bởi chương trình, nhưng nó đưa ra
+một cạm bẫy tinh tế. Làm thế nào chúng ta quyết định thứ tự của các phép gán?
+Thật ra, chương trình đúng như được viết. Nhưng việc viết các phép gán theo thứ
+tự ngược lại
+
+@lisp
+(set! counter (+ counter 1))
+(set! product (* counter product))
+@end lisp
+
+@noindent
+sẽ tạo ra một kết quả khác, không đúng. Nói chung, lập trình với phép gán buộc
+chúng ta phải xem xét cẩn thận thứ tự tương đối của các phép gán để đảm bảo rằng
+mỗi câu lệnh đang sử dụng phiên bản đúng của các biến đã được thay đổi. Vấn đề
+này đơn giản không phát sinh trong các chương trình hàm.@footnote{Nhìn vào điều
+này, thật mỉa mai khi lập trình nhập môn thường được dạy theo phong cách mệnh
+lệnh cao độ. Điều này có thể là dấu vết của niềm tin, phổ biến trong suốt những
+năm 1960 và 1970, rằng các chương trình gọi thủ tục nhất thiết phải kém hiệu quả
+hơn các chương trình thực hiện phép gán. (@ref{Steele 1977} bác bỏ lập luận này.)
+Ngoài ra, nó có thể phản ánh quan điểm rằng gán từng bước dễ hình dung hơn cho
+người mới bắt đầu so với lời gọi thủ tục. Dù lý do là gì, nó thường gánh cho
+những lập trình viên mới bắt đầu những lo ngại về ``tôi có nên đặt biến này
+trước hay sau cái kia'' có thể làm phức tạp lập trình và che khuất các ý tưởng
+quan trọng.}
+
+Sự phức tạp của các chương trình mệnh lệnh trở nên tồi tệ hơn nữa nếu chúng ta
+xem xét các ứng dụng trong đó nhiều quá trình thực thi đồng thời. Chúng ta sẽ
+trở lại điều này trong @ref{3.4}. Trước tiên, tuy nhiên, chúng ta sẽ giải quyết
+vấn đề cung cấp mô hình tính toán cho các biểu thức liên quan đến phép gán, và
+khám phá các ứng dụng của các đối tượng với trạng thái cục bộ trong việc thiết
+kế các mô phỏng.
+
+@quotation
+@strong{@anchor{Exercise 3.7}Bài tập 3.7:} Hãy xem xét các đối tượng tài khoản
+ngân hàng được tạo ra bởi @code{make-account}, với việc sửa đổi mật khẩu được
+mô tả trong @ref{Exercise 3.3}. Giả sử hệ thống ngân hàng của chúng ta yêu cầu
+khả năng tạo tài khoản chung. Định nghĩa thủ tục @code{make-joint} thực hiện
+điều này. @code{Make-joint} nên nhận ba đối số. Đối số đầu tiên là một tài khoản
+được bảo vệ bằng mật khẩu. Đối số thứ hai phải khớp với mật khẩu mà tài khoản
+được định nghĩa để phép toán @code{make-joint} tiếp tục. Đối số thứ ba là một
+mật khẩu mới. @code{Make-joint} tạo ra quyền truy cập bổ sung vào tài khoản ban
+đầu bằng mật khẩu mới. Ví dụ, nếu @code{peter-acc} là tài khoản ngân hàng với
+mật khẩu @code{open-sesame}, thì
+
+@lisp
+(define paul-acc
+  (make-joint peter-acc
+              'open-sesame
+              'rosebud))
+@end lisp
+
+@noindent
+sẽ cho phép thực hiện các giao dịch trên @code{peter-acc} bằng tên
+@code{paul-acc} và mật khẩu @code{rosebud}. Bạn có thể muốn sửa đổi giải pháp
+của mình cho @ref{Exercise 3.3} để đáp ứng tính năng mới này.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.8}Bài tập 3.8:} Khi chúng ta định nghĩa mô hình định
+giá trong @ref{1.1.3}, chúng ta đã nói rằng bước đầu tiên trong việc định giá
+một biểu thức là định giá các biểu thức con của nó. Nhưng chúng ta không bao giờ
+chỉ định thứ tự mà các biểu thức con nên được định giá (ví dụ: từ trái sang phải
+hay từ phải sang trái). Khi chúng ta đưa vào phép gán, thứ tự mà các đối số của
+một thủ tục được định giá có thể tạo ra sự khác biệt đối với kết quả. Định nghĩa
+một thủ tục đơn giản @code{f} sao cho việc định giá
+
+@lisp
+(+ (f 0) (f 1))
+@end lisp
+
+@noindent
+sẽ trả về 0 nếu các đối số của @code{+} được định giá từ trái sang phải nhưng sẽ
+trả về 1 nếu các đối số được định giá từ phải sang trái.
+@end quotation

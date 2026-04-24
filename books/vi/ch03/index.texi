@@ -1,0 +1,72 @@
+@node    Chapter 3, 3.1, 2.5, Top
+@chapter Tính Module, Đối Tượng, và Trạng Thái
+
+@quotation
+Mεταβάλλον ὰναπαύεται@*
+(Even while it changes, it stands still.)@*
+---Heraclitus
+
+Plus @,{c}a change, plus c'est la m@^{e}me chose.@*
+---Alphonse Karr
+@end quotation
+
+@noindent
+Các chương trước đã giới thiệu các yếu tố cơ bản từ đó các chương trình được
+xây dựng. Chúng ta đã thấy cách các thủ tục nguyên thủy và dữ liệu nguyên thủy
+được kết hợp để tạo ra các thực thể phức hợp, và chúng ta đã học rằng trừu tượng
+hóa là thiết yếu trong việc giúp chúng ta đối phó với độ phức tạp của các hệ
+thống lớn. Nhưng những công cụ này không đủ để thiết kế chương trình. Tổng hợp
+chương trình hiệu quả còn đòi hỏi các nguyên tắc tổ chức có thể hướng dẫn chúng
+ta trong việc hình thành thiết kế tổng thể của một chương trình. Đặc biệt, chúng
+ta cần các chiến lược để giúp chúng ta cấu trúc các hệ thống lớn sao cho chúng
+sẽ @newterm{mô-đun hóa}, tức là, sao cho chúng có thể được chia thành các phần
+nhất quán một cách ``tự nhiên'' có thể được phát triển và bảo trì riêng biệt.
+
+Một chiến lược thiết kế mạnh mẽ, đặc biệt thích hợp cho việc xây dựng các chương
+trình mô hình hóa hệ thống vật lý, là dựa cấu trúc của chương trình vào cấu trúc
+của hệ thống được mô hình hóa. Đối với mỗi đối tượng trong hệ thống, chúng ta
+xây dựng một đối tượng tính toán tương ứng. Đối với mỗi hành động của hệ thống,
+chúng ta định nghĩa một phép toán ký hiệu trong mô hình tính toán của chúng ta.
+Hy vọng của chúng ta khi sử dụng chiến lược này là việc mở rộng mô hình để đáp
+ứng các đối tượng mới hoặc các hành động mới sẽ không đòi hỏi thay đổi chiến lược
+đối với chương trình, chỉ cần bổ sung các tương tự ký hiệu mới của các đối tượng
+hoặc hành động đó. Nếu chúng ta đã tổ chức hệ thống thành công, thì để thêm một
+tính năng mới hoặc gỡ lỗi một cái cũ, chúng ta sẽ chỉ phải làm việc trên một
+phần cục bộ của hệ thống.
+
+Ở một mức độ lớn, do đó, cách chúng ta tổ chức một chương trình lớn bị chi phối
+bởi nhận thức của chúng ta về hệ thống cần mô hình hóa. Trong chương này chúng
+ta sẽ điều tra hai chiến lược tổ chức nổi bật xuất phát từ hai ``thế giới quan''
+khá khác nhau về cấu trúc của hệ thống. Chiến lược tổ chức đầu tiên tập trung
+vào @newterm{đối tượng}, coi một hệ thống lớn là tập hợp các đối tượng riêng biệt
+mà hành vi của chúng có thể thay đổi theo thời gian. Một chiến lược tổ chức thay
+thế tập trung vào các @newterm{luồng} thông tin chảy trong hệ thống, giống như
+một kỹ sư điện xem một hệ thống xử lý tín hiệu.
+
+Cả cách tiếp cận dựa trên đối tượng lẫn cách tiếp cận xử lý luồng đều đặt ra
+các vấn đề ngôn ngữ học quan trọng trong lập trình. Với đối tượng, chúng ta phải
+lo ngại về cách một đối tượng tính toán có thể thay đổi mà vẫn duy trì danh tính
+của nó. Điều này sẽ buộc chúng ta phải từ bỏ mô hình thay thế cũ của tính toán
+(@ref{1.1.5}) để ủng hộ một @newterm{mô hình môi trường} của tính toán cơ học hơn
+nhưng ít có thể xử lý về lý thuyết hơn. Những khó khăn trong việc xử lý đối
+tượng, thay đổi, và danh tính là hệ quả cơ bản của nhu cầu phải đối phó với thời
+gian trong các mô hình tính toán của chúng ta. Những khó khăn này trở nên lớn hơn
+nữa khi chúng ta cho phép khả năng thực thi đồng thời của các chương trình. Cách
+tiếp cận luồng có thể được khai thác đầy đủ nhất khi chúng ta tách rời thời gian
+mô phỏng trong mô hình của chúng ta khỏi thứ tự các sự kiện xảy ra trong máy tính
+trong quá trình định giá. Chúng ta sẽ thực hiện điều này bằng một kỹ thuật được
+gọi là @newterm{định giá trễ}.
+
+@menu
+* 3.1::              Gán Giá Trị và Trạng Thái Cục Bộ
+* 3.2::              Mô Hình Môi Trường của Định Giá
+* 3.3::              Mô Hình Hóa với Dữ Liệu Có Thể Thay Đổi
+* 3.4::              Tính Đồng Thời: Thời Gian Là Điều Cốt Yếu
+* 3.5::              Luồng
+@end menu
+
+@include s01/index.texi
+@include s02/index.texi
+@include s03/index.texi
+@include s04/index.texi
+@include s05/index.texi

@@ -1,0 +1,195 @@
+@node	3.2.1, 3.2.2, 3.2, 3.2
+@subsection Các Quy Tắc Định Giá
+
+Đặc tả tổng thể về cách trình thông dịch định giá một tổ hợp vẫn giữ nguyên
+như khi chúng ta lần đầu tiên giới thiệu nó trong @ref{1.1.3}:
+
+@itemize @bullet
+
+@item
+Để định giá một tổ hợp:
+
+@end itemize
+
+@enumerate 1
+
+@item
+Định giá các biểu thức con của tổ hợp.@footnote{Phép gán đưa ra sự tinh tế
+vào bước 1 của quy tắc định giá. Như được hiển thị trong @ref{Exercise 3.8},
+sự hiện diện của phép gán cho phép chúng ta viết các biểu thức sẽ tạo ra các
+giá trị khác nhau tùy thuộc vào thứ tự mà các biểu thức con trong một tổ hợp
+được định giá. Vì vậy, để chính xác, chúng ta nên chỉ định một thứ tự định giá
+trong bước 1 (ví dụ: từ trái sang phải hay từ phải sang trái). Tuy nhiên, thứ
+tự này luôn nên được coi là chi tiết cài đặt, và không bao giờ nên viết các
+chương trình phụ thuộc vào một thứ tự cụ thể nào đó. Ví dụ, một trình biên dịch
+tinh vi có thể tối ưu hóa chương trình bằng cách thay đổi thứ tự mà các biểu
+thức con được định giá.}
+
+@item
+Áp dụng giá trị của biểu thức con toán tử vào các giá trị của các biểu thức con
+toán hạng.
+
+@end enumerate
+
+@noindent
+Mô hình môi trường của định giá thay thế mô hình thay thế trong việc chỉ định
+ý nghĩa của việc áp dụng một thủ tục phức hợp vào các đối số.
+
+Trong mô hình môi trường của định giá, một thủ tục luôn là một cặp bao gồm một
+số mã và một con trỏ đến một môi trường. Các thủ tục được tạo ra theo một cách
+duy nhất: bằng cách định giá một biểu thức λ. Điều này tạo ra một thủ tục
+mà mã của nó được lấy từ văn bản của biểu thức λ và môi trường của nó là
+môi trường trong đó biểu thức λ được định giá để tạo ra thủ tục. Ví dụ,
+hãy xem xét định nghĩa thủ tục
+
+@lisp
+(define (square x)
+  (* x x))
+@end lisp
+
+@noindent
+được định giá trong môi trường toàn cục. Cú pháp định nghĩa thủ tục chỉ là
+đường cú pháp cho một biểu thức λ ngầm định bên dưới. Sẽ tương đương khi
+dùng
+
+@lisp
+(define square
+  (lambda (x) (* x x)))
+@end lisp
+
+@noindent
+định giá @code{(lambda (x) (* x x))} và ràng buộc @code{square} với giá trị
+kết quả, tất cả trong môi trường toàn cục.
+
+@ref{Figure 3.2} cho thấy kết quả của việc định giá biểu thức @code{define} này.
+Đối tượng thủ tục là một cặp mà mã của nó chỉ định rằng thủ tục có một tham số
+hình thức, cụ thể là @code{x}, và thân thủ tục @code{(* x x)}. Phần môi trường
+của thủ tục là con trỏ đến môi trường toàn cục, vì đó là môi trường trong đó
+biểu thức λ được định giá để tạo ra thủ tục. Một ràng buộc mới, liên kết
+đối tượng thủ tục với ký hiệu @code{square}, đã được thêm vào khung toàn cục.
+Nói chung, @code{define} tạo ra các định nghĩa bằng cách thêm ràng buộc vào
+các khung.
+
+@float
+@anchor{Figure 3.2}
+@ifinfo
+@quotation
+@strong{Figure 3.2:} Environment structure produced by
+evaluating @code{(define (square x) (* x x))} in the global environment.
+
+@example
+           +----------------------+
+           | other variables      |
+global --->|                      |
+env        | square: --+          |
+           +-----------|----------+
+                       |       ^
+(define (square x)     |       |
+  (* x x))             V       |
+                   .---.---.   |
+                   | O | O-+---+
+                   `-|-^---'
+                     |
+                     V
+                   parameters: x
+                   body: (* x x)
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.2b,81mm,,,.std.svg}
+@caption{@strong{Figure 3.2:} Environment structure produced by evaluating @code{(define (square x) (* x x))} in the global environment.}
+@end iftex
+@end float
+
+@noindent
+Bây giờ khi chúng ta đã thấy cách các thủ tục được tạo ra, chúng ta có thể mô tả
+cách các thủ tục được áp dụng. Mô hình môi trường chỉ định: Để áp dụng một thủ
+tục vào các đối số, tạo một môi trường mới chứa một khung ràng buộc các tham số
+với các giá trị của đối số. Môi trường bao quanh của khung này là môi trường được
+chỉ định bởi thủ tục. Bây giờ, trong môi trường mới này, định giá thân thủ tục.
+
+Để cho thấy cách quy tắc này được tuân theo, @ref{Figure 3.3} minh họa cấu trúc
+môi trường được tạo ra bằng cách định giá biểu thức @code{(square 5)} trong môi
+trường toàn cục, trong đó @code{square} là thủ tục được tạo trong @ref{Figure 3.2}.
+Việc áp dụng thủ tục dẫn đến việc tạo ra một môi trường mới, được gắn nhãn E1
+trong hình, bắt đầu với một khung trong đó @code{x}, tham số hình thức của thủ
+tục, được ràng buộc với đối số 5. Con trỏ hướng lên từ khung này cho thấy môi
+trường bao quanh của khung là môi trường toàn cục. Môi trường toàn cục được chọn
+ở đây, vì đây là môi trường được chỉ định như một phần của đối tượng thủ tục
+@code{square}. Trong E1, chúng ta định giá thân của thủ tục, @code{(* x x)}. Vì
+giá trị của @code{x} trong E1 là 5, kết quả là @code{(* 5 5)}, hay 25.
+
+@float
+@anchor{Figure 3.3}
+@ifinfo
+@quotation
+@strong{Figure 3.3:} Environment created by evaluating
+@code{(square 5)} in the global environment.
+
+@example
+          +------------------------------------+
+          | other variables                    |
+global -->|                                    |
+env       | square: --+                        |
+          +-----------|---------------------+--+
+                      |       ^             ^
+(square 5)            |       |             |
+                      V       |             |
+                  .---.---.   |         +---+--+
+                  | O | O-+---+   E1 -->| x: 5 |
+                  `-|-^---'             +------+
+                    |
+                    V
+                  parameters: x
+                  body: (* x x)
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.3b,129mm,,,.std.svg}
+@caption{@strong{Figure 3.3:} Environment created by evaluating @code{(square 5)} in the global environment.}
+@end iftex
+@end float
+
+@noindent
+Mô hình môi trường của áp dụng thủ tục có thể được tóm tắt bằng hai quy tắc:
+
+@itemize @bullet
+
+@item
+Một đối tượng thủ tục được áp dụng vào một tập hợp các đối số bằng cách xây
+dựng một khung, ràng buộc các tham số hình thức của thủ tục với các đối số của
+lời gọi, và sau đó định giá thân của thủ tục trong ngữ cảnh của môi trường mới
+được xây dựng. Khung mới có môi trường bao quanh của nó là phần môi trường của
+đối tượng thủ tục đang được áp dụng.
+
+@item
+Một thủ tục được tạo ra bằng cách định giá một biểu thức λ tương đối với
+một môi trường cho trước. Đối tượng thủ tục kết quả là một cặp bao gồm văn bản
+của biểu thức λ và một con trỏ đến môi trường trong đó thủ tục được tạo.
+
+@end itemize
+
+@noindent
+Chúng ta cũng chỉ định rằng việc định nghĩa một ký hiệu bằng cách dùng @code{define}
+tạo ra một ràng buộc trong khung môi trường hiện tại và gán cho ký hiệu giá trị
+được chỉ định.@footnote{Nếu đã có một ràng buộc cho biến trong khung hiện tại,
+thì ràng buộc được thay đổi. Điều này tiện lợi vì nó cho phép định nghĩa lại các
+ký hiệu; tuy nhiên, nó cũng có nghĩa là @code{define} có thể được dùng để thay
+đổi giá trị, và điều này làm nảy sinh các vấn đề của phép gán mà không cần dùng
+@code{set!} một cách rõ ràng. Do đó, một số người thích việc định nghĩa lại các
+ký hiệu hiện có nên báo hiệu lỗi hoặc cảnh báo.} Cuối cùng, chúng ta chỉ định
+hành vi của @code{set!}, phép toán buộc chúng ta phải giới thiệu mô hình môi
+trường ở nơi đầu tiên. Định giá biểu thức @code{(set! ⟨@var{variable}⟩ ⟨@var{value}⟩)}
+trong một môi trường nào đó tìm ràng buộc của biến trong môi trường và thay đổi
+ràng buộc đó để chỉ ra giá trị mới. Tức là, người ta tìm khung đầu tiên trong
+môi trường chứa ràng buộc cho biến và sửa đổi khung đó. Nếu biến không được
+ràng buộc trong môi trường, thì @code{set!} báo hiệu một lỗi.
+
+Các quy tắc định giá này, mặc dù phức tạp hơn đáng kể so với mô hình thay thế,
+vẫn còn khá đơn giản. Hơn nữa, mô hình định giá, mặc dù trừu tượng, cung cấp mô
+tả đúng về cách trình thông dịch định giá các biểu thức. Trong @ref{Chapter 4}
+chúng ta sẽ thấy cách mô hình này có thể phục vụ như một bản thiết kế để cài đặt
+một trình thông dịch hoạt động. Các phần sau đây mở rộng chi tiết của mô hình
+bằng cách phân tích một số chương trình minh họa.
