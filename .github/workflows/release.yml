@@ -32,18 +32,7 @@ jobs:
             zip
 
       - name: Map Inconsolata LGC to system Inconsolata
-        run: |
-          sudo tee /etc/fonts/conf.d/99-inconsolata-lgc.conf > /dev/null << 'EOF'
-          <?xml version="1.0"?>
-          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
-          <fontconfig>
-            <alias>
-              <family>Inconsolata LGC</family>
-              <prefer><family>Inconsolata</family></prefer>
-            </alias>
-          </fontconfig>
-          EOF
-          sudo fc-cache -fv
+        run: sed -i 's/Inconsolata LGC/Inconsolata/g' src/pdf/preamble.tex
 
       - name: Build PDF
         run: make -C src/pdf
