@@ -1,0 +1,50 @@
+@node	3.3, 3.4, 3.2, Chapter 3
+@section Mô Hình Hóa với Dữ Liệu Có Thể Thay Đổi
+
+@ref{Chapter 2} đã đề cập đến dữ liệu phức hợp như một phương tiện để xây dựng
+các đối tượng tính toán có nhiều phần, để mô hình hóa các đối tượng trong thế
+giới thực có nhiều khía cạnh. Trong chương đó chúng ta đã giới thiệu kỷ luật
+trừu tượng hóa dữ liệu, theo đó các cấu trúc dữ liệu được chỉ định theo các bộ
+xây dựng, tạo ra các đối tượng dữ liệu, và các bộ chọn, truy cập các phần của
+các đối tượng dữ liệu phức hợp. Nhưng bây giờ chúng ta biết rằng có một khía
+cạnh khác của dữ liệu mà chương 2 không đề cập đến. Mong muốn mô hình hóa các
+hệ thống bao gồm các đối tượng có trạng thái thay đổi dẫn chúng ta đến nhu cầu
+sửa đổi các đối tượng dữ liệu phức hợp, cũng như xây dựng và chọn từ chúng. Để
+mô hình hóa các đối tượng phức hợp với trạng thái thay đổi, chúng ta sẽ thiết
+kế các trừu tượng dữ liệu để bao gồm, ngoài các bộ chọn và bộ xây dựng, các phép
+toán được gọi là @newterm{bộ biến đổi}, biến đổi các đối tượng dữ liệu. Ví dụ,
+mô hình hóa một hệ thống ngân hàng đòi hỏi chúng ta thay đổi số dư tài khoản.
+Do đó, một cấu trúc dữ liệu để biểu diễn các tài khoản ngân hàng có thể cho
+phép một phép toán
+
+@lisp
+(set-balance! ⟨@var{account}⟩ ⟨@var{new-value}⟩)
+@end lisp
+
+@noindent
+thay đổi số dư của tài khoản được chỉ định thành giá trị mới được chỉ định. Các
+đối tượng dữ liệu mà các bộ biến đổi được định nghĩa được gọi là @newterm{đối
+tượng dữ liệu có thể thay đổi}.
+
+Chương 2 đã giới thiệu các cặp như một ``keo'' mục đích chung để tổng hợp dữ
+liệu phức hợp. Chúng ta bắt đầu phần này bằng cách định nghĩa các bộ biến đổi
+cơ bản cho các cặp, sao cho các cặp có thể phục vụ như các khối xây dựng để
+xây dựng các đối tượng dữ liệu có thể thay đổi. Các bộ biến đổi này nâng cao
+đáng kể sức mạnh biểu diễn của các cặp, cho phép chúng ta xây dựng các cấu trúc
+dữ liệu khác với các chuỗi và cây mà chúng ta đã làm việc trong @ref{2.2}. Chúng
+ta cũng trình bày một số ví dụ về các mô phỏng trong đó các hệ thống phức tạp
+được mô hình hóa như các tập hợp các đối tượng với trạng thái cục bộ.
+
+@menu
+* 3.3.1::            Cấu Trúc Danh Sách Có Thể Thay Đổi
+* 3.3.2::            Biểu Diễn Hàng Đợi
+* 3.3.3::            Biểu Diễn Bảng
+* 3.3.4::            Bộ Mô Phỏng Mạch Logic Số
+* 3.3.5::            Lan Truyền Ràng Buộc
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi
+@include ss05.texi

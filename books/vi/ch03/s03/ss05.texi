@@ -1,0 +1,669 @@
+@node	3.3.5, 3.4, 3.2, 3.3
+@subsection Lan Truyền Ràng Buộc
+
+Các chương trình máy tính theo truyền thống được tổ chức như các tính toán một
+chiều, thực hiện các phép toán trên các đối số được chỉ định trước để tạo ra
+các đầu ra mong muốn. Mặt khác, chúng ta thường mô hình hóa các hệ thống theo
+các mối quan hệ giữa các đại lượng. Ví dụ, một mô hình toán học của một cấu
+trúc cơ học có thể bao gồm thông tin rằng độ lệch @math{d} của một thanh kim
+loại có liên quan đến lực @math{F} tác dụng lên thanh, chiều dài @math{L} của
+thanh, tiết diện ngang @math{A}, và mô-đun đàn hồi @math{E} thông qua phương
+trình
+@ifinfo
+
+@example
+dAE = FL
+@end example
+
+@end ifinfo
+@tex
+\[ % :61:
+  {dAE} \,=\, {FL.}  \]
+@end tex
+Một phương trình như vậy không phải là một chiều. Biết bất kỳ bốn đại lượng
+nào, chúng ta có thể dùng nó để tính đại lượng thứ năm. Tuy nhiên, dịch phương
+trình sang ngôn ngữ máy tính truyền thống sẽ buộc chúng ta phải chọn một trong
+các đại lượng được tính theo bốn đại lượng kia. Do đó, một thủ tục để tính
+diện tích @math{A} không thể được dùng để tính độ lệch @math{d}, mặc dù việc
+tính @math{A} và @math{d} đều xuất phát từ cùng một phương
+trình.@footnote{Lan truyền ràng buộc lần đầu tiên xuất hiện trong hệ thống
+@abbr{SKETCHPAD} cực kỳ tầm nhìn xa của Ivan @ref{Sutherland (1963)}. Một hệ
+thống lan truyền ràng buộc tuyệt đẹp dựa trên ngôn ngữ Smalltalk đã được phát
+triển bởi Alan @ref{Borning (1977)} tại Trung tâm Nghiên cứu Xerox Palo Alto.
+Sussman, Stallman và Steele áp dụng lan truyền ràng buộc để phân tích mạch điện
+(@ref{Sussman and Stallman 1975}; @ref{Sussman and Steele 1980}). TK!Solver
+(@ref{Konopasek and Jayaraman 1984}) là một môi trường mô hình hóa mở rộng dựa
+trên ràng buộc.}
+
+Trong phần này, chúng ta phác thảo thiết kế của một ngôn ngữ cho phép chúng ta
+làm việc theo các mối quan hệ bản thân chúng. Các phần tử nguyên thủy của ngôn
+ngữ là các @newterm{ràng buộc nguyên thủy}, phát biểu rằng các mối quan hệ nhất
+định tồn tại giữa các đại lượng. Ví dụ, @code{(adder a b c)} chỉ định rằng các
+đại lượng @math{a}, @math{b} và @math{c} phải có liên quan bởi phương trình
+@math{{a + b = c}}, @code{(multiplier x y z)} biểu thị ràng buộc @math{{xy = z}},
+và @code{(constant 3.14 x)} nói rằng giá trị của @math{x} phải là 3.14.
+
+Ngôn ngữ của chúng ta cung cấp phương tiện kết hợp các ràng buộc nguyên thủy
+để biểu thị các mối quan hệ phức tạp hơn. Chúng ta kết hợp các ràng buộc bằng
+cách xây dựng các @newterm{mạng ràng buộc}, trong đó các ràng buộc được kết nối
+bởi các @newterm{bộ kết nối}. Một bộ kết nối là một đối tượng ``giữ'' một giá
+trị có thể tham gia vào một hoặc nhiều ràng buộc. Ví dụ, chúng ta biết rằng
+mối quan hệ giữa nhiệt độ Fahrenheit và Celsius là
+@ifinfo
+
+@example
+9C = 5(F - 32)
+@end example
+
+@end ifinfo
+@tex
+\[ % :62:
+  {9C} \,=\, {5(F - 32).}  \]
+@end tex
+Ràng buộc như vậy có thể được coi như một mạng bao gồm các ràng buộc cộng,
+nhân và hằng số nguyên thủy (@ref{Figure 3.28}). Trong hình, chúng ta thấy bên
+trái một hộp nhân với ba đầu cuối, được gán nhãn @math{{m1}}, @math{{m2}} và
+@math{p}. Chúng kết nối bộ nhân với phần còn lại của mạng như sau: Đầu cuối
+@math{{m1}} được liên kết với một bộ kết nối @math{C}, sẽ giữ nhiệt độ Celsius.
+Đầu cuối @math{{m2}} được liên kết với một bộ kết nối @math{w}, cũng được liên
+kết với một hộp hằng số giữ giá trị 9. Đầu cuối @math{p}, mà hộp nhân ràng
+buộc là tích của @math{{m1}} và @math{{m2}}, được liên kết với đầu cuối @math{p}
+của một hộp nhân khác, mà @math{{m2}} của nó được kết nối với hằng số 5 và
+@math{{m1}} của nó được kết nối với một trong các số hạng trong một tổng.
+
+@float
+@anchor{Figure 3.28}
+@ifinfo
+@strong{Figure 3.28:} The relation @math{9C = 5(F - 32)} expressed as a constraint network.
+
+@example
+       +---------+     +---------+   v   +---------+
+C -----+ m1      |  u  |      m1 +-------+ a1      |
+       |    *  p +-----+ p  *    |       |    *  s +---- F
+    +--+ m2      |     |      m2 +--+ +--+ a2      |
+    |  +---------+     +---------+  | |  +---------+
+  w |                              x| |y
+    |    +-----+        +-----+     | |     +-----+
+    +----+  9  |        |  5  +-----+ +-----+  32 |
+         +-----+        +-----+             +-----+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.28,142mm,,,.std.svg}
+@caption{@strong{Figure 3.28:} The relation @math{{9C = 5(F - 32)}} expressed as a constraint network.}
+@end iftex
+@end float
+
+@noindent
+Tính toán bởi mạng như vậy tiến hành như sau: Khi một bộ kết nối được cho một
+giá trị (bởi người dùng hoặc bởi một hộp ràng buộc mà nó được liên kết), nó
+đánh thức tất cả các ràng buộc liên quan của nó (ngoại trừ ràng buộc vừa đánh
+thức nó) để thông báo rằng nó có một giá trị. Mỗi hộp ràng buộc được đánh thức
+sau đó thăm dò các bộ kết nối của nó để xem có đủ thông tin để xác định một
+giá trị cho một bộ kết nối không. Nếu có, hộp đặt bộ kết nối đó, từ đó đánh
+thức tất cả các ràng buộc liên quan của nó, và cứ tiếp tục như vậy. Ví dụ,
+trong quá trình chuyển đổi giữa Celsius và Fahrenheit, @math{w}, @math{x} và
+@math{y} được các hộp hằng số đặt ngay lập tức thành 9, 5 và 32 tương ứng. Các
+bộ kết nối đánh thức các bộ nhân và bộ cộng, chúng xác định rằng không có đủ
+thông tin để tiếp tục. Nếu người dùng (hoặc một phần khác của mạng) đặt
+@math{C} thành một giá trị (giả sử 25), bộ nhân ngoài cùng bên trái sẽ được
+đánh thức, và nó sẽ đặt @math{u} thành @math{{25 \cdot 9 = 225}}. Sau đó
+@math{u} đánh thức bộ nhân thứ hai, đặt @math{v} thành 45, và @math{v} đánh
+thức bộ cộng, đặt @math{f} thành 77.
+
+@subsubheading Using the constraint system
+
+Để dùng hệ thống ràng buộc để thực hiện tính toán nhiệt độ được phác thảo ở
+trên, trước tiên chúng ta tạo ra hai bộ kết nối, @code{C} và @code{F}, bằng
+cách gọi bộ khởi tạo @code{make-connector}, và liên kết @code{C} và @code{F}
+trong một mạng thích hợp:
+
+@lisp
+(define C (make-connector))
+(define F (make-connector))
+(celsius-fahrenheit-converter C F)
+@i{ok}
+@end lisp
+
+@noindent
+Thủ tục tạo ra mạng được định nghĩa như sau:
+
+@lisp
+(define (celsius-fahrenheit-converter c f)
+  (let ((u (make-connector))
+        (v (make-connector))
+        (w (make-connector))
+        (x (make-connector))
+        (y (make-connector)))
+    (multiplier c w u)
+    (multiplier v x u)
+    (adder v y f)
+    (constant 9 w)
+    (constant 5 x)
+    (constant 32 y)
+    'ok))
+@end lisp
+
+@noindent
+Thủ tục này tạo ra các bộ kết nối nội bộ @code{u}, @code{v}, @code{w},
+@code{x} và @code{y}, và liên kết chúng như được hiển thị trong @ref{Figure 3.28}
+dùng các bộ khởi tạo ràng buộc nguyên thủy @code{adder}, @code{multiplier} và
+@code{constant}. Giống như với bộ mô phỏng mạch số của @ref{3.3.4}, việc biểu
+thị các kết hợp phần tử nguyên thủy này theo các thủ tục tự động cung cấp cho
+ngôn ngữ của chúng ta một phương tiện trừu tượng hóa cho các đối tượng phức hợp.
+
+Để quan sát mạng đang hoạt động, chúng ta có thể đặt các đầu dò trên các bộ
+kết nối @code{C} và @code{F}, dùng một thủ tục @code{probe} tương tự như thủ
+tục chúng ta đã dùng để theo dõi các dây dẫn trong @ref{3.3.4}. Đặt đầu dò
+trên một bộ kết nối sẽ làm cho một thông điệp được in bất cứ khi nào bộ kết nối
+được cho một giá trị:
+
+@lisp
+(probe "Celsius temp" C)
+(probe "Fahrenheit temp" F)
+@end lisp
+
+@noindent
+Tiếp theo chúng ta đặt giá trị của @code{C} thành 25. (Đối số thứ ba của
+@code{set-value!} nói với @code{C} rằng chỉ thị này đến từ @code{user}.)
+
+@lisp
+(set-value! C 25 'user)
+@i{Probe: Celsius temp = 25}
+@i{Probe: Fahrenheit temp = 77}
+@i{done}
+@end lisp
+
+@noindent
+Đầu dò trên @code{C} thức dậy và báo cáo giá trị. @code{C} cũng lan truyền
+giá trị của nó qua mạng như được mô tả ở trên. Điều này đặt @code{F} thành 77,
+được báo cáo bởi đầu dò trên @code{F}.
+
+Bây giờ chúng ta có thể thử đặt @code{F} thành một giá trị mới, chẳng hạn 212:
+
+@lisp
+(set-value! F 212 'user)
+@i{Error! Contradiction (77 212)}
+@end lisp
+
+@noindent
+Bộ kết nối than phiền rằng nó đã cảm nhận được một mâu thuẫn: Giá trị của nó
+là 77, và ai đó đang cố đặt nó thành 212. Nếu chúng ta thực sự muốn tái sử
+dụng mạng với các giá trị mới, chúng ta có thể nói với @code{C} quên giá trị
+cũ của nó:
+
+@lisp
+(forget-value! C 'user)
+@i{Probe: Celsius temp = ?}
+@i{Probe: Fahrenheit temp = ?}
+@i{done}
+@end lisp
+
+@noindent
+@code{C} nhận thấy rằng @code{user}, người đã đặt giá trị của nó ban đầu, bây
+giờ đang thu hồi giá trị đó, vì vậy @code{C} đồng ý mất giá trị của mình, như
+được hiển thị bởi đầu dò, và thông báo cho phần còn lại của mạng về thực tế
+này. Thông tin này cuối cùng lan truyền đến @code{F}, từ đó nhận thấy rằng nó
+không có lý do để tiếp tục tin rằng giá trị của chính nó là 77. Do đó, @code{F}
+cũng từ bỏ giá trị của nó, như được hiển thị bởi đầu dò.
+
+Bây giờ @code{F} không có giá trị, chúng ta có thể tự do đặt nó thành 212:
+
+@lisp
+(set-value! F 212 'user)
+@i{Probe: Fahrenheit temp = 212}
+@i{Probe: Celsius temp = 100}
+@i{done}
+@end lisp
+
+@noindent
+Giá trị mới này, khi lan truyền qua mạng, buộc @code{C} phải có giá trị 100, và
+điều này được ghi lại bởi đầu dò trên @code{C}. Lưu ý rằng chính cùng một mạng
+đang được dùng để tính @code{C} cho @code{F} và để tính @code{F} cho @code{C}.
+Tính không hướng này của tính toán là đặc điểm phân biệt của các hệ thống dựa
+trên ràng buộc.
+
+@subsubheading Implementing the constraint system
+
+Hệ thống ràng buộc được hiện thực thông qua các đối tượng thủ tục với trạng thái
+cục bộ, theo cách rất giống với bộ mô phỏng mạch số của @ref{3.3.4}. Mặc dù
+các đối tượng nguyên thủy của hệ thống ràng buộc phức tạp hơn đôi chút, hệ
+thống tổng thể đơn giản hơn, vì không cần lo lắng về chương trình nghị sự và
+độ trễ logic.
+
+Các phép toán cơ bản trên các bộ kết nối là:
+
+@itemize @bullet
+
+@item
+@code{(has-value? ⟨@var{connector}⟩)} cho biết liệu bộ kết nối có một giá trị.
+
+@item
+@code{(get-value ⟨@var{connector}⟩)} trả về giá trị hiện tại của bộ kết nối.
+
+@item
+@code{(set-value! ⟨@var{connector}⟩ ⟨@var{new-value}⟩ ⟨@var{informant}⟩)}
+chỉ ra rằng người thông báo đang yêu cầu bộ kết nối đặt giá trị của nó thành
+giá trị mới.
+
+@item
+@code{(forget-value! ⟨@var{connector}⟩ ⟨@var{retractor}⟩)} nói với bộ kết
+nối rằng người thu hồi đang yêu cầu nó quên giá trị của nó.
+
+@item
+@code{(connect ⟨@var{connector}⟩ ⟨@var{new-constraint}⟩)} nói với bộ kết nối
+tham gia vào ràng buộc mới.
+
+@end itemize
+
+@noindent
+Các bộ kết nối giao tiếp với các ràng buộc thông qua các thủ tục
+@code{inform-about-value}, nói với ràng buộc đã cho rằng bộ kết nối có một giá
+trị, và @code{inform-about-no-value}, nói với ràng buộc rằng bộ kết nối đã mất
+giá trị của nó.
+
+@code{Adder} xây dựng một ràng buộc bộ cộng giữa các bộ kết nối số hạng
+@code{a1} và @code{a2} và một bộ kết nối @code{sum}. Một bộ cộng được hiện thực
+như một thủ tục với trạng thái cục bộ (thủ tục @code{me} bên dưới):
+
+@lisp
+(define (adder a1 a2 sum)
+  (define (process-new-value)
+    (cond ((and (has-value? a1)
+                (has-value? a2))
+           (set-value! sum
+                       (+ (get-value a1)
+                          (get-value a2))
+                       me))
+          ((and (has-value? a1)
+                (has-value? sum))
+           (set-value! a2
+                       (- (get-value sum)
+                          (get-value a1))
+                       me))
+          ((and (has-value? a2)
+                (has-value? sum))
+           (set-value! a1
+                       (- (get-value sum)
+                          (get-value a2))
+                       me))))
+  (define (process-forget-value)
+    (forget-value! sum me)
+    (forget-value! a1 me)
+    (forget-value! a2 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else (error "Unknown request:
+                        ADDER" request))))
+  (connect a1 me)
+  (connect a2 me)
+  (connect sum me)
+  me)
+@end lisp
+
+@noindent
+@code{Adder} kết nối bộ cộng mới với các bộ kết nối được chỉ định và trả về
+nó như giá trị của nó. Thủ tục @code{me}, đại diện cho bộ cộng, hoạt động như
+một bộ điều phối đến các thủ tục cục bộ. Các ``giao diện cú pháp'' sau (xem
+@ref{Footnote 155} trong @ref{3.3.4}) được dùng kết hợp với bộ điều phối:
+
+@lisp
+(define (inform-about-value constraint)
+  (constraint 'I-have-a-value))
+(define (inform-about-no-value constraint)
+  (constraint 'I-lost-my-value))
+@end lisp
+
+@noindent
+Thủ tục cục bộ @code{process-new-value} của bộ cộng được gọi khi bộ cộng được
+thông báo rằng một trong các bộ kết nối của nó có một giá trị. Bộ cộng đầu
+tiên kiểm tra xem cả @code{a1} và @code{a2} có giá trị không. Nếu có, nó nói
+với @code{sum} đặt giá trị của nó thành tổng của hai số hạng. Đối số
+@code{informant} của @code{set-value!} là @code{me}, đó là chính đối tượng bộ
+cộng. Nếu @code{a1} và @code{a2} không đều có giá trị, thì bộ cộng kiểm tra
+xem có thể @code{a1} và @code{sum} có giá trị không. Nếu có, nó đặt @code{a2}
+thành hiệu của hai giá trị này. Cuối cùng, nếu @code{a2} và @code{sum} có giá
+trị, điều này cung cấp cho bộ cộng đủ thông tin để đặt @code{a1}. Nếu bộ cộng
+được nói rằng một trong các bộ kết nối của nó đã mất một giá trị, nó yêu cầu
+tất cả các bộ kết nối của nó bây giờ mất giá trị của chúng. (Chỉ những giá trị
+được đặt bởi bộ cộng này mới thực sự bị mất.) Sau đó nó chạy
+@code{process-new-value}. Lý do cho bước cuối cùng này là một hoặc nhiều bộ
+kết nối vẫn có thể có một giá trị (tức là, một bộ kết nối có thể đã có một giá
+trị không được đặt ban đầu bởi bộ cộng), và các giá trị này có thể cần được
+lan truyền ngược lại qua bộ cộng.
+
+Một bộ nhân rất giống với bộ cộng. Nó sẽ đặt @code{product} của mình thành 0
+nếu một trong các thừa số là 0, ngay cả khi thừa số kia chưa được biết.
+
+@lisp
+(define (multiplier m1 m2 product)
+  (define (process-new-value)
+    (cond ((or (and (has-value? m1)
+                    (= (get-value m1) 0))
+               (and (has-value? m2)
+                    (= (get-value m2) 0)))
+           (set-value! product 0 me))
+          ((and (has-value? m1)
+                (has-value? m2))
+           (set-value! product
+                       (* (get-value m1)
+                          (get-value m2))
+                       me))
+          ((and (has-value? product)
+                (has-value? m1))
+           (set-value! m2
+                       (/ (get-value product)
+                          (get-value m1))
+                       me))
+          ((and (has-value? product)
+                (has-value? m2))
+           (set-value! m1
+                       (/ (get-value product)
+                          (get-value m2))
+                       me))))
+  (define (process-forget-value)
+    (forget-value! product me)
+    (forget-value! m1 me)
+    (forget-value! m2 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request:
+                   MULTIPLIER"
+                  request))))
+  (connect m1 me)
+  (connect m2 me)
+  (connect product me)
+  me)
+@end lisp
+
+@noindent
+Bộ khởi tạo @code{constant} đơn giản đặt giá trị của bộ kết nối được chỉ định.
+Bất kỳ thông điệp @code{I-have-a-value} hay @code{I-lost-my-value} nào gửi đến
+hộp hằng số sẽ tạo ra lỗi.
+
+@lisp
+(define (constant value connector)
+  (define (me request)
+    (error "Unknown request: CONSTANT"
+           request))
+  (connect connector me)
+  (set-value! connector value me)
+  me)
+@end lisp
+
+@noindent
+Cuối cùng, một đầu dò in ra một thông điệp về việc đặt hay bỏ đặt bộ kết nối
+được chỉ định:
+
+@lisp
+(define (probe name connector)
+  (define (print-probe value)
+    (newline) (display "Probe: ")
+    (display name) (display " = ")
+    (display value))
+  (define (process-new-value)
+    (print-probe (get-value connector)))
+  (define (process-forget-value)
+    (print-probe "?"))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else (error "Unknown request:
+                        PROBE" request))))
+  (connect connector me)
+  me)
+@end lisp
+
+@subsubheading Representing connectors
+
+Một bộ kết nối được biểu diễn như một đối tượng thủ tục với các biến trạng
+thái cục bộ @code{value}, giá trị hiện tại của bộ kết nối; @code{informant},
+đối tượng đặt giá trị của bộ kết nối; và @code{constraints}, danh sách các
+ràng buộc mà bộ kết nối tham gia.
+
+@lisp
+(define (make-connector)
+  (let ((value false)
+        (informant false)
+        (constraints '()))
+    (define (set-my-value newval setter)
+      (cond ((not (has-value? me))
+             (set! value newval)
+             (set! informant setter)
+             (for-each-except
+              setter
+              inform-about-value
+              constraints))
+            ((not (= value newval))
+             (error "Contradiction"
+                    (list value newval)))
+            (else 'ignored)))
+    (define (forget-my-value retractor)
+      (if (eq? retractor informant)
+          (begin (set! informant false)
+                 (for-each-except
+                  retractor
+                  inform-about-no-value
+                  constraints))
+          'ignored))
+    (define (connect new-constraint)
+      (if (not (memq new-constraint
+                     constraints))
+          (set! constraints
+                (cons new-constraint
+                      constraints)))
+      (if (has-value? me)
+          (inform-about-value new-constraint))
+      'done)
+    (define (me request)
+      (cond ((eq? request 'has-value?)
+             (if informant true false))
+            ((eq? request 'value) value)
+            ((eq? request 'set-value!)
+             set-my-value)
+            ((eq? request 'forget)
+             forget-my-value)
+            ((eq? request 'connect) connect)
+            (else (error "Unknown operation:
+                          CONNECTOR"
+                         request))))
+    me))
+@end lisp
+
+@noindent
+Thủ tục cục bộ @code{set-my-value} của bộ kết nối được gọi khi có yêu cầu đặt
+giá trị của bộ kết nối. Nếu bộ kết nối hiện tại không có giá trị, nó sẽ đặt
+giá trị của nó và ghi nhớ ràng buộc yêu cầu đặt giá trị là @code{informant}.@footnote{@code{setter} có thể không phải là một ràng buộc. Trong ví dụ nhiệt
+độ của chúng ta, chúng ta đã dùng @code{user} làm @code{setter}.} Sau đó bộ
+kết nối sẽ thông báo cho tất cả các ràng buộc tham gia của nó ngoại trừ ràng
+buộc yêu cầu đặt giá trị. Điều này được thực hiện dùng bộ lặp sau, áp dụng
+một thủ tục được chỉ định cho tất cả các mục trong danh sách ngoại trừ một mục
+đã cho:
+
+@lisp
+(define (for-each-except exception
+                         procedure
+                         list)
+  (define (loop items)
+    (cond ((null? items) 'done)
+          ((eq? (car items) exception)
+           (loop (cdr items)))
+          (else (procedure (car items))
+                (loop (cdr items)))))
+  (loop list))
+@end lisp
+
+@noindent
+Nếu một bộ kết nối được yêu cầu quên giá trị của nó, nó chạy thủ tục cục bộ
+@code{forget-my-value}, trước tiên kiểm tra để đảm bảo rằng yêu cầu đến từ
+cùng đối tượng đã đặt giá trị ban đầu. Nếu có, bộ kết nối thông báo cho các
+ràng buộc liên quan của nó về việc mất giá trị.
+
+Thủ tục cục bộ @code{connect} thêm ràng buộc mới được chỉ định vào danh sách
+các ràng buộc nếu nó chưa có trong danh sách đó. Sau đó, nếu bộ kết nối có
+giá trị, nó thông báo cho ràng buộc mới về thực tế này.
+
+Thủ tục @code{me} của bộ kết nối phục vụ như một bộ điều phối đến các thủ tục
+nội bộ khác và cũng biểu diễn bộ kết nối như một đối tượng. Các thủ tục sau
+cung cấp một giao diện cú pháp cho bộ điều phối:
+
+@lisp
+(define (has-value? connector)
+  (connector 'has-value?))
+(define (get-value connector)
+  (connector 'value))
+(define (set-value! connector
+                    new-value
+                    informant)
+  ((connector 'set-value!)
+   new-value
+   informant))
+(define (forget-value! connector retractor)
+  ((connector 'forget) retractor))
+(define (connect connector new-constraint)
+  ((connector 'connect) new-constraint))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 3.33}Bài tập 3.33:} Dùng các ràng buộc bộ nhân, bộ
+cộng và hằng số nguyên thủy, định nghĩa một thủ tục @code{averager} nhận ba bộ
+kết nối @code{a}, @code{b} và @code{c} làm đầu vào và thiết lập ràng buộc rằng
+giá trị của @code{c} là trung bình của các giá trị của @code{a} và @code{b}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.34}Bài tập 3.34:} Louis Reasoner muốn xây dựng một
+bộ bình phương, một thiết bị ràng buộc với hai đầu cuối sao cho giá trị của bộ
+kết nối @code{b} trên đầu cuối thứ hai sẽ luôn là bình phương của giá trị
+@code{a} trên đầu cuối đầu tiên. Anh ta đề xuất thiết bị đơn giản sau được tạo
+từ bộ nhân:
+
+@lisp
+(define (squarer a b) (multiplier a a b))
+@end lisp
+
+Có một lỗi nghiêm trọng trong ý tưởng này. Hãy giải thích.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.35}Bài tập 3.35:} Ben Bitdiddle nói với Louis rằng
+một cách để tránh vấn đề trong @ref{Exercise 3.34} là định nghĩa một bộ bình
+phương như một ràng buộc nguyên thủy mới. Điền vào các phần còn thiếu trong
+phác thảo của Ben cho một thủ tục để hiện thực ràng buộc như vậy:
+
+@lisp
+(define (squarer a b)
+  (define (process-new-value)
+    (if (has-value? b)
+        (if (< (get-value b) 0)
+            (error "square less than 0:
+                    SQUARER"
+                   (get-value b))
+            ⟨@var{alternative1}⟩)
+        ⟨@var{alternative2}⟩))
+  (define (process-forget-value) ⟨@var{body1}⟩)
+  (define (me request) ⟨@var{body2}⟩)
+  ⟨@var{rest of definition}⟩
+  me)
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.36}Bài tập 3.36:} Giả sử chúng ta định giá chuỗi
+biểu thức sau trong môi trường toàn cục:
+
+@lisp
+(define a (make-connector))
+(define b (make-connector))
+(set-value! a 10 'user)
+@end lisp
+
+Tại một thời điểm nào đó trong quá trình định giá @code{set-value!}, biểu thức
+sau từ thủ tục cục bộ của bộ kết nối được định giá:
+
+@lisp
+(for-each-except
+  setter inform-about-value constraints)
+@end lisp
+
+Vẽ sơ đồ môi trường hiển thị môi trường mà biểu thức trên được định giá.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.37}Bài tập 3.37:} Thủ tục
+@code{celsius-fahrenheit-converter} cồng kềnh khi so sánh với một kiểu định
+nghĩa hướng biểu thức hơn, chẳng hạn như
+
+@lisp
+(define (celsius-fahrenheit-converter x)
+  (c+ (c* (c/ (cv 9) (cv 5))
+          x)
+      (cv 32)))
+
+(define C (make-connector))
+(define F (celsius-fahrenheit-converter C))
+@end lisp
+
+Ở đây @code{c+}, @code{c*}, v.v. là các phiên bản ``ràng buộc'' của các phép
+toán số học. Ví dụ, @code{c+} nhận hai bộ kết nối làm đối số và trả về một bộ
+kết nối liên quan đến chúng bằng một ràng buộc bộ cộng:
+
+@lisp
+(define (c+ x y)
+  (let ((z (make-connector)))
+    (adder x y z)
+    z))
+@end lisp
+
+Định nghĩa các thủ tục tương tự @code{c-}, @code{c*}, @code{c/} và @code{cv}
+(giá trị hằng số) cho phép chúng ta định nghĩa các ràng buộc phức hợp như
+trong ví dụ bộ chuyển đổi ở trên.@footnote{Định dạng hướng biểu thức thuận
+tiện vì nó tránh cần phải đặt tên cho các biểu thức trung gian trong một tính
+toán. Công thức gốc của chúng ta về ngôn ngữ ràng buộc cồng kềnh theo cách
+tương tự như nhiều ngôn ngữ cồng kềnh khi xử lý các phép toán trên dữ liệu
+phức hợp. Ví dụ, nếu chúng ta muốn tính tích @math{{(a + b) \cdot (c + d)}},
+trong đó các biến biểu diễn các vectơ, chúng ta có thể làm việc theo ``phong
+cách mệnh lệnh'', dùng các thủ tục đặt giá trị của các đối số vectơ được chỉ
+định nhưng không tự chúng trả về vectơ như giá trị:
+
+@lisp
+(v-sum a b temp1)
+(v-sum c d temp2)
+(v-prod temp1 temp2 answer)
+@end lisp
+
+Thay thế, chúng ta có thể xử lý với các biểu thức, dùng các thủ tục trả về
+vectơ như giá trị, và do đó tránh đề cập rõ ràng @code{temp1} và @code{temp2}:
+
+@lisp
+(define answer
+  (v-prod (v-sum a b) (v-sum c d)))
+@end lisp
+
+Vì Lisp cho phép chúng ta trả về các đối tượng phức hợp như giá trị của thủ
+tục, chúng ta có thể biến đổi ngôn ngữ ràng buộc theo phong cách mệnh lệnh
+của mình thành phong cách hướng biểu thức như được hiển thị trong bài tập này.
+Trong các ngôn ngữ nghèo nàn trong việc xử lý các đối tượng phức hợp, chẳng
+hạn như Algol, Basic và Pascal (trừ khi người ta dùng rõ ràng các biến con trỏ
+Pascal), người ta thường bị mắc kẹt với phong cách mệnh lệnh khi thao tác các
+đối tượng phức hợp. Với lợi thế của định dạng hướng biểu thức, người ta có thể
+hỏi liệu có lý do gì để hiện thực hệ thống theo phong cách mệnh lệnh không, như
+chúng ta đã làm trong phần này. Một lý do là ngôn ngữ ràng buộc không theo
+hướng biểu thức cung cấp một nắm tay trên các đối tượng ràng buộc (ví dụ, giá
+trị của thủ tục @code{adder}) cũng như trên các đối tượng bộ kết nối. Điều này
+hữu ích nếu chúng ta muốn mở rộng hệ thống với các phép toán mới giao tiếp
+trực tiếp với các ràng buộc thay vì chỉ gián tiếp thông qua các phép toán trên
+bộ kết nối. Mặc dù việc hiện thực phong cách hướng biểu thức theo hiện thực
+mệnh lệnh là dễ dàng, nhưng làm ngược lại là rất khó.}
+@end quotation

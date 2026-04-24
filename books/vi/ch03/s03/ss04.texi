@@ -1,0 +1,757 @@
+@node	3.3.4, 3.3.5, 3.3.3, 3.3
+@subsection Bộ Mô Phỏng Mạch Logic Số
+
+Thiết kế các hệ thống số phức tạp, chẳng hạn như máy tính, là một hoạt động
+kỹ thuật quan trọng. Các hệ thống số được xây dựng bằng cách kết nối các phần
+tử đơn giản lại với nhau. Mặc dù hành vi của các phần tử riêng lẻ này rất đơn
+giản, nhưng các mạng lưới của chúng có thể có hành vi rất phức tạp. Mô phỏng
+máy tính cho các thiết kế mạch đề xuất là một công cụ quan trọng được các kỹ
+sư hệ thống số sử dụng. Trong phần này chúng ta thiết kế một hệ thống để thực
+hiện các mô phỏng logic số. Hệ thống này tiêu biểu cho một loại chương trình
+gọi là @newterm{mô phỏng hướng sự kiện}, trong đó các hành động (``sự kiện'')
+kích hoạt các sự kiện tiếp theo xảy ra vào thời điểm sau, từ đó lại kích hoạt
+thêm các sự kiện nữa, và cứ tiếp tục như vậy.
+
+Mô hình tính toán của chúng ta về một mạch điện sẽ được cấu thành bởi các đối
+tượng tương ứng với các thành phần cơ bản mà mạch được xây dựng từ đó. Có các
+@newterm{dây dẫn}, mang @newterm{tín hiệu số}. Một tín hiệu số tại bất kỳ thời
+điểm nào cũng chỉ có thể có một trong hai giá trị có thể, 0 và 1. Ngoài ra còn
+có nhiều loại @newterm{hộp hàm} số khác nhau, kết nối các dây dẫn mang tín hiệu
+đầu vào với các dây dẫn đầu ra khác. Các hộp như vậy tạo ra tín hiệu đầu ra
+được tính toán từ tín hiệu đầu vào của chúng. Tín hiệu đầu ra bị trễ một
+khoảng thời gian phụ thuộc vào loại hộp hàm. Ví dụ, một @newterm{bộ đảo} là
+một hộp hàm nguyên thủy đảo ngược đầu vào của nó. Nếu tín hiệu đầu vào của
+một bộ đảo thay đổi thành 0, thì sau một khoảng trễ-bộ-đảo, bộ đảo sẽ thay
+đổi tín hiệu đầu ra của nó thành 1. Nếu tín hiệu đầu vào của bộ đảo thay đổi
+thành 1, thì sau một khoảng trễ-bộ-đảo, bộ đảo sẽ thay đổi tín hiệu đầu ra
+của nó thành 0. Chúng ta vẽ bộ đảo theo ký hiệu như trong @ref{Figure 3.24}.
+Một @newterm{cổng and}, cũng được hiển thị trong Hình 3.24, là một hộp hàm
+nguyên thủy với hai đầu vào và một đầu ra. Nó điều khiển tín hiệu đầu ra của
+mình đến một giá trị là @newterm{and logic} của các đầu vào. Tức là, nếu cả
+hai tín hiệu đầu vào đều trở thành 1, thì sau một khoảng thời gian trễ-cổng-and,
+cổng and sẽ ép tín hiệu đầu ra của nó bằng 1; ngược lại đầu ra sẽ bằng 0. Một
+@newterm{cổng or} là một hộp hàm nguyên thủy hai đầu vào tương tự điều khiển
+tín hiệu đầu ra của mình đến một giá trị là @newterm{or logic} của các đầu vào.
+Tức là, đầu ra sẽ trở thành 1 nếu ít nhất một trong các tín hiệu đầu vào là 1;
+ngược lại đầu ra sẽ trở thành 0.
+
+@float
+@anchor{Figure 3.24}
+@ifinfo
+@quotation
+@strong{Figure 3.24:} Primitive functions in the digital logic simulator.
+
+@example
+               __          ___
+  |\        --|  \       --\  \
+--| >o--      |   )--       )  >--
+  |/        --|__/       --/__/
+
+Inverter    And-gate     Or-gate
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.24a,110mm,,,.std.svg}
+@caption{@strong{Figure 3.24:} Primitive functions in the digital logic simulator.}
+@end iftex
+@end float
+
+@noindent
+Chúng ta có thể kết nối các hàm nguyên thủy lại với nhau để xây dựng các hàm
+phức tạp hơn. Để thực hiện điều này, chúng ta nối đầu ra của một số hộp hàm
+với đầu vào của các hộp hàm khác. Ví dụ, mạch @newterm{bộ cộng nửa} được
+hiển thị trong @ref{Figure 3.25} bao gồm một cổng or, hai cổng and, và một bộ
+đảo. Nó nhận hai tín hiệu đầu vào, A và B, và có hai tín hiệu đầu ra, S và C.
+S sẽ trở thành 1 bất cứ khi nào chính xác một trong A và B là 1, và C sẽ trở
+thành 1 bất cứ khi nào A và B đều là 1. Chúng ta có thể thấy từ hình rằng, do
+các độ trễ liên quan, các đầu ra có thể được tạo ra ở các thời điểm khác nhau.
+Nhiều khó khăn trong thiết kế mạch số xuất phát từ thực tế này.
+
+@float
+@anchor{Figure 3.25}
+@ifinfo
+@quotation
+@strong{Figure 3.25:} A half-adder circuit.
+
+@example
+    +--------------------------------------+
+    |         ____                         |
+A --------*---\   \ D               ___    |
+    |     |    >   >---------------|   \   |
+    |  +--|---/___/                |    )----- S
+    |  |  |              |\  E  +--|___/   |
+    |  |  |           +--| >o---+          |
+    |  |  |    ___    |  |/                |
+    |  |  +---|   \   |                    |
+    |  |      |    )--*----------------------- C
+B -----*------|___/                        |
+    |                                      |
+    +--------------------------------------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.25c,122mm,,,.std.svg}
+@caption{@strong{Figure 3.25:} A half-adder circuit.}
+@end iftex
+@end float
+
+@noindent
+Bây giờ chúng ta sẽ xây dựng một chương trình để mô hình hóa các mạch logic số
+mà chúng ta muốn nghiên cứu. Chương trình sẽ xây dựng các đối tượng tính toán
+mô hình hóa các dây dẫn, sẽ ``giữ'' các tín hiệu. Các hộp hàm sẽ được mô hình
+hóa bởi các thủ tục thực thi các mối quan hệ đúng đắn giữa các tín hiệu.
+
+Một phần tử cơ bản của mô phỏng của chúng ta sẽ là thủ tục @code{make-wire},
+xây dựng các dây dẫn. Ví dụ, chúng ta có thể tạo ra sáu dây dẫn như sau:
+
+@lisp
+(define a (make-wire))
+(define b (make-wire))
+(define c (make-wire))
+(define d (make-wire))
+(define e (make-wire))
+(define s (make-wire))
+@end lisp
+
+@noindent
+Chúng ta gắn một hộp hàm vào một tập hợp dây dẫn bằng cách gọi một thủ tục
+tạo ra loại hộp đó. Các đối số của thủ tục khởi tạo là các dây dẫn cần được
+gắn vào hộp. Ví dụ, giả sử rằng chúng ta có thể tạo cổng and, cổng or và bộ
+đảo, chúng ta có thể nối dây bộ cộng nửa được hiển thị trong @ref{Figure 3.25}:
+
+@lisp
+(or-gate a b d)
+@i{ok}
+
+(and-gate a b c)
+@i{ok}
+
+(inverter c e)
+@i{ok}
+
+(and-gate d e s)
+@i{ok}
+@end lisp
+
+@noindent
+Tốt hơn hết, chúng ta có thể đặt tên rõ ràng cho phép toán này bằng cách định
+nghĩa một thủ tục @code{half-adder} xây dựng mạch này, cho trước bốn dây dẫn
+bên ngoài cần được gắn vào bộ cộng nửa:
+
+@lisp
+(define (half-adder a b s c)
+  (let ((d (make-wire)) (e (make-wire)))
+    (or-gate a b d)
+    (and-gate a b c)
+    (inverter c e)
+    (and-gate d e s)
+    'ok))
+@end lisp
+
+@noindent
+Lợi thế của việc tạo ra định nghĩa này là chúng ta có thể dùng bản thân
+@code{half-adder} như một khối xây dựng để tạo ra các mạch phức tạp hơn.
+@ref{Figure 3.26}, ví dụ, hiển thị một @newterm{bộ cộng đầy đủ} được tạo ra
+từ hai bộ cộng nửa và một cổng or.@footnote{Bộ cộng đầy đủ là một phần tử mạch
+cơ bản được dùng để cộng hai số nhị phân. Ở đây A và B là các bit ở các vị trí
+tương ứng trong hai số cần cộng, và @math{\rm C_{in}} là bit nhớ từ phép cộng
+một vị trí bên phải. Mạch tạo ra SUM, là bit tổng ở vị trí tương ứng, và
+@math{\rm C_{out}}, là bit nhớ cần lan truyền sang trái.} Chúng ta có thể xây
+dựng một bộ cộng đầy đủ như sau:
+
+@lisp
+(define (full-adder a b c-in sum c-out)
+  (let ((c1 (make-wire))
+        (c2 (make-wire))
+        (s  (make-wire)))
+    (half-adder b c-in s c1)
+    (half-adder a s sum c2)
+    (or-gate c1 c2 c-out)
+    'ok))
+@end lisp
+
+@float
+@anchor{Figure 3.26}
+@ifinfo
+@quotation
+@strong{Figure 3.26:} A full-adder circuit.
+
+@example
+    +----------------------------------+
+    |              +-------+           |
+A -----------------+ half- +-------------- SUM
+    |  +-------+   | adder |   ____    |
+B -----+ half- +---+       +---\   \   |
+    |  | adder |   +-------+    >or >----- Cout
+C -----+       +---------------/___/   |
+    |  +-------+                       |
+    +----------------------------------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.26,129mm,,,.std.svg}
+@caption{@strong{Figure 3.26:} A full-adder circuit.}
+@end iftex
+@end float
+
+@noindent
+Sau khi đã định nghĩa @code{full-adder} như một thủ tục, bây giờ chúng ta có
+thể dùng nó như một khối xây dựng để tạo ra các mạch phức tạp hơn nữa. (Ví dụ,
+xem @ref{Exercise 3.30}.)
+
+Về bản chất, bộ mô phỏng của chúng ta cung cấp cho chúng ta các công cụ để
+xây dựng một ngôn ngữ của các mạch điện. Nếu chúng ta áp dụng quan điểm chung
+về các ngôn ngữ mà chúng ta đã tiếp cận việc nghiên cứu Lisp trong @ref{1.1},
+chúng ta có thể nói rằng các hộp hàm nguyên thủy tạo thành các phần tử nguyên
+thủy của ngôn ngữ, rằng nối dây các hộp lại với nhau cung cấp phương tiện kết
+hợp, và rằng việc chỉ định các mẫu nối dây như các thủ tục phục vụ như một
+phương tiện trừu tượng hóa.
+
+@subsubheading Primitive function boxes
+
+Các hộp hàm nguyên thủy thực hiện các ``lực'' mà qua đó sự thay đổi tín hiệu
+trên một dây dẫn ảnh hưởng đến các tín hiệu trên các dây dẫn khác. Để xây dựng
+các hộp hàm, chúng ta dùng các phép toán sau trên các dây dẫn:
+
+@itemize @bullet
+
+@item @code{(get-signal ⟨@var{wire}⟩)}
+
+@noindent
+trả về giá trị hiện tại của tín hiệu trên dây dẫn.
+
+@item @code{(set-signal! ⟨@var{wire}⟩ ⟨@var{new value}⟩)}
+
+@noindent
+thay đổi giá trị của tín hiệu trên dây dẫn thành giá trị mới.
+
+@item @code{(add-action! ⟨@var{wire}⟩ ⟨@var{procedure of no arguments}⟩)}
+
+@noindent
+khẳng định rằng thủ tục được chỉ định nên được chạy bất cứ khi nào tín hiệu
+trên dây dẫn thay đổi giá trị. Các thủ tục như vậy là phương tiện để các thay
+đổi trong giá trị tín hiệu trên dây dẫn được truyền đạt đến các dây dẫn khác.
+
+@end itemize
+
+@noindent
+Ngoài ra, chúng ta sẽ sử dụng thủ tục @code{after-delay} nhận một độ trễ thời
+gian và một thủ tục cần chạy và thực thi thủ tục đã cho sau độ trễ đã cho.
+
+Dùng các thủ tục này, chúng ta có thể định nghĩa các hàm logic số nguyên thủy.
+Để kết nối đầu vào với đầu ra qua một bộ đảo, chúng ta dùng @code{add-action!}
+để liên kết với dây đầu vào một thủ tục sẽ được chạy bất cứ khi nào tín hiệu
+trên dây đầu vào thay đổi giá trị. Thủ tục tính @code{logical-not} của tín hiệu
+đầu vào, và sau đó, sau một @code{inverter-delay}, đặt tín hiệu đầu ra thành
+giá trị mới này:
+
+@lisp
+(define (inverter input output)
+  (define (invert-input)
+    (let ((new-value
+           (logical-not (get-signal input))))
+      (after-delay
+       inverter-delay
+       (lambda ()
+         (set-signal! output new-value)))))
+  (add-action! input invert-input)
+  'ok)
+
+(define (logical-not s)
+  (cond ((= s 0) 1)
+        ((= s 1) 0)
+        (else (error "Invalid signal" s))))
+@end lisp
+
+@noindent
+Một cổng and phức tạp hơn một chút. Thủ tục hành động phải được chạy nếu một
+trong các đầu vào của cổng thay đổi. Nó tính @code{logical-and} (dùng một thủ
+tục tương tự như @code{logical-not}) của các giá trị của các tín hiệu trên các
+dây đầu vào và thiết lập một thay đổi đến giá trị mới sẽ xảy ra trên dây đầu
+ra sau một @code{and-gate-delay}.
+
+@lisp
+(define (and-gate a1 a2 output)
+  (define (and-action-procedure)
+    (let ((new-value
+           (logical-and (get-signal a1)
+                        (get-signal a2))))
+      (after-delay
+       and-gate-delay
+       (lambda ()
+         (set-signal! output new-value)))))
+  (add-action! a1 and-action-procedure)
+  (add-action! a2 and-action-procedure)
+  'ok)
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 3.28}Bài tập 3.28:} Định nghĩa một cổng or như một
+hộp hàm nguyên thủy. Bộ khởi tạo @code{or-gate} của bạn nên tương tự như
+@code{and-gate}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.29}Bài tập 3.29:} Một cách khác để xây dựng cổng or
+là như một thiết bị logic số phức hợp, được xây dựng từ cổng and và bộ đảo.
+Định nghĩa một thủ tục @code{or-gate} thực hiện điều này. Thời gian trễ của
+cổng or là bao nhiêu tính theo @code{and-gate-delay} và @code{inverter-delay}?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.30}Bài tập 3.30:} @ref{Figure 3.27} hiển thị một
+@newterm{bộ cộng gợn sóng} được hình thành bằng cách nối @math{n} bộ cộng đầy
+đủ lại với nhau. Đây là dạng bộ cộng song song đơn giản nhất để cộng hai số
+nhị phân @math{n} bit. Các đầu vào @math{A_1}, @math{A_2}, @math{A_3},
+@dots{}, @math{A_n} và @math{B_1}, @math{B_2}, @math{B_3}, @dots{}, @math{B_n}
+là hai số nhị phân cần cộng (mỗi @math{A_k} và @math{B_k} là 0 hoặc 1). Mạch
+tạo ra @math{S_1}, @math{S_2}, @math{S_3}, @dots{}, @math{S_n}, @math{n} bit
+của tổng, và @math{C}, bit nhớ từ phép cộng. Viết một thủ tục
+@code{ripple-carry-adder} tạo ra mạch này. Thủ tục nên nhận làm đối số ba danh
+sách @math{n} dây dẫn mỗi danh sách---@math{A_k}, @math{B_k} và @math{S_k}---
+và cũng một dây dẫn khác @math{C}. Hạn chế lớn của bộ cộng gợn sóng là cần
+phải chờ cho các tín hiệu nhớ lan truyền. Độ trễ cần thiết để nhận được đầu ra
+hoàn chỉnh từ bộ cộng gợn sóng @math{n} bit là bao nhiêu, tính theo độ trễ
+của cổng and, cổng or và bộ đảo?
+@end quotation
+
+@float
+@anchor{Figure 3.27}
+@ifinfo
+@quotation
+@strong{Figure 3.27:} A ripple-carry adder for @math{n}-bit numbers.
+
+@example
+   :                                              :   :
+   : A_1 B_1   C_1   A_2 B_2   C_2   A_3 B_3   C_3:   : A_n B_n C_n=0
+   :  |   |   +---+   |   |   +---+   |   |   +-----  :  |   |   +-
+   |  |   |   |   |   |   |   |   |   |   |   |   :   :  |   |   |
+   : ++---+---++  |  ++---+---++  |  ++---+---++  :   : ++---+---++
+   : |   FA    |  |  |   FA    |  |  |   FA    |  :   : |   FA    |
+   : +--+---+--+  |  +--+---+--+  |  +--+---+--+  :   : +--+---+--+
+   :    |   |     |     |   |     |     |   |     :   :    |   |
+C ------+   |     +-----+   |     +-----+   |     :  ------+   |
+   :        |       C_1     |       C_2     |     :   :C_(n-1) |
+   :        |               |               |     :   :        |
+           S_1             S_2             S_3                S_n
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.27b,132mm,,,.std.svg}
+@caption{@strong{Figure 3.27:} A ripple-carry adder for @math{n}-bit numbers.}
+@end iftex
+@end float
+
+@subsubheading Representing wires
+
+Một dây dẫn trong mô phỏng của chúng ta sẽ là một đối tượng tính toán với hai
+biến trạng thái cục bộ: @code{signal-value} (ban đầu được lấy là 0) và một tập
+hợp các @code{action-procedures} cần được chạy khi tín hiệu thay đổi giá trị.
+Chúng ta hiện thực dây dẫn, dùng kiểu truyền thông điệp, như một tập hợp các
+thủ tục cục bộ cùng với một thủ tục @code{dispatch} chọn phép toán cục bộ
+thích hợp, giống như chúng ta đã làm với đối tượng tài khoản ngân hàng đơn
+giản trong @ref{3.1.1}:
+
+@lisp
+(define (make-wire)
+  (let ((signal-value 0)
+        (action-procedures '()))
+    (define (set-my-signal! new-value)
+      (if (not (= signal-value new-value))
+          (begin (set! signal-value new-value)
+                 (call-each
+                  action-procedures))
+          'done))
+    (define (accept-action-procedure! proc)
+      (set! action-procedures
+            (cons proc action-procedures))
+      (proc))
+    (define (dispatch m)
+      (cond ((eq? m 'get-signal)
+             signal-value)
+            ((eq? m 'set-signal!)
+             set-my-signal!)
+            ((eq? m 'add-action!)
+             accept-action-procedure!)
+            (else (error "Unknown operation:
+                          WIRE" m))))
+    dispatch))
+@end lisp
+
+@noindent
+Thủ tục cục bộ @code{set-my-signal!} kiểm tra xem giá trị tín hiệu mới có thay
+đổi tín hiệu trên dây dẫn không. Nếu có, nó chạy từng thủ tục hành động, dùng
+thủ tục @code{call-each} sau đây, gọi từng mục trong danh sách các thủ tục
+không có đối số:
+
+@lisp
+(define (call-each procedures)
+  (if (null? procedures)
+      'done
+      (begin ((car procedures))
+             (call-each (cdr procedures)))))
+@end lisp
+
+@noindent
+Thủ tục cục bộ @code{accept-action-procedure!} thêm thủ tục đã cho vào danh
+sách các thủ tục cần chạy, rồi chạy thủ tục mới một lần. (Xem
+@ref{Exercise 3.31}.)
+
+Với thủ tục @code{dispatch} cục bộ được thiết lập như đã chỉ định, chúng ta có
+thể cung cấp các thủ tục sau để truy cập các phép toán cục bộ trên các dây
+dẫn:@footnote{@anchor{Footnote 155} Các thủ tục này chỉ đơn giản là đường dẫn
+cú pháp cho phép chúng ta dùng cú pháp thủ tục thông thường để truy cập các
+thủ tục cục bộ của các đối tượng. Thật đáng chú ý rằng chúng ta có thể hoán
+đổi vai trò của ``thủ tục'' và ``dữ liệu'' theo cách đơn giản như vậy. Ví dụ,
+nếu chúng ta viết @code{(wire 'get-signal)} chúng ta coi @code{wire} như một
+thủ tục được gọi với thông điệp @code{get-signal} làm đầu vào. Thay thế, viết
+@code{(get-signal wire)} khuyến khích chúng ta coi @code{wire} như một đối tượng
+dữ liệu là đầu vào của thủ tục @code{get-signal}. Sự thật là, trong một ngôn
+ngữ mà chúng ta có thể xử lý các thủ tục như đối tượng, không có sự khác biệt
+cơ bản giữa ``thủ tục'' và ``dữ liệu'', và chúng ta có thể chọn đường dẫn cú
+pháp của mình để cho phép chúng ta lập trình theo bất kỳ phong cách nào chúng
+ta chọn.}
+
+@lisp
+(define (get-signal wire)
+  (wire 'get-signal))
+(define (set-signal! wire new-value)
+  ((wire 'set-signal!) new-value))
+(define (add-action! wire action-procedure)
+  ((wire 'add-action!) action-procedure))
+@end lisp
+
+@noindent
+Các dây dẫn, có tín hiệu thay đổi theo thời gian và có thể được gắn dần vào
+các thiết bị, là điển hình của các đối tượng có thể thay đổi. Chúng ta đã mô
+hình hóa chúng như các thủ tục với các biến trạng thái cục bộ được sửa đổi
+bằng phép gán. Khi một dây dẫn mới được tạo ra, một tập hợp biến trạng thái
+mới được cấp phát (bởi biểu thức @code{let} trong @code{make-wire}) và một thủ
+tục @code{dispatch} mới được xây dựng và trả về, nắm giữ môi trường với các
+biến trạng thái mới.
+
+Các dây dẫn được chia sẻ giữa các thiết bị khác nhau đã được kết nối với chúng.
+Do đó, một thay đổi do một tương tác với một thiết bị tạo ra sẽ ảnh hưởng đến
+tất cả các thiết bị khác được gắn vào dây dẫn. Dây dẫn truyền đạt sự thay đổi
+cho các láng giềng của nó bằng cách gọi các thủ tục hành động được cung cấp
+cho nó khi các kết nối được thiết lập.
+
+@subsubheading The agenda
+
+Thứ duy nhất cần thiết để hoàn thiện bộ mô phỏng là @code{after-delay}. Ý
+tưởng ở đây là chúng ta duy trì một cấu trúc dữ liệu, được gọi là
+@newterm{chương trình nghị sự}, chứa một lịch trình các việc cần làm. Các phép
+toán sau được định nghĩa cho chương trình nghị sự:
+
+@itemize @bullet
+
+@item
+@code{(make-agenda)} trả về một chương trình nghị sự rỗng mới.
+
+@item
+@code{(empty-agenda? ⟨@var{agenda}⟩)} là true nếu chương trình nghị sự được
+chỉ định là rỗng.
+
+@item
+@code{(first-agenda-item ⟨@var{agenda}⟩)} trả về mục đầu tiên trong chương
+trình nghị sự.
+
+@item
+@code{(remove-first-agenda-item! ⟨@var{agenda}⟩)} sửa đổi chương trình nghị sự
+bằng cách xóa mục đầu tiên.
+
+@item
+@code{(add-to-agenda! ⟨@var{time}⟩ ⟨@var{action}⟩ ⟨@var{agenda}⟩)} sửa đổi
+chương trình nghị sự bằng cách thêm thủ tục hành động đã cho cần được chạy
+vào thời điểm đã chỉ định.
+
+@item
+@code{(current-time ⟨@var{agenda}⟩)} trả về thời gian mô phỏng hiện tại.
+
+@end itemize
+
+@noindent
+Chương trình nghị sự cụ thể mà chúng ta dùng được ký hiệu bằng
+@code{the-agenda}. Thủ tục @code{after-delay} thêm các phần tử mới vào
+@code{the-agenda}:
+
+@lisp
+(define (after-delay delay action)
+  (add-to-agenda!
+   (+ delay (current-time the-agenda))
+   action
+   the-agenda))
+@end lisp
+
+@noindent
+Mô phỏng được điều khiển bởi thủ tục @code{propagate}, hoạt động trên
+@code{the-agenda}, thực thi từng thủ tục trong chương trình nghị sự theo thứ
+tự. Nói chung, khi mô phỏng chạy, các mục mới sẽ được thêm vào chương trình
+nghị sự, và @code{propagate} sẽ tiếp tục mô phỏng miễn là còn có các mục trong
+chương trình nghị sự:
+
+@lisp
+(define (propagate)
+  (if (empty-agenda? the-agenda)
+      'done
+      (let ((first-item
+             (first-agenda-item the-agenda)))
+        (first-item)
+        (remove-first-agenda-item! the-agenda)
+        (propagate))))
+@end lisp
+
+@subsubheading A sample simulation
+
+Thủ tục sau, đặt một ``đầu dò'' trên một dây dẫn, hiển thị bộ mô phỏng đang
+hoạt động. Đầu dò nói với dây dẫn rằng bất cứ khi nào tín hiệu của nó thay
+đổi giá trị, nó nên in giá trị tín hiệu mới, cùng với thời gian hiện tại và
+một tên xác định dây dẫn:
+
+@lisp
+(define (probe name wire)
+  (add-action!
+   wire
+   (lambda ()
+     (newline)
+     (display name)
+     (display " ")
+     (display (current-time the-agenda))
+     (display "  New-value = ")
+     (display (get-signal wire)))))
+@end lisp
+
+@noindent
+Chúng ta bắt đầu bằng cách khởi tạo chương trình nghị sự và chỉ định các độ
+trễ cho các hộp hàm nguyên thủy:
+
+@lisp
+(define the-agenda (make-agenda))
+(define inverter-delay 2)
+(define and-gate-delay 3)
+(define or-gate-delay 5)
+@end lisp
+
+@noindent
+Bây giờ chúng ta định nghĩa bốn dây dẫn, đặt đầu dò trên hai trong số chúng:
+
+@lisp
+(define input-1 (make-wire))
+(define input-2 (make-wire))
+(define sum (make-wire))
+(define carry (make-wire))
+
+(probe 'sum sum)
+@i{sum 0  New-value = 0}
+
+(probe 'carry carry)
+@i{carry 0  New-value = 0}
+@end lisp
+
+@noindent
+Tiếp theo chúng ta kết nối các dây dẫn trong mạch bộ cộng nửa (như trong
+@ref{Figure 3.25}), đặt tín hiệu trên @code{input-1} thành 1, và chạy mô phỏng:
+
+@lisp
+(half-adder input-1 input-2 sum carry)
+@i{ok}
+
+(set-signal! input-1 1)
+@i{done}
+
+(propagate)
+@i{sum 8  New-value = 1}
+@i{done}
+@end lisp
+
+@noindent
+Tín hiệu @code{sum} thay đổi thành 1 vào thời điểm 8. Bây giờ chúng ta ở tám
+đơn vị thời gian từ đầu mô phỏng. Tại thời điểm này, chúng ta có thể đặt tín
+hiệu trên @code{input-2} thành 1 và cho phép các giá trị lan truyền:
+
+@lisp
+(set-signal! input-2 1)
+@i{done}
+
+(propagate)
+@i{carry 11  New-value = 1}
+@i{sum 16  New-value = 0}
+@i{done}
+@end lisp
+
+@noindent
+@code{carry} thay đổi thành 1 vào thời điểm 11 và @code{sum} thay đổi thành 0
+vào thời điểm 16.
+
+@quotation
+@strong{@anchor{Exercise 3.31}Bài tập 3.31:} Thủ tục nội bộ
+@code{accept-action-procedure!} được định nghĩa trong @code{make-wire} chỉ định
+rằng khi một thủ tục hành động mới được thêm vào dây dẫn, thủ tục được chạy
+ngay lập tức. Hãy giải thích tại sao việc khởi tạo này là cần thiết. Cụ thể,
+theo dõi ví dụ bộ cộng nửa trong các đoạn trên và cho biết phản hồi của hệ
+thống sẽ khác nhau như thế nào nếu chúng ta đã định nghĩa
+@code{accept-action-procedure!} là
+
+@lisp
+(define (accept-action-procedure! proc)
+  (set! action-procedures
+        (cons proc action-procedures)))
+@end lisp
+@end quotation
+
+@subsubheading Implementing the agenda
+
+Cuối cùng, chúng ta đưa ra chi tiết về cấu trúc dữ liệu chương trình nghị sự,
+giữ các thủ tục được lên lịch để thực thi trong tương lai.
+
+Chương trình nghị sự được tạo thành từ các @newterm{đoạn thời gian}. Mỗi đoạn
+thời gian là một cặp bao gồm một số (thời gian) và một hàng đợi (xem
+@ref{Exercise 3.32}) giữ các thủ tục được lên lịch để chạy trong đoạn thời gian
+đó.
+
+@lisp
+(define (make-time-segment time queue)
+  (cons time queue))
+(define (segment-time s) (car s))
+(define (segment-queue s) (cdr s))
+@end lisp
+
+@noindent
+Chúng ta sẽ thực hiện các phép toán trên hàng đợi đoạn thời gian dùng các phép
+toán hàng đợi được mô tả trong @ref{3.3.2}.
+
+Bản thân chương trình nghị sự là một bảng một chiều của các đoạn thời gian. Nó
+khác với các bảng được mô tả trong @ref{3.3.3} ở chỗ các đoạn sẽ được sắp xếp
+theo thứ tự thời gian tăng dần. Ngoài ra, chúng ta lưu @newterm{thời gian hiện
+tại} (tức là, thời gian của hành động cuối cùng được xử lý) ở đầu chương trình
+nghị sự. Một chương trình nghị sự mới được xây dựng không có đoạn thời gian
+nào và có thời gian hiện tại là 0:@footnote{Chương trình nghị sự là một danh
+sách có tiêu đề, giống như các bảng trong @ref{3.3.3}, nhưng vì danh sách được
+dẫn đầu bởi thời gian, chúng ta không cần một tiêu đề giả bổ sung (chẳng hạn
+như ký hiệu @code{*table*} được dùng với các bảng).}
+
+@lisp
+(define (make-agenda) (list 0))
+(define (current-time agenda) (car agenda))
+(define (set-current-time! agenda time)
+  (set-car! agenda time))
+(define (segments agenda) (cdr agenda))
+(define (set-segments! agenda segments)
+  (set-cdr! agenda segments))
+(define (first-segment agenda)
+  (car (segments agenda)))
+(define (rest-segments agenda)
+  (cdr (segments agenda)))
+@end lisp
+
+@noindent
+Một chương trình nghị sự rỗng nếu nó không có đoạn thời gian nào:
+
+@lisp
+(define (empty-agenda? agenda)
+  (null? (segments agenda)))
+@end lisp
+
+@noindent
+Để thêm một hành động vào chương trình nghị sự, trước tiên chúng ta kiểm tra
+xem chương trình nghị sự có rỗng không. Nếu có, chúng ta tạo một đoạn thời
+gian cho hành động và cài đặt nó vào chương trình nghị sự. Ngược lại, chúng ta
+quét chương trình nghị sự, kiểm tra thời gian của mỗi đoạn. Nếu chúng ta tìm
+thấy một đoạn cho thời gian được hẹn của chúng ta, chúng ta thêm hành động vào
+hàng đợi liên quan. Nếu chúng ta đến một thời gian muộn hơn thời gian được hẹn
+của chúng ta, chúng ta chèn một đoạn thời gian mới vào chương trình nghị sự
+ngay trước nó. Nếu chúng ta đến cuối chương trình nghị sự, chúng ta phải tạo
+một đoạn thời gian mới ở cuối.
+
+@lisp
+(define (add-to-agenda! time action agenda)
+  (define (belongs-before? segments)
+    (or (null? segments)
+        (< time
+           (segment-time (car segments)))))
+  (define (make-new-time-segment time action)
+    (let ((q (make-queue)))
+      (insert-queue! q action)
+      (make-time-segment time q)))
+  (define (add-to-segments! segments)
+    (if (= (segment-time (car segments)) time)
+        (insert-queue!
+         (segment-queue (car segments))
+         action)
+        (let ((rest (cdr segments)))
+          (if (belongs-before? rest)
+              (set-cdr!
+               segments
+               (cons (make-new-time-segment
+                      time
+                      action)
+                     (cdr segments)))
+              (add-to-segments! rest)))))
+  (let ((segments (segments agenda)))
+    (if (belongs-before? segments)
+        (set-segments!
+         agenda
+         (cons (make-new-time-segment
+                time
+                action)
+               segments))
+        (add-to-segments! segments))))
+@end lisp
+
+@noindent
+Thủ tục xóa mục đầu tiên khỏi chương trình nghị sự xóa mục ở đầu hàng đợi
+trong đoạn thời gian đầu tiên. Nếu việc xóa này làm cho đoạn thời gian rỗng,
+chúng ta xóa nó khỏi danh sách các đoạn:@footnote{Lưu ý rằng biểu thức
+@code{if} trong thủ tục này không có biểu thức @code{⟨}@var{alternative}@code{⟩}.
+Một ``câu lệnh @code{if} một nhánh'' như vậy được dùng để quyết định xem có nên
+làm gì đó hay không, thay vì chọn giữa hai biểu thức. Một biểu thức @code{if}
+trả về một giá trị không xác định nếu vị từ là false và không có
+@code{⟨}@var{alternative}@code{⟩}.}
+
+@lisp
+(define (remove-first-agenda-item! agenda)
+  (let ((q (segment-queue
+            (first-segment agenda))))
+    (delete-queue! q)
+    (if (empty-queue? q)
+        (set-segments!
+         agenda
+         (rest-segments agenda)))))
+@end lisp
+
+@noindent
+Mục chương trình nghị sự đầu tiên được tìm thấy ở đầu hàng đợi trong đoạn
+thời gian đầu tiên. Bất cứ khi nào chúng ta trích xuất một mục, chúng ta cũng
+cập nhật thời gian hiện tại:@footnote{Theo cách này, thời gian hiện tại sẽ
+luôn là thời gian của hành động được xử lý gần đây nhất. Lưu trữ thời gian này
+ở đầu chương trình nghị sự đảm bảo rằng nó sẽ vẫn có sẵn ngay cả khi đoạn
+thời gian liên quan đã bị xóa.}
+
+@lisp
+(define (first-agenda-item agenda)
+  (if (empty-agenda? agenda)
+      (error "Agenda is empty:
+              FIRST-AGENDA-ITEM")
+      (let ((first-seg
+             (first-segment agenda)))
+        (set-current-time!
+         agenda
+         (segment-time first-seg))
+        (front-queue
+         (segment-queue first-seg)))))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 3.32}Bài tập 3.32:} Các thủ tục cần được chạy trong
+mỗi đoạn thời gian của chương trình nghị sự được giữ trong một hàng đợi. Do
+đó, các thủ tục cho mỗi đoạn được gọi theo thứ tự chúng được thêm vào chương
+trình nghị sự (vào trước, ra trước). Hãy giải thích tại sao thứ tự này phải
+được dùng. Cụ thể, theo dõi hành vi của một cổng and mà đầu vào của nó thay
+đổi từ 0, 1 sang 1, 0 trong cùng một đoạn và nói cách hành vi sẽ khác nhau như
+thế nào nếu chúng ta lưu trữ các thủ tục của một đoạn trong một danh sách
+thông thường, thêm và xóa các thủ tục chỉ ở đầu (vào sau, ra trước).
+@end quotation

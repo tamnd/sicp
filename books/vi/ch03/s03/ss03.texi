@@ -1,0 +1,362 @@
+@node	3.3.3, 3.3.4, 3.3.2, 3.3
+@subsection Biểu Diễn Bảng
+
+Khi chúng ta nghiên cứu các cách biểu diễn tập hợp khác nhau trong @ref{Chapter 2},
+chúng ta đã đề cập trong @ref{2.3.3} nhiệm vụ duy trì một bảng các bản ghi được
+lập chỉ mục bởi các khóa nhận dạng. Trong việc cài đặt lập trình hướng dữ liệu
+trong @ref{2.4.3}, chúng ta đã sử dụng rộng rãi các bảng hai chiều, trong đó
+thông tin được lưu trữ và truy xuất bằng hai khóa. Ở đây chúng ta xem cách xây
+dựng các bảng như các cấu trúc danh sách có thể thay đổi.
+
+Chúng ta trước tiên xem xét một bảng một chiều, trong đó mỗi giá trị được lưu
+trữ dưới một khóa duy nhất. Chúng ta cài đặt bảng như một danh sách các bản ghi,
+mỗi bản ghi được cài đặt như một cặp bao gồm một khóa và giá trị liên kết. Các
+bản ghi được kết dính lại để tạo thành một danh sách bởi các cặp mà @code{car}
+của chúng trỏ đến các bản ghi liên tiếp. Các cặp kết dính này được gọi là
+@newterm{xương sống} của bảng. Để có một nơi chúng ta có thể thay đổi khi chúng
+ta thêm một bản ghi mới vào bảng, chúng ta xây dựng bảng như một @newterm{danh
+sách có đầu}. Một danh sách có đầu có một cặp xương sống đặc biệt ở đầu, giữ
+một ``bản ghi'' giả---trong trường hợp này là ký hiệu @code{*table*} được chọn
+tùy ý. @ref{Figure 3.22} cho thấy sơ đồ hộp và con trỏ cho bảng
+
+@lisp
+a:  1
+b:  2
+c:  3
+@end lisp
+
+@float
+@anchor{Figure 3.22}
+@ifinfo
+@strong{Figure 3.22:} A table represented as a headed list.
+
+@example
++---+---+    +---+---+    +---+---+    +---+---+
+| * | *-+--->| * | *-+--->| * | *-+--->| * | / |
++-|-+---+    +-|-+---+    +-|-+---+    +-|-+---+
+|            |            |            |
+V            V            V            V
++---------+   +---+---+   +---+---+   +---+---+
+| *table* |   | * | * |   | * | * |   | * | * |
++---------+   +-|-+-|-+   +-|-+-|-+   +-|-+-|-+
+|   |       |   |       |   |
+V   V       V   V       V   V
++---+ +---+ +---+ +---+ +---+ +---+
+| a | | 1 | | b | | 2 | | c | | 3 |
++---+ +---+ +---+ +---+ +---+ +---+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.22c,138mm,,,.std.svg}
+@caption{@strong{Figure 3.22:} A table represented as a headed list.}
+@end iftex
+@end float
+
+@noindent
+Để trích xuất thông tin từ bảng, chúng ta dùng thủ tục @code{lookup}, nhận một
+khóa làm đối số và trả về giá trị liên kết (hoặc sai nếu không có giá trị nào
+được lưu trữ dưới khóa đó). @code{Lookup} được định nghĩa theo phép toán
+@code{assoc}, nhận một khóa và một danh sách các bản ghi làm đối số. Lưu ý rằng
+@code{assoc} không bao giờ thấy bản ghi giả. @code{Assoc} trả về bản ghi có khóa
+cho trước là @code{car} của nó.@footnote{Vì @code{assoc} dùng @code{equal?}, nó
+có thể nhận ra các khóa là ký hiệu, số, hoặc cấu trúc danh sách.} @code{Lookup}
+sau đó kiểm tra xem bản ghi kết quả được trả về bởi @code{assoc} có phải là sai
+không, và trả về giá trị (@code{cdr}) của bản ghi.
+
+@lisp
+(define (lookup key table)
+  (let ((record (assoc key (cdr table))))
+    (if record
+        (cdr record)
+        false)))
+
+(define (assoc key records)
+  (cond ((null? records) false)
+        ((equal? key (caar records))
+         (car records))
+        (else (assoc key (cdr records)))))
+@end lisp
+
+@noindent
+Để chèn một giá trị vào bảng dưới một khóa được chỉ định, trước tiên chúng ta
+dùng @code{assoc} để xem liệu đã có bản ghi nào trong bảng với khóa này chưa.
+Nếu không, chúng ta tạo thành một bản ghi mới bằng cách @code{cons} khóa với
+giá trị, và chèn nó vào đầu danh sách bản ghi của bảng, sau bản ghi giả. Nếu đã
+có bản ghi với khóa này, chúng ta đặt @code{cdr} của bản ghi này thành giá trị
+mới được chỉ định. Phần đầu của bảng cung cấp cho chúng ta một vị trí cố định
+để sửa đổi nhằm chèn bản ghi mới.@footnote{Do đó, cặp xương sống đầu tiên là
+đối tượng biểu diễn bảng ``chính nó''; tức là, con trỏ đến bảng là con trỏ đến
+cặp này. Cùng cặp xương sống này luôn bắt đầu bảng. Nếu chúng ta không sắp xếp
+mọi thứ theo cách này, @code{insert!} sẽ phải trả về một giá trị mới cho điểm
+bắt đầu của bảng khi nó thêm một bản ghi mới.}
+
+@lisp
+(define (insert! key value table)
+  (let ((record (assoc key (cdr table))))
+    (if record
+        (set-cdr! record value)
+        (set-cdr! table
+                  (cons (cons key value)
+                        (cdr table)))))
+  'ok)
+@end lisp
+
+@noindent
+Để xây dựng một bảng mới, chúng ta chỉ cần tạo một danh sách chứa ký hiệu
+@code{*table*}:
+
+@lisp
+(define (make-table)
+  (list '*table*))
+@end lisp
+
+@subsubheading Bảng hai chiều
+
+Trong một bảng hai chiều, mỗi giá trị được lập chỉ mục bởi hai khóa. Chúng ta
+có thể xây dựng bảng như vậy như một bảng một chiều trong đó mỗi khóa xác định
+một bảng con. @ref{Figure 3.23} cho thấy sơ đồ hộp và con trỏ cho bảng
+
+@example
+math:  +: 43    letters:  a: 97
+       -: 45              b: 98
+       *: 42
+@end example
+
+@noindent
+có hai bảng con. (Các bảng con không cần ký hiệu đầu đặc biệt, vì khóa xác định
+bảng con phục vụ mục đích này.)
+
+@float
+@anchor{Figure 3.23}
+@ifinfo
+@strong{Figure 3.23:} A two-dimensional table.
+
+@example
+table
+  |
+  V
++---+---+   +---+---+   +---+---+
+| * | *-+-->| * | *-+-->| * | / |
++-|-+---+   +-|-+---+   +-|-+---+
+  V           |           V
++-------+     |         +---+---+   +---+---+   +---+---+
+|*table*|     |         | * | *-+-->| * | *-+-->| * | / |
++-------+     |         +-|-+---+   +-|-+---+   +-|-+---+
+              |           V           V           V
+              |       +-------+     +---+---+   +---+---+
+              |       |letters|     | * | * |   | * | * |
+              |       +-------+     +-|-+-|-+   +-|-+-|-+
+              |                       V   V       V   V
+              |                    +---+ +---+ +---+ +---+
+              |                    | a | | 97| | b | | 98|
+              |                    +---+ +---+ +---+ +---+
+              V
+            +---+---+   +---+---+   +---+---+   +---+---+
+            | * | *-+-->| * | *-+-->| * | *-+-->| * | / |
+            +-|-+---+   +-|-+---+   +-|-+---+   +-|-+---+
+              V           V           V           V
+          +------+      +---+---+   +---+---+   +---+---+
+          | math |      | * | * |   | * | * |   | * | * |
+          +------+      +-|-+-|-+   +-|-+-|-+   +-|-+-|-+
+                          V   V       V   V       V   V
+                       +---+ +---+ +---+ +---+ +---+ +---+
+                       | + | | 43| | - | | 45| | * | | 42|
+                       +---+ +---+ +---+ +---+ +---+ +---+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.23b,143mm,,,.std.svg}
+@caption{@strong{Figure 3.23:} A two-dimensional table.}
+@end iftex
+@end float
+
+@noindent
+Khi chúng ta tra cứu một phần tử, chúng ta dùng khóa đầu tiên để xác định bảng
+con đúng. Sau đó chúng ta dùng khóa thứ hai để xác định bản ghi trong bảng con.
+
+@lisp
+(define (lookup key-1 key-2 table)
+  (let ((subtable (assoc key-1 (cdr table))))
+    (if subtable
+        (let ((record
+               (assoc key-2 (cdr subtable))))
+          (if record (cdr record) false))
+        false)))
+@end lisp
+
+@noindent
+Để chèn một phần tử mới dưới một cặp khóa, chúng ta dùng @code{assoc} để xem
+liệu có bảng con được lưu trữ dưới khóa đầu tiên không. Nếu không, chúng ta xây
+dựng một bảng con mới chứa bản ghi đơn (@code{key-2}, @code{value}) và chèn nó
+vào bảng dưới khóa đầu tiên. Nếu bảng con đã tồn tại cho khóa đầu tiên, chúng
+ta chèn bản ghi mới vào bảng con này, bằng cách dùng phương pháp chèn cho bảng
+một chiều được mô tả ở trên:
+
+@lisp
+(define (insert! key-1 key-2 value table)
+  (let ((subtable (assoc key-1 (cdr table))))
+    (if subtable
+        (let ((record
+               (assoc key-2 (cdr subtable))))
+          (if record
+              (set-cdr! record value)
+              (set-cdr!
+               subtable
+               (cons (cons key-2 value)
+                     (cdr subtable)))))
+        (set-cdr!
+         table
+         (cons (list key-1 (cons key-2 value))
+               (cdr table)))))
+  'ok)
+@end lisp
+
+@subsubheading Tạo bảng cục bộ
+
+Các phép toán @code{lookup} và @code{insert!} được định nghĩa ở trên nhận bảng
+làm đối số. Điều này cho phép chúng ta dùng các chương trình truy cập nhiều hơn
+một bảng. Một cách khác để xử lý nhiều bảng là có các thủ tục @code{lookup} và
+@code{insert!} riêng biệt cho mỗi bảng. Chúng ta có thể thực hiện điều này bằng
+cách biểu diễn một bảng theo cách thủ tục, như một đối tượng duy trì một bảng
+nội bộ như một phần của trạng thái cục bộ của nó. Khi được gửi một thông điệp
+thích hợp, ``đối tượng bảng'' này cung cấp thủ tục để thao tác trên bảng nội bộ.
+Đây là bộ tạo cho các bảng hai chiều được biểu diễn theo cách này:
+
+@lisp
+(define (make-table)
+  (let ((local-table (list '*table*)))
+    (define (lookup key-1 key-2)
+      (let ((subtable
+             (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record
+                   (assoc key-2
+                          (cdr subtable))))
+              (if record (cdr record) false))
+            false)))
+    (define (insert! key-1 key-2 value)
+      (let ((subtable
+             (assoc key-1 (cdr local-table))))
+        (if subtable
+            (let ((record
+                   (assoc key-2
+                          (cdr subtable))))
+              (if record
+                  (set-cdr! record value)
+                  (set-cdr!
+                   subtable
+                   (cons (cons key-2 value)
+                         (cdr subtable)))))
+            (set-cdr!
+             local-table
+             (cons (list key-1
+                         (cons key-2 value))
+                   (cdr local-table)))))
+      'ok)
+    (define (dispatch m)
+      (cond ((eq? m 'lookup-proc) lookup)
+            ((eq? m 'insert-proc!) insert!)
+            (else (error "Unknown operation:
+                          TABLE" m))))
+    dispatch))
+@end lisp
+
+@noindent
+Bằng cách dùng @code{make-table}, chúng ta có thể cài đặt các phép toán
+@code{get} và @code{put} được dùng trong @ref{2.4.3} cho lập trình hướng dữ liệu,
+như sau:
+
+@lisp
+(define operation-table (make-table))
+(define get (operation-table 'lookup-proc))
+(define put (operation-table 'insert-proc!))
+@end lisp
+
+@noindent
+@code{Get} nhận hai khóa làm đối số, và @code{put} nhận hai khóa và một giá trị
+làm đối số. Cả hai phép toán đều truy cập cùng một bảng cục bộ, được đóng gói
+trong đối tượng được tạo ra bởi lời gọi đến @code{make-table}.
+
+@quotation
+@strong{@anchor{Exercise 3.24}Bài tập 3.24:} Trong các cài đặt bảng ở trên, các
+khóa được kiểm tra sự bằng nhau bằng @code{equal?} (được gọi bởi @code{assoc}).
+Đây không phải lúc nào cũng là kiểm tra thích hợp. Ví dụ, chúng ta có thể có
+một bảng với các khóa số trong đó chúng ta không cần khớp chính xác với số chúng
+ta đang tra cứu, mà chỉ cần một số trong một phạm vi nhất định. Thiết kế bộ xây
+dựng bảng @code{make-table} nhận một thủ tục @code{same-key?} làm đối số sẽ được
+dùng để kiểm tra ``sự bằng nhau'' của các khóa. @code{Make-table} nên trả về thủ
+tục @code{dispatch} có thể được dùng để truy cập các thủ tục @code{lookup} và
+@code{insert!} thích hợp cho một bảng cục bộ.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.25}Bài tập 3.25:} Tổng quát hóa các bảng một và hai
+chiều, cho thấy cách cài đặt một bảng trong đó các giá trị được lưu trữ dưới một
+số khóa tùy ý và các giá trị khác nhau có thể được lưu trữ dưới số lượng khóa
+khác nhau. Các thủ tục @code{lookup} và @code{insert!} nên nhận làm đầu vào một
+danh sách các khóa được dùng để truy cập bảng.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.26}Bài tập 3.26:} Để tìm kiếm trong bảng như được
+cài đặt ở trên, cần phải quét qua danh sách các bản ghi. Về cơ bản đây là biểu
+diễn danh sách không có thứ tự của @ref{2.3.3}. Đối với các bảng lớn, có thể
+hiệu quả hơn khi cấu trúc bảng theo cách khác. Mô tả một cài đặt bảng trong đó
+các bản ghi (khóa, giá trị) được tổ chức bằng cây nhị phân, giả sử các khóa có
+thể được sắp xếp theo một cách nào đó (ví dụ: theo số hoặc chữ cái). (So sánh
+@ref{Exercise 2.66} của @ref{Chapter 2}.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.27}Bài tập 3.27:} @newterm{Ghi nhớ} (còn gọi là
+@newterm{lập bảng}) là một kỹ thuật cho phép một thủ tục ghi lại, trong một bảng
+cục bộ, các giá trị đã được tính toán trước đó. Kỹ thuật này có thể tạo ra sự
+khác biệt lớn trong hiệu suất của một chương trình. Một thủ tục được ghi nhớ duy
+trì một bảng trong đó các giá trị của các lời gọi trước được lưu trữ bằng cách
+dùng các đối số tạo ra các giá trị làm khóa. Khi thủ tục được ghi nhớ được yêu
+cầu tính toán một giá trị, trước tiên nó kiểm tra bảng để xem liệu giá trị đó
+đã có trong đó chưa và, nếu có, chỉ trả về giá trị đó. Nếu không, nó tính toán
+giá trị mới theo cách thông thường và lưu trữ nó vào bảng. Như một ví dụ về ghi
+nhớ, nhớ lại từ @ref{1.2.2} quá trình hàm mũ để tính số Fibonacci:
+
+@lisp
+(define (fib n)
+  (cond ((= n 0) 0)
+        ((= n 1) 1)
+        (else (+ (fib (- n 1))
+                 (fib (- n 2))))))
+@end lisp
+
+Phiên bản được ghi nhớ của cùng thủ tục là
+
+@lisp
+(define memo-fib
+  (memoize
+   (lambda (n)
+     (cond ((= n 0) 0)
+           ((= n 1) 1)
+           (else
+            (+ (memo-fib (- n 1))
+               (memo-fib (- n 2))))))))
+@end lisp
+
+@noindent
+trong đó bộ ghi nhớ được định nghĩa là
+
+@lisp
+(define (memoize f)
+  (let ((table (make-table)))
+    (lambda (x)
+      (let ((previously-computed-result
+             (lookup x table)))
+        (or previously-computed-result
+            (let ((result (f x)))
+              (insert! x result table)
+              result))))))
+@end lisp
+
+Vẽ một sơ đồ môi trường để phân tích việc tính @code{(memo-fib 3)}. Giải thích
+tại sao @code{memo-fib} tính số Fibonacci thứ @math{n} trong số bước tỉ lệ với
+@math{n}. Kế hoạch có còn hoạt động không nếu chúng ta đã đơn giản định nghĩa
+@code{memo-fib} là @code{(memoize fib)}?
+@end quotation

@@ -1,0 +1,348 @@
+@node	3.3.2, 3.3.3, 3.3.1, 3.3
+@subsection Biểu Diễn Hàng Đợi
+
+Các bộ biến đổi @code{set-car!} và @code{set-cdr!} cho phép chúng ta dùng các
+cặp để xây dựng các cấu trúc dữ liệu không thể được xây dựng chỉ với @code{cons},
+@code{car}, và @code{cdr}. Phần này cho thấy cách dùng các cặp để biểu diễn một
+cấu trúc dữ liệu gọi là hàng đợi. Phần @ref{3.3.3} sẽ cho thấy cách biểu diễn
+các cấu trúc dữ liệu gọi là bảng.
+
+@newterm{Hàng đợi} là một chuỗi trong đó các phần tử được chèn vào một đầu (được
+gọi là @newterm{cuối} của hàng đợi) và bị xóa từ đầu kia (@newterm{đầu}). @ref{Figure 3.18}
+cho thấy một hàng đợi ban đầu trống trong đó các phần tử @code{a} và @code{b}
+được chèn vào. Sau đó @code{a} bị xóa, @code{c} và @code{d} được chèn vào, và
+@code{b} bị xóa. Vì các phần tử luôn được xóa theo thứ tự mà chúng được chèn
+vào, một hàng đợi đôi khi được gọi là bộ đệm @newterm{FIFO} (vào trước, ra trước).
+
+@float
+@anchor{Figure 3.18}
+@ifinfo
+@quotation
+@strong{Figure 3.18:} Queue operations.
+
+@example
+Operation                Resulting Queue
+(define q (make-queue))
+(insert-queue! q 'a)     a
+(insert-queue! q 'b)     a b
+(delete-queue! q)        b
+(insert-queue! q 'c)     b c
+(insert-queue! q 'd)     b c d
+(delete-queue! q)        c d
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.18,119mm,,,.std.svg}
+@caption{@strong{Figure 3.18:} Queue operations.}
+@end iftex
+@end float
+
+@noindent
+Về mặt trừu tượng hóa dữ liệu, chúng ta có thể coi hàng đợi được định nghĩa
+bởi tập hợp các phép toán sau:
+
+@itemize @bullet
+
+@item
+một bộ xây dựng: @code{(make-queue)} trả về một hàng đợi trống (hàng đợi không
+chứa phần tử nào).
+
+@item
+hai bộ chọn:
+
+@lisp
+(empty-queue? ⟨@var{queue}⟩)
+@end lisp
+
+@noindent
+kiểm tra xem hàng đợi có trống không.
+
+@lisp
+(front-queue ⟨@var{queue}⟩)
+@end lisp
+
+@noindent
+trả về đối tượng ở đầu hàng đợi, báo hiệu lỗi nếu hàng đợi trống; nó không
+sửa đổi hàng đợi.
+
+@item
+hai bộ biến đổi:
+
+@lisp
+(insert-queue! ⟨@var{queue}⟩ ⟨@var{item}⟩)
+@end lisp
+
+@noindent
+chèn phần tử vào cuối hàng đợi và trả về hàng đợi đã sửa đổi là giá trị của nó.
+
+@lisp
+(delete-queue! ⟨@var{queue}⟩)
+@end lisp
+
+@noindent
+xóa phần tử ở đầu hàng đợi và trả về hàng đợi đã sửa đổi là giá trị của nó,
+báo hiệu lỗi nếu hàng đợi trống trước khi xóa.
+
+@end itemize
+
+@noindent
+Vì hàng đợi là một chuỗi các phần tử, chúng ta chắc chắn có thể biểu diễn nó
+như một danh sách thông thường; đầu của hàng đợi sẽ là @code{car} của danh sách,
+chèn một phần tử vào hàng đợi sẽ tương đương với việc thêm một phần tử mới vào
+cuối danh sách, và xóa một phần tử khỏi hàng đợi chỉ là lấy @code{cdr} của danh
+sách. Tuy nhiên, biểu diễn này không hiệu quả, vì để chèn một phần tử chúng ta
+phải quét danh sách cho đến khi đến cuối. Vì phương pháp duy nhất chúng ta có để
+quét danh sách là bằng các phép toán @code{cdr} liên tiếp, việc quét này đòi hỏi
+@math{{\Theta(n)}} bước cho danh sách @math{n} phần tử. Một sửa đổi đơn giản đối
+với biểu diễn danh sách khắc phục bất lợi này bằng cách cho phép các phép toán
+hàng đợi được cài đặt sao cho chúng đòi hỏi @math{{\Theta(1)}} bước; tức là, số
+bước cần thiết độc lập với độ dài của hàng đợi.
+
+Khó khăn với biểu diễn danh sách phát sinh từ nhu cầu quét để tìm cuối danh
+sách. Lý do chúng ta cần quét là, mặc dù cách biểu diễn tiêu chuẩn của một danh
+sách như một chuỗi các cặp dễ dàng cung cấp cho chúng ta con trỏ đến đầu danh
+sách, nó không cho chúng ta con trỏ dễ truy cập đến cuối danh sách. Sửa đổi
+tránh bất lợi này là biểu diễn hàng đợi như một danh sách, cùng với một con trỏ
+bổ sung chỉ đến cặp cuối cùng trong danh sách. Bằng cách đó, khi chúng ta chèn
+một phần tử, chúng ta có thể tham khảo con trỏ cuối và tránh quét danh sách.
+
+@noindent
+Do đó, một hàng đợi được biểu diễn như một cặp các con trỏ, @code{front-ptr}
+và @code{rear-ptr}, chỉ ra, tương ứng, các cặp đầu tiên và cuối cùng trong một
+danh sách thông thường. Vì chúng ta muốn hàng đợi là một đối tượng có thể nhận
+biết, chúng ta có thể dùng @code{cons} để kết hợp hai con trỏ. Vì vậy, bản thân
+hàng đợi sẽ là @code{cons} của hai con trỏ. @ref{Figure 3.19} minh họa biểu diễn
+này.
+
+@float
+@anchor{Figure 3.19}
+@ifinfo
+@quotation
+@strong{Figure 3.19:} Implementation of a queue as a list with front and rear pointers.
+
+@example
+       +---+---+
+  q -->| * | *-+-------------------+
+       +-|-+---+                   |
+         |                         |
+         | front-ptr               | rear-ptr
+         V                         V
+     +---+---+    +---+---+    +---+---+
+     | * | *-+--->| * | *-+--->| * | / |
+     +-|-+---+    +-|-+---+    +-|-+---+
+       V            V            V
+     +---+        +---+        +---+
+     | a |        | b |        | c |
+     +---+        +---+        +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.19b,118mm,,,.std.svg}
+@caption{@strong{Figure 3.19:} Implementation of a queue as a list with front and rear pointers.}
+@end iftex
+@end float
+
+Để định nghĩa các phép toán hàng đợi, chúng ta dùng các thủ tục sau, cho phép
+chúng ta chọn và sửa đổi các con trỏ đầu và cuối của hàng đợi:
+
+@lisp
+(define (front-ptr queue) (car queue))
+(define (rear-ptr queue) (cdr queue))
+(define (set-front-ptr! queue item)
+  (set-car! queue item))
+(define (set-rear-ptr! queue item)
+  (set-cdr! queue item))
+@end lisp
+
+@noindent
+Bây giờ chúng ta có thể cài đặt các phép toán hàng đợi thực tế. Chúng ta sẽ
+coi một hàng đợi là trống nếu con trỏ đầu của nó là danh sách rỗng:
+
+@lisp
+(define (empty-queue? queue)
+  (null? (front-ptr queue)))
+@end lisp
+
+@noindent
+Bộ xây dựng @code{make-queue} trả về, như một hàng đợi ban đầu trống, một cặp
+mà cả @code{car} và @code{cdr} đều là danh sách rỗng:
+
+@lisp
+(define (make-queue) (cons '() '()))
+@end lisp
+
+@noindent
+Để chọn phần tử ở đầu hàng đợi, chúng ta trả về @code{car} của cặp được chỉ
+bởi con trỏ đầu:
+
+@lisp
+(define (front-queue queue)
+  (if (empty-queue? queue)
+      (error "FRONT called with an
+              empty queue" queue)
+      (car (front-ptr queue))))
+@end lisp
+
+@noindent
+Để chèn một phần tử vào hàng đợi, chúng ta theo phương pháp mà kết quả của nó
+được chỉ ra trong @ref{Figure 3.20}. Chúng ta đầu tiên tạo ra một cặp mới mà
+@code{car} của nó là phần tử được chèn vào và @code{cdr} của nó là danh sách
+rỗng. Nếu hàng đợi ban đầu trống, chúng ta đặt các con trỏ đầu và cuối của hàng
+đợi đến cặp mới này. Nếu không, chúng ta sửa đổi cặp cuối cùng trong hàng đợi
+để trỏ đến cặp mới, và cũng đặt con trỏ cuối đến cặp mới.
+
+@float
+@anchor{Figure 3.20}
+@ifinfo
+@strong{Figure 3.20:} Result of using @code{(insert-queue! q 'd)} on the queue of @ref{Figure 3.19}.
+
+@example
+       +---+---+
+  q -->| * | *-+--------------------------------+
+       +-|-+---+                                |
+         |                                      |
+         | front-ptr                            | rear-ptr
+         V                                      V
+     +---+---+    +---+---+    +---+---+    +---+---+
+     | * | *-+--->| * | *-+--->| * | *-+--->| * | / |
+     +-|-+---+    +-|-+---+    +-|-+---+    +-|-+---+
+       V            V            V            V
+     +---+        +---+        +---+        +---+
+     | a |        | b |        | c |        | d |
+     +---+        +---+        +---+        +---+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.20c,141mm,,,.std.svg}
+@caption{@strong{Figure 3.20:} Result of using @code{(insert-queue! q 'd)} on the queue of @ref{Figure 3.19}.}
+@end iftex
+@end float
+
+@lisp
+(define (insert-queue! queue item)
+  (let ((new-pair (cons item '())))
+    (cond ((empty-queue? queue)
+           (set-front-ptr! queue new-pair)
+           (set-rear-ptr! queue new-pair)
+           queue)
+          (else (set-cdr! (rear-ptr queue)
+                          new-pair)
+                (set-rear-ptr! queue new-pair)
+                queue))))
+@end lisp
+
+@noindent
+Để xóa phần tử ở đầu hàng đợi, chúng ta chỉ cần sửa đổi con trỏ đầu sao cho
+bây giờ nó trỏ đến phần tử thứ hai trong hàng đợi, có thể được tìm thấy bằng
+cách đi theo con trỏ @code{cdr} của phần tử đầu tiên (xem
+@ref{Figure 3.21}):@footnote{Nếu phần tử đầu tiên là phần tử cuối cùng trong hàng
+đợi, con trỏ đầu sẽ là danh sách rỗng sau khi xóa, điều này sẽ đánh dấu hàng
+đợi là trống; chúng ta không cần lo lắng về việc cập nhật con trỏ cuối, con trỏ
+này vẫn sẽ trỏ đến phần tử đã bị xóa, vì @code{empty-queue?} chỉ xem xét con
+trỏ đầu.}
+
+@lisp
+(define (delete-queue! queue)
+  (cond ((empty-queue? queue)
+         (error "DELETE! called with
+                 an empty queue" queue))
+        (else (set-front-ptr!
+               queue
+               (cdr (front-ptr queue)))
+              queue)))
+@end lisp
+
+@float
+@anchor{Figure 3.21}
+@ifinfo
+@strong{Figure 3.21:} Result of using @code{(delete-queue!  q)} on the queue of @ref{Figure 3.20}.
+
+@example
+       +---+---+
+  q -->| * | *-+--------------------------------+
+       +-|-+---+                                |
+         +------------+                         |
+            front-ptr |                         | rear-ptr
+                      V                         V
+     +---+---+    +---+---+    +---+---+    +---+---+
+     | * | *-+--->| * | *-+--->| * | *-+--->| * | / |
+     +-|-+---+    +-|-+---+    +-|-+---+    +-|-+---+
+       V            V            V            V
+     +---+        +---+        +---+        +---+
+     | a |        | b |        | c |        | d |
+     +---+        +---+        +---+        +---+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.21c,141mm,,,.std.svg}
+@caption{@strong{Figure 3.21:} Result of using @code{(delete-queue!  q)} on the queue of @ref{Figure 3.20}.}
+@end iftex
+@end float
+
+@quotation
+@strong{@anchor{Exercise 3.21}Bài tập 3.21:} Ben Bitdiddle quyết định kiểm tra
+cài đặt hàng đợi được mô tả ở trên. Anh ta nhập các thủ tục vào trình thông
+dịch Lisp và tiến hành thử chúng:
+
+@lisp
+(define q1 (make-queue))
+
+(insert-queue! q1 'a)
+@i{((a) a)}
+
+(insert-queue! q1 'b)
+@i{((a b) b)}
+
+(delete-queue! q1)
+@i{((b) b)}
+
+(delete-queue! q1)
+@i{(() b)}
+@end lisp
+
+``Tất cả đều sai!'' anh ta phàn nàn. ``Phản hồi của trình thông dịch cho thấy
+phần tử cuối được chèn vào hàng đợi hai lần. Và khi tôi xóa cả hai phần tử,
+phần tử @code{b} thứ hai vẫn còn đó, vì vậy hàng đợi không trống, mặc dù nó
+được cho là phải.'' Eva Lu Ator đề xuất rằng Ben đã hiểu sai điều đang xảy ra.
+``Không phải là các phần tử đang vào hàng đợi hai lần,'' cô ấy giải thích. ``Chỉ
+là máy in Lisp tiêu chuẩn không biết cách hiểu biểu diễn hàng đợi. Nếu bạn muốn
+thấy hàng đợi được in đúng, bạn sẽ phải định nghĩa thủ tục in riêng của mình cho
+hàng đợi.'' Giải thích những gì Eva Lu đang nói. Đặc biệt, cho thấy tại sao các
+ví dụ của Ben tạo ra các kết quả in mà chúng làm. Định nghĩa thủ tục
+@code{print-queue} nhận hàng đợi làm đầu vào và in chuỗi các phần tử trong hàng
+đợi.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.22}Bài tập 3.22:} Thay vì biểu diễn hàng đợi như một
+cặp các con trỏ, chúng ta có thể xây dựng hàng đợi như một thủ tục với trạng thái
+cục bộ. Trạng thái cục bộ sẽ bao gồm các con trỏ đến đầu và cuối của một danh
+sách thông thường. Do đó, thủ tục @code{make-queue} sẽ có dạng
+
+@lisp
+(define (make-queue)
+  (let ((front-ptr @r{…} )
+        (rear-ptr @r{…} ))
+    ⟨@var{definitions of internal procedures}⟩
+    (define (dispatch m) @r{…})
+    dispatch))
+@end lisp
+
+Hoàn thành định nghĩa của @code{make-queue} và cung cấp các cài đặt của các phép
+toán hàng đợi bằng cách dùng biểu diễn này.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.23}Bài tập 3.23:} @newterm{Deque} (``hàng đợi hai
+đầu'') là một chuỗi trong đó các phần tử có thể được chèn và xóa ở cả đầu hoặc
+cuối. Các phép toán trên deque là bộ xây dựng @code{make-deque}, vị từ
+@code{empty-deque?}, các bộ chọn @code{front-deque} và @code{rear-deque}, và các
+bộ biến đổi @code{front-insert-deque!}, @code{rear-insert-deque!},
+@code{front-delete-deque!}, @code{rear-delete-deque!}. Cho thấy cách biểu diễn
+deque bằng cách dùng các cặp, và đưa ra các cài đặt của các phép toán.@footnote{Cẩn
+thận không để trình thông dịch cố gắng in một cấu trúc chứa chu kỳ. (Xem
+@ref{Exercise 3.13}.)} Tất cả các phép toán nên được thực hiện trong @math{{\Theta(1)}}
+bước.
+@end quotation

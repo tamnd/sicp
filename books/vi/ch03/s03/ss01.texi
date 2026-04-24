@@ -1,0 +1,597 @@
+@node	3.3.1, 3.3.2, 3.3, 3.3
+@subsection Cấu Trúc Danh Sách Có Thể Thay Đổi
+
+Các phép toán cơ bản trên các cặp---@code{cons}, @code{car}, và @code{cdr}---có
+thể được dùng để xây dựng cấu trúc danh sách và chọn các phần từ cấu trúc danh
+sách, nhưng chúng không có khả năng sửa đổi cấu trúc danh sách. Điều tương tự
+cũng đúng với các phép toán danh sách mà chúng ta đã dùng cho đến nay, như
+@code{append} và @code{list}, vì chúng có thể được định nghĩa theo @code{cons},
+@code{car}, và @code{cdr}. Để sửa đổi các cấu trúc danh sách, chúng ta cần các
+phép toán mới.
+
+Các bộ biến đổi nguyên thủy cho các cặp là @code{set-car!} và @code{set-cdr!}.
+@code{Set-car!} nhận hai đối số, đối số đầu tiên phải là một cặp. Nó sửa đổi
+cặp này, thay thế con trỏ @code{car} bằng con trỏ đến đối số thứ hai của
+@code{set-car!}.@footnote{@code{Set-car!} và @code{set-cdr!} trả về các giá trị
+phụ thuộc vào cài đặt. Giống như @code{set!}, chúng chỉ nên được dùng vì tác
+dụng của chúng.}
+
+@noindent
+Như một ví dụ, giả sử @code{x} được ràng buộc với danh sách @code{((a b) c d)}
+và @code{y} với danh sách @code{(e f)} như được minh họa trong @ref{Figure 3.12}.
+Định giá biểu thức @code{(set-car! x y)} sửa đổi cặp mà @code{x} được ràng buộc,
+thay thế @code{car} của nó bằng giá trị của @code{y}. Kết quả của phép toán được
+hiển thị trong @ref{Figure 3.13}. Cấu trúc @code{x} đã bị sửa đổi và bây giờ sẽ
+được in là @code{((e f) c d)}. Các cặp biểu diễn danh sách @code{(a b)}, được
+xác định bởi con trỏ đã bị thay thế, bây giờ bị tách ra khỏi cấu trúc ban
+đầu.@footnote{Chúng ta thấy từ điều này rằng các phép toán biến đổi trên danh
+sách có thể tạo ra ``rác'' không phải là một phần của bất kỳ cấu trúc nào có
+thể truy cập. Chúng ta sẽ thấy trong @ref{5.3.2} rằng các hệ thống quản lý bộ
+nhớ Lisp bao gồm một @newterm{bộ thu gom rác}, xác định và tái chế không gian bộ
+nhớ được sử dụng bởi các cặp không cần thiết.}
+
+@float
+@anchor{Figure 3.12}
+@ifinfo
+@quotation
+@strong{Figure 3.12:} Lists @code{x}: @code{((a b) c d)} and @code{y}: @code{(e f)}.
+
+@example
+     +---+---+     +---+---+     +---+---+
+x -->| * | *-+---->| * | *-+---->| * | / |
+     +-|-+---+     +-|-+---+     +-|-+---+
+       |             V             V
+       |           +---+         +---+
+       |           | c |         | d |
+       |           +---+         +---+
+       |           +---+---+     +---+---+
+       +---------->| * | *-+---->| * | / |
+                   +-|-+---+     +-|-+---+
+                     V             V
+                   +---+         +---+
+                   | a |         | b |
+                   +---+         +---+
+                   +---+---+     +---+---+
+              y -->| * | *-+---->| * | / |
+                   +-|-+---+     +-|-+---+
+                     V             V
+                   +---+         +---+
+                   | e |         | f |
+                   +---+         +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.12b,123mm,,,.std.svg}
+@caption{@strong{Figure 3.12:} Lists @code{x}: @code{((a b) c d)} and @code{y}: @code{(e f)}.}
+@end iftex
+@end float
+
+@float
+@anchor{Figure 3.13}
+@ifinfo
+@quotation
+@strong{Figure 3.13:} Effect of @code{(set-car! x y)} on the lists in @ref{Figure 3.12}.
+
+@example
+     +---+---+     +---+---+     +---+---+
+x -->| * | *-+---->| * | *-+---->| * | / |
+     +-|-+---+     +-|-+---+     +-|-+---+
+       |             V             V
+       |           +---+         +---+
+       |           | c |         | d |
+       |           +---+         +---+
+       |           +---+---+     +---+---+
+       |           | * | *-+---->| * | / |
+       |           +-|-+---+     +-|-+---+
+       |             V             V
+       |           +---+         +---+
+       |           | a |         | b |
+       |           +---+         +---+
+       +---------->+---+---+     +---+---+
+                   | * | *-+---->| * | / |
+              y -->+-|-+---+     +-|-+---+
+                     V             V
+                   +---+         +---+
+                   | e |         | f |
+                   +---+         +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.13b,123mm,,,.std.svg}
+@caption{@strong{Figure 3.13:} Effect of @code{(set-car! x y)} on the lists in @ref{Figure 3.12}.}
+@end iftex
+@end float
+
+So sánh @ref{Figure 3.13} với @ref{Figure 3.14}, minh họa kết quả của việc thực
+thi @code{(define z (cons y (cdr x)))} với @code{x} và @code{y} được ràng buộc
+với các danh sách ban đầu của @ref{Figure 3.12}. Biến @code{z} bây giờ được ràng
+buộc với một cặp mới được tạo ra bởi phép toán @code{cons}; danh sách mà
+@code{x} được ràng buộc không thay đổi.
+
+@float
+@anchor{Figure 3.14}
+@ifinfo
+@quotation
+@strong{Figure 3.14:} Effect of @code{(define z (cons y (cdr x)))} on the lists in @ref{Figure 3.12}.
+
+@example
+     +---+---+     +---+---+     +---+---+
+x -->| * | *-+---->| * | *-+---->| * | / |
+     +-|-+---+ +-->+-|-+---+     +-|-+---+
+       |       |     V             V
+       |       |   +---+         +---+
+       |       |   | c |         | d |
+       |       |   +---+         +---+
+       |       |   +---+---+     +---+---+
+       +-------+-->| * | *-+---->| * | / |
+               |   +-|-+---+     +-|-+---+
+     +---+---+ |     V             V
+z -->| * | *-+-+   +---+         +---+
+     +-|-+---+     | a |         | b |
+       |           +---+         +---+
+       +---------->+---+---+     +---+---+
+                   | * | *-+---->| * | / |
+              y -->+-|-+---+     +-|-+---+
+                     V             V
+                   +---+         +---+
+                   | e |         | f |
+                   +---+         +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.14b,123mm,,,.std.svg}
+@caption{@strong{Figure 3.14:} Effect of @code{(define z (cons y (cdr x)))} on the lists in @ref{Figure 3.12}.}
+@end iftex
+@end float
+
+Phép toán @code{set-cdr!} tương tự như @code{set-car!}. Điểm khác biệt duy nhất
+là con trỏ @code{cdr} của cặp, thay vì con trỏ @code{car}, được thay thế. Tác
+dụng của việc thực thi @code{(set-cdr! x y)} trên các danh sách của @ref{Figure 3.12}
+được hiển thị trong @ref{Figure 3.15}. Ở đây con trỏ @code{cdr} của @code{x} đã
+được thay thế bằng con trỏ đến @code{(e f)}. Ngoài ra, danh sách @code{(c d)},
+trước đây là @code{cdr} của @code{x}, bây giờ bị tách ra khỏi cấu trúc.
+
+@float
+@anchor{Figure 3.15}
+@ifinfo
+@quotation
+@strong{Figure 3.15:} Effect of @code{(set-cdr! x y)} on the lists in @ref{Figure 3.12}.
+
+@example
+     +---+---+     +---+---+     +---+---+
+x -->| * | * |     | * | *-+---->| * | / |
+     +-|-+-|-+     +-|-+---+     +-|-+---+
+       |   |         V             V
+       |   |       +---+         +---+
+       |   |       | c |         | d |
+       |   |       +---+         +---+
+       |   |       +---+---+     +---+---+
+       +---+------>| * | *-+---->| * | / |
+           |       +-|-+---+     +-|-+---+
+           |         V             V
+           |       +---+         +---+
+           |       | a |         | b |
+           |       +---+         +---+
+           +------>+---+---+     +---+---+
+                   | * | *-+---->| * | / |
+              y -->+-|-+---+     +-|-+---+
+                     V             V
+                   +---+         +---+
+                   | e |         | f |
+                   +---+         +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.15b,123mm,,,.std.svg}
+@caption{@strong{Figure 3.15:} Effect of @code{(set-cdr! x y)} on the lists in @ref{Figure 3.12}.}
+@end iftex
+@end float
+
+@noindent
+@code{Cons} xây dựng cấu trúc danh sách mới bằng cách tạo ra các cặp mới, trong
+khi @code{set-car!} và @code{set-cdr!} sửa đổi các cặp hiện có. Thật vậy, chúng
+ta có thể cài đặt @code{cons} theo hai bộ biến đổi, cùng với một thủ tục
+@code{get-new-pair}, trả về một cặp mới không phải là một phần của bất kỳ cấu
+trúc danh sách hiện có nào. Chúng ta lấy cặp mới, đặt các con trỏ @code{car} và
+@code{cdr} của nó đến các đối tượng được chỉ định, và trả về cặp mới là kết quả
+của @code{cons}.@footnote{@code{Get-new-pair} là một trong những phép toán phải
+được cài đặt như một phần của quản lý bộ nhớ được yêu cầu bởi một cài đặt Lisp.
+Chúng ta sẽ thảo luận điều này trong @ref{5.3.1}.}
+
+@lisp
+(define (cons x y)
+  (let ((new (get-new-pair)))
+    (set-car! new x)
+    (set-cdr! new y)
+    new))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 3.12}Bài tập 3.12:} Thủ tục nối danh sách sau đây đã
+được giới thiệu trong @ref{2.2.1}:
+
+@lisp
+(define (append x y)
+  (if (null? x)
+      y
+      (cons (car x) (append (cdr x) y))))
+@end lisp
+
+@code{Append} tạo thành một danh sách mới bằng cách lần lượt @code{cons} các
+phần tử của @code{x} vào @code{y}. Thủ tục @code{append!} tương tự như
+@code{append}, nhưng nó là bộ biến đổi thay vì bộ xây dựng. Nó nối các danh
+sách bằng cách ghép chúng lại với nhau, sửa đổi cặp cuối cùng của @code{x} sao
+cho @code{cdr} của nó bây giờ là @code{y}. (Đây là lỗi khi gọi @code{append!}
+với @code{x} rỗng.)
+
+@lisp
+(define (append! x y)
+  (set-cdr! (last-pair x) y)
+  x)
+@end lisp
+
+Ở đây @code{last-pair} là thủ tục trả về cặp cuối cùng trong đối số của nó:
+
+@lisp
+(define (last-pair x)
+  (if (null? (cdr x))
+      x
+      (last-pair (cdr x))))
+@end lisp
+
+Hãy xem xét tương tác
+
+@lisp
+(define x (list 'a 'b))
+(define y (list 'c 'd))
+(define z (append x y))
+
+z
+@i{(a b c d)}
+
+(cdr x)
+⟨@var{response}⟩
+
+(define w (append! x y))
+
+w
+@i{(a b c d)}
+
+(cdr x)
+⟨@var{response}⟩
+@end lisp
+
+Các @code{⟨}@var{response}@code{⟩} bị thiếu là gì? Vẽ các sơ đồ hộp và con trỏ để
+giải thích câu trả lời của bạn.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.13}Bài tập 3.13:} Hãy xem xét thủ tục @code{make-cycle}
+sau đây, sử dụng thủ tục @code{last-pair} được định nghĩa trong @ref{Exercise 3.12}:
+
+@lisp
+(define (make-cycle x)
+  (set-cdr! (last-pair x) x)
+  x)
+@end lisp
+
+Vẽ một sơ đồ hộp và con trỏ cho thấy cấu trúc @code{z} được tạo ra bởi
+
+@lisp
+(define z (make-cycle (list 'a 'b 'c)))
+@end lisp
+
+Điều gì xảy ra nếu chúng ta cố gắng tính @code{(last-pair z)}?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.14}Bài tập 3.14:} Thủ tục sau đây khá hữu ích, mặc
+dù khó hiểu:
+
+@lisp
+(define (mystery x)
+  (define (loop x y)
+    (if (null? x)
+        y
+        (let ((temp (cdr x)))
+          (set-cdr! x y)
+          (loop temp x))))
+  (loop x '()))
+@end lisp
+
+@code{Loop} sử dụng biến ``tạm thời'' @code{temp} để giữ giá trị cũ của
+@code{cdr} của @code{x}, vì @code{set-cdr!} trên dòng tiếp theo phá hủy
+@code{cdr}. Giải thích @code{mystery} làm gì nói chung. Giả sử @code{v} được
+định nghĩa bởi @code{(define v (list 'a 'b 'c 'd))}. Vẽ sơ đồ hộp và con trỏ
+biểu diễn danh sách mà @code{v} được ràng buộc. Giả sử rằng bây giờ chúng ta
+định giá @code{(define w (mystery v))}. Vẽ các sơ đồ hộp và con trỏ cho thấy
+các cấu trúc @code{v} và @code{w} sau khi định giá biểu thức này. Giá trị của
+@code{v} và @code{w} sẽ được in như thế nào?
+@end quotation
+
+@subsubheading Chia sẻ và danh tính
+
+Chúng ta đã đề cập trong @ref{3.1.3} các vấn đề lý thuyết về ``đồng nhất'' và
+``thay đổi'' được nêu ra bởi việc giới thiệu phép gán. Các vấn đề này phát sinh
+trong thực tế khi các cặp riêng lẻ được @newterm{chia sẻ} giữa các đối tượng dữ
+liệu khác nhau. Ví dụ, hãy xem xét cấu trúc được hình thành bởi
+
+@lisp
+(define x (list 'a 'b))
+(define z1 (cons x x))
+@end lisp
+
+@noindent
+Như được hiển thị trong @ref{Figure 3.16}, @code{z1} là một cặp mà cả @code{car}
+và @code{cdr} đều trỏ đến cùng một cặp @code{x}. Sự chia sẻ @code{x} này bởi
+@code{car} và @code{cdr} của @code{z1} là hệ quả của cách đơn giản mà @code{cons}
+được cài đặt. Nói chung, việc dùng @code{cons} để xây dựng danh sách sẽ dẫn đến
+một cấu trúc liên kết của các cặp trong đó nhiều cặp riêng lẻ được chia sẻ bởi
+nhiều cấu trúc khác nhau.
+
+@float
+@anchor{Figure 3.16}
+@ifinfo
+@quotation
+@strong{Figure 3.16:} The list @code{z1} formed by @code{(cons x x)}.
+
+@example
+      +---+---+
+z1 -->| * | * |
+      +-|-+-|-+
+        V   V
+      +---+---+     +---+---+
+ x -->| * | *-+---->| * | / |
+      +-|-+---+     +-|-+---+
+        V             V
+      +---+         +---+
+      | a |         | b |
+      +---+         +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.16b,78mm,,,.std.svg}
+@caption{@strong{Figure 3.16:} The list @code{z1} formed by @code{(cons x x)}.}
+@end iftex
+@end float
+
+Trái ngược với @ref{Figure 3.16}, @ref{Figure 3.17} cho thấy cấu trúc được tạo
+ra bởi
+
+@lisp
+(define z2
+  (cons (list 'a 'b) (list 'a 'b)))
+@end lisp
+
+@float
+@anchor{Figure 3.17}
+@ifinfo
+@quotation
+@strong{Figure 3.17:} The list @code{z2} formed by @code{(cons (list 'a 'b) (list 'a 'b))}.
+
+@example
+      +---+---+     +---+---+     +---+---+
+z2 -->| * | *-+---->| * | *-+---->| * | / |
+      +-|-+---+     +-|-+---+     +-|-+---+
+        |             V             V
+        |           +---+         +---+
+        |           | a |         | b |
+        |           +---+         +---+
+        |             ^             ^
+        |             |             |
+        |           +-|-+---+     +-|-+---+
+        +---------->| * | *-+---->| * | / |
+                    +---+---+     +---+---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.17b,121mm,,,.std.svg}
+@caption{@strong{Figure 3.17:} The list @code{z2} formed by @code{(cons (list 'a 'b) (list 'a 'b))}.}
+@end iftex
+@end float
+
+@noindent
+Trong cấu trúc này, các cặp trong hai danh sách @code{(a b)} là riêng biệt, mặc
+dù các ký hiệu thực tế được chia sẻ.@footnote{Hai cặp là riêng biệt vì mỗi lần
+gọi @code{cons} trả về một cặp mới. Các ký hiệu được chia sẻ; trong Scheme có
+một ký hiệu duy nhất với bất kỳ tên nào. Vì Scheme không cung cấp cách nào để
+biến đổi một ký hiệu, sự chia sẻ này không thể phát hiện được. Cũng lưu ý rằng
+sự chia sẻ là điều cho phép chúng ta so sánh các ký hiệu bằng cách dùng
+@code{eq?}, chỉ kiểm tra sự bằng nhau của con trỏ.}
+
+@noindent
+Khi được coi là danh sách, @code{z1} và @code{z2} đều biểu diễn ``cùng một''
+danh sách, @code{((a b) a b)}. Nói chung, sự chia sẻ hoàn toàn không thể phát
+hiện được nếu chúng ta thao tác trên các danh sách chỉ dùng @code{cons},
+@code{car}, và @code{cdr}. Tuy nhiên, nếu chúng ta cho phép các bộ biến đổi trên
+cấu trúc danh sách, sự chia sẻ trở nên quan trọng. Như một ví dụ về sự khác biệt
+mà sự chia sẻ có thể tạo ra, hãy xem xét thủ tục sau, sửa đổi @code{car} của
+cấu trúc mà nó được áp dụng:
+
+@lisp
+(define (set-to-wow! x)
+  (set-car! (car x) 'wow)
+  x)
+@end lisp
+
+@noindent
+Mặc dù @code{z1} và @code{z2} là ``cùng một'' cấu trúc, việc áp dụng
+@code{set-to-wow!} cho chúng cho ra các kết quả khác nhau. Với @code{z1}, việc
+thay đổi @code{car} cũng thay đổi @code{cdr}, vì trong @code{z1} @code{car} và
+@code{cdr} là cùng một cặp. Với @code{z2}, @code{car} và @code{cdr} là riêng
+biệt, nên @code{set-to-wow!} chỉ sửa đổi @code{car}:
+
+@lisp
+z1
+@i{((a b) a b)}
+
+(set-to-wow! z1)
+@i{((wow b) wow b)}
+
+z2
+@i{((a b) a b)}
+
+(set-to-wow! z2)
+@i{((wow b) a b)}
+@end lisp
+
+@noindent
+Một cách để phát hiện sự chia sẻ trong các cấu trúc danh sách là dùng vị từ
+@code{eq?}, mà chúng ta đã giới thiệu trong @ref{2.3.1} như một cách để kiểm
+tra xem hai ký hiệu có bằng nhau không. Nói chung hơn, @code{(eq? x y)} kiểm
+tra xem @code{x} và @code{y} có phải là cùng một đối tượng không (tức là liệu
+@code{x} và @code{y} có bằng nhau như con trỏ không). Do đó, với @code{z1} và
+@code{z2} như được định nghĩa trong @ref{Figure 3.16} và @ref{Figure 3.17},
+@code{(eq? (car z1) (cdr z1))} là đúng và @code{(eq? (car z2) (cdr z2))} là sai.
+
+Như sẽ được thấy trong các phần sau, chúng ta có thể khai thác sự chia sẻ để
+mở rộng đáng kể kho các cấu trúc dữ liệu có thể được biểu diễn bởi các cặp.
+Mặt khác, sự chia sẻ cũng có thể nguy hiểm, vì các sửa đổi được thực hiện đối
+với các cấu trúc cũng sẽ ảnh hưởng đến các cấu trúc khác tình cờ chia sẻ các
+phần đã bị sửa đổi. Các phép toán biến đổi @code{set-car!} và @code{set-cdr!}
+nên được dùng cẩn thận; trừ khi chúng ta có sự hiểu biết tốt về cách các đối
+tượng dữ liệu của chúng ta được chia sẻ, biến đổi có thể cho kết quả không lường
+trước.@footnote{Những tinh tế trong việc xử lý sự chia sẻ của các đối tượng dữ
+liệu có thể thay đổi phản ánh các vấn đề cơ bản về ``đồng nhất'' và ``thay đổi''
+được đặt ra trong @ref{3.1.3}. Chúng ta đã đề cập ở đó rằng việc chấp nhận thay
+đổi trong ngôn ngữ của chúng ta yêu cầu một đối tượng phức hợp phải có một
+``danh tính'' là thứ gì đó khác với các phần từ đó nó được tạo thành. Trong
+Lisp, chúng ta coi ``danh tính'' này là chất lượng được kiểm tra bởi @code{eq?},
+tức là bằng sự bằng nhau của con trỏ. Vì trong hầu hết các cài đặt Lisp, một
+con trỏ về cơ bản là một địa chỉ bộ nhớ, chúng ta đang ``giải quyết vấn đề''
+định nghĩa danh tính của các đối tượng bằng cách quy định rằng một đối tượng dữ
+liệu ``chính nó'' là thông tin được lưu trữ trong một tập hợp cụ thể các vị trí
+bộ nhớ trong máy tính. Điều này đủ cho các chương trình Lisp đơn giản, nhưng
+hầu như không phải là cách tổng quát để giải quyết vấn đề về ``đồng nhất'' trong
+các mô hình tính toán.}
+
+@quotation
+@strong{@anchor{Exercise 3.15}Bài tập 3.15:} Vẽ các sơ đồ hộp và con trỏ để
+giải thích tác dụng của @code{set-to-wow!} trên các cấu trúc @code{z1} và
+@code{z2} ở trên.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.16}Bài tập 3.16:} Ben Bitdiddle quyết định viết một
+thủ tục để đếm số cặp trong bất kỳ cấu trúc danh sách nào. ``Dễ thôi,'' anh ta
+lý luận. ``Số cặp trong bất kỳ cấu trúc nào là số cặp trong @code{car} cộng số
+cặp trong @code{cdr} cộng thêm một để đếm cặp hiện tại.'' Vì vậy Ben viết thủ
+tục sau:
+
+@lisp
+(define (count-pairs x)
+  (if (not (pair? x))
+      0
+      (+ (count-pairs (car x))
+         (count-pairs (cdr x))
+         1)))
+@end lisp
+
+Chỉ ra rằng thủ tục này không đúng. Đặc biệt, vẽ các sơ đồ hộp và con trỏ biểu
+diễn các cấu trúc danh sách được tạo thành từ đúng ba cặp mà thủ tục của Ben sẽ
+trả về 3; trả về 4; trả về 7; không bao giờ trả về.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.17}Bài tập 3.17:} Nghĩ ra một phiên bản đúng của thủ
+tục @code{count-pairs} của @ref{Exercise 3.16} trả về số cặp riêng biệt trong bất
+kỳ cấu trúc nào. (Gợi ý: Duyệt cấu trúc, duy trì một cấu trúc dữ liệu phụ được
+dùng để theo dõi những cặp nào đã được đếm.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.18}Bài tập 3.18:} Viết một thủ tục kiểm tra một danh
+sách và xác định xem nó có chứa một chu kỳ không, tức là liệu một chương trình cố
+gắng tìm cuối danh sách bằng cách lấy @code{cdr} liên tiếp có đi vào vòng lặp
+vô hạn không. @ref{Exercise 3.13} đã xây dựng các danh sách như vậy.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.19}Bài tập 3.19:} Làm lại @ref{Exercise 3.18} bằng
+cách dùng một thuật toán chỉ dùng một lượng không gian không đổi. (Điều này đòi
+hỏi một ý tưởng rất thông minh.)
+@end quotation
+
+@subsubheading Biến đổi chỉ là gán
+
+Khi chúng ta giới thiệu dữ liệu phức hợp, chúng ta đã quan sát trong @ref{2.1.3}
+rằng các cặp có thể được biểu diễn thuần túy theo các thủ tục:
+
+@lisp
+(define (cons x y)
+  (define (dispatch m)
+    (cond ((eq? m 'car) x)
+          ((eq? m 'cdr) y)
+          (else (error "Undefined
+                 operation: CONS" m))))
+  dispatch)
+
+(define (car z) (z 'car))
+(define (cdr z) (z 'cdr))
+@end lisp
+
+@noindent
+Quan sát tương tự cũng đúng với dữ liệu có thể thay đổi. Chúng ta có thể cài
+đặt các đối tượng dữ liệu có thể thay đổi như các thủ tục bằng cách dùng phép
+gán và trạng thái cục bộ. Ví dụ, chúng ta có thể mở rộng cài đặt cặp ở trên để
+xử lý @code{set-car!} và @code{set-cdr!} theo cách tương tự như cách chúng ta đã
+cài đặt các tài khoản ngân hàng bằng @code{make-account} trong @ref{3.1.1}:
+
+@lisp
+(define (cons x y)
+  (define (set-x! v) (set! x v))
+  (define (set-y! v) (set! y v))
+  (define (dispatch m)
+    (cond ((eq? m 'car) x)
+          ((eq? m 'cdr) y)
+          ((eq? m 'set-car!) set-x!)
+          ((eq? m 'set-cdr!) set-y!)
+          (else (error "Undefined
+                 operation: CONS" m))))
+  dispatch)
+
+(define (car z) (z 'car))
+(define (cdr z) (z 'cdr))
+
+(define (set-car! z new-value)
+  ((z 'set-car!) new-value)
+  z)
+
+(define (set-cdr! z new-value)
+  ((z 'set-cdr!) new-value)
+  z)
+@end lisp
+
+@noindent
+Về lý thuyết, phép gán là tất cả những gì cần thiết để giải thích hành vi của
+dữ liệu có thể thay đổi. Ngay khi chúng ta chấp nhận @code{set!} vào ngôn ngữ
+của mình, chúng ta đặt ra tất cả các vấn đề, không chỉ của phép gán, mà còn của
+dữ liệu có thể thay đổi nói chung.@footnote{Mặt khác, từ quan điểm cài đặt, phép
+gán yêu cầu chúng ta sửa đổi môi trường, bản thân nó là một cấu trúc dữ liệu có
+thể thay đổi. Do đó, phép gán và biến đổi là tương đương: Mỗi cái có thể được
+cài đặt theo cái kia.}
+
+@quotation
+@strong{@anchor{Exercise 3.20}Bài tập 3.20:} Vẽ các sơ đồ môi trường để minh
+họa việc định giá chuỗi các biểu thức
+
+@lisp
+(define x (cons 1 2))
+(define z (cons x x))
+
+(set-car! (cdr z) 17)
+
+(car x)
+@i{17}
+@end lisp
+
+@noindent
+bằng cách dùng cài đặt thủ tục của các cặp được đưa ra ở trên. (So sánh
+@ref{Exercise 3.11}.)
+@end quotation
