@@ -23,6 +23,7 @@ jobs:
             texlive-latex-extra \
             texlive-fonts-extra \
             fonts-linuxlibertine \
+            fonts-inconsolata \
             inkscape \
             perl \
             ruby \
@@ -30,12 +31,18 @@ jobs:
             unzip \
             zip
 
-      - name: Install Inconsolata LGC font
+      - name: Map Inconsolata LGC to system Inconsolata
         run: |
-          sudo mkdir -p /usr/local/share/fonts/inconsolata-lgc
-          curl -fsSL "https://github.com/MihaiPopescu/Inconsolata-LGC/releases/download/1.3/Inconsolata-LGC.zip" \
-            -o /tmp/inconsolata-lgc.zip
-          sudo unzip -q /tmp/inconsolata-lgc.zip -d /usr/local/share/fonts/inconsolata-lgc/
+          sudo tee /etc/fonts/conf.d/99-inconsolata-lgc.conf > /dev/null << 'EOF'
+          <?xml version="1.0"?>
+          <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+          <fontconfig>
+            <alias>
+              <family>Inconsolata LGC</family>
+              <prefer><family>Inconsolata</family></prefer>
+            </alias>
+          </fontconfig>
+          EOF
           sudo fc-cache -fv
 
       - name: Build PDF
