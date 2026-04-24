@@ -1,0 +1,52 @@
+@node	5.1.5, 5.2, Chapter 5, 5.1
+@subsection Instruction Summary
+
+A controller instruction in our register-machine language has one of the
+following forms, where each @math{{⟨\kern0.06em input_i⟩}} is either 
+@code{(reg ⟨@var{register-name}⟩)} or @code{(const ⟨@var{constant-value}⟩)}.  
+These instructions were introduced in @ref{5.1.1}:
+
+@lisp
+(assign ⟨@var{register-name}⟩ (reg ⟨@var{register-name}⟩))
+(assign ⟨@var{register-name}⟩ 
+        (const ⟨@var{constant-value}⟩))
+(assign ⟨@var{register-name}⟩ 
+        (op ⟨@var{operation-name}⟩) 
+        ⟨@var{input₁}⟩ @r{…} ⟨@var{inputₙ}⟩)
+(perform (op ⟨@var{operation-name}⟩) 
+         ⟨@var{input₁}⟩ 
+         @r{…} 
+         ⟨@var{inputₙ}⟩)
+(test (op ⟨@var{operation-name}⟩) 
+      ⟨@var{input₁}⟩ 
+      @r{…} 
+      ⟨@var{inputₙ}⟩)
+(branch (label ⟨@var{label-name}⟩))
+(goto (label ⟨@var{label-name}⟩))
+@end lisp
+
+@noindent
+The use of registers to hold labels was introduced in @ref{5.1.3}:
+
+@lisp
+(assign ⟨@var{register-name}⟩ (label ⟨@var{label-name}⟩))
+(goto (reg ⟨@var{register-name}⟩))
+@end lisp
+
+@noindent
+Instructions to use the stack were introduced in @ref{5.1.4}:
+
+@lisp
+(save ⟨@var{register-name}⟩)
+(restore ⟨@var{register-name}⟩)
+@end lisp
+
+@noindent
+The only kind of @code{⟨}@var{constant-value}@code{⟩} we have seen so far is a number,
+but later we will use strings, symbols, and lists.
+For example,@*
+@code{(const "abc")} is the string @code{"abc"},@*
+@code{(const abc)} is the symbol @code{abc},@*
+@code{(const (a b c))} is the list @code{(a b c)},@*
+and @code{(const ())} is the empty list.
+

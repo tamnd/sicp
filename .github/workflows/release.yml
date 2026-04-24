@@ -28,7 +28,6 @@ jobs:
 
       - name: Build PDF
         run: |
-          sed -i 's/Inconsolata LGC/Inconsolata/g' src/pdf/preamble.tex
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             sicp-vi-builder:latest \
@@ -36,7 +35,7 @@ jobs:
 
       - name: Build epub
         run: |
-          touch src/html/*.xhtml
+          touch src/en_US/*.xhtml
           docker run --rm \
             -v "${{ github.workspace }}:/workspace" \
             sicp-vi-builder:latest \

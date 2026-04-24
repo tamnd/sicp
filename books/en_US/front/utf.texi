@@ -1,0 +1,76 @@
+@node    UTF, Dedication, Top, Top
+@unnumbered Unofficial Texinfo Format
+
+This is the second edition @abbr{SICP} book,@* from Unofficial Texinfo
+Format.
+
+You are probably reading it in an Info hypertext browser, such as the Info
+mode of Emacs.  You might alternatively be reading it @TeX{}-formatted on your
+screen or printer, though that would be silly.  And, if printed, expensive. 
+
+The freely-distributed official @abbr{HTML}-and-@abbr{GIF} format was
+first converted personally to Unofficial Texinfo Format (@abbr{UTF})
+version 1 by Lytha Ayth during a long Emacs lovefest weekend in April, 2001.
+
+The @abbr{UTF} is easier to search than the @abbr{HTML} format.  It is
+also much more accessible to people running on modest computers, such as
+donated '386-based PCs.  A 386 can, in theory, run Linux, Emacs, and a Scheme
+interpreter simultaneously, but most 386s probably can't also run both Netscape
+and the necessary X Window System without prematurely introducing budding young
+underfunded hackers to the concept of @newterm{thrashing}.  @abbr{UTF} can also fit
+uncompressed on a 1.44@abbr{MB} floppy diskette, which may come in handy for
+installing @abbr{UTF} on PCs that do not have Internet or @abbr{LAN} access.
+
+The Texinfo conversion has been a straight transliteration, to the extent
+possible.  Like the @TeX{}-to-@abbr{HTML} conversion, this was not without
+some introduction of breakage.  In the case of Unofficial Texinfo Format,
+figures have suffered an amateurish resurrection of the lost art of
+@abbr{ASCII}.  Also, it's quite possible that some errors of ambiguity
+were introduced during the conversion of some of the copious superscripts (`^')
+and subscripts (`_').  Divining @emph{which} has been left as an exercise to
+the reader. But at least we don't put our brave astronauts at risk by encoding
+the @emph{greater-than-or-equal} symbol as @code{<u>&gt;</u>}.
+
+If you modify @file{sicp.texi} to correct errors or improve the
+@abbr{ASCII} art, then update the @code{@@set utfversion @value{utfversion}}
+line to reflect your delta.  For example, if you started with Lytha's version
+@code{1}, and your name is Bob, then you could name your successive versions
+@code{1.bob1}, @code{1.bob2}, @dots{} @code{1.bob@i{n}}.  Also update
+@code{utfversiondate}.  If you want to distribute your version on the Web, then
+embedding the string ``sicp.texi'' somewhere in the file or Web page will make
+it easier for people to find with Web search engines.
+
+It is believed that the Unofficial Texinfo Format is in keeping with the
+spirit of the graciously freely-distributed @abbr{HTML} version.  But you
+never know when someone's armada of lawyers might need something to do, and get
+their shorts all in a knot over some benign little thing, so think twice before
+you use your full name or distribute Info, @abbr{DVI}, PostScript, or
+@abbr{PDF} formats that might embed your account or machine name.
+@i{Peath, Lytha Ayth}
+
+@b{Addendum:} See also the @abbr{SICP} video lectures by Abelson and Sussman:
+at @url{http://groups.csail.mit.edu/mac/classes/6.001/abelson-sussman-lectures/, @abbr{MIT CSAIL}} or 
+@url{http://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-001-structure-and-interpretation-of-computer-programs-spring-2005/video-lectures/, @abbr{MIT OCW}}.
+
+@b{Second Addendum:} Above is the original introduction to the @abbr{UTF} 
+from 2001. Ten years later, @abbr{UTF} has been transformed: mathematical 
+symbols and formulas are properly typeset, and figures drawn in 
+vector graphics. The original text formulas and @abbr{ASCII} art figures 
+are still there in the Texinfo source, but will display only when compiled 
+to Info output. At the dawn of e-book readers and tablets, reading a 
+@abbr{PDF} on screen is officially not silly anymore. Enjoy!
+@i{A.R, May, 2011}
+
+@b{Third Addendum:} Things go in spirals. We explored the powers of 
+Texinfo and LaTeX at typesetting the @abbr{PDF} book.
+Now it's time to come back to @abbr{HTML}. This turn it shall be
+@abbr{HTML5}. ``It can be a dangerous place, but it's our last, best hope
+for peace.'' (Sinclair, @cite{@w{Babylon 5}}.) Does the peace endure after the 
+browser wars? Anyway, the aim of the project is to approach the quality of LaTeX
+output by using the @abbr{HTML5} toolbox. JavaScript, @abbr{CSS3}, @abbr{SVG},
+MathJax, MathML, and web fonts are employed here. Due to the experimental
+nature of this undertaking, there will be glitches and errors in some browsers. 
+Technical and artistic help is appreciated. In the meantime, enjoy the book, and 
+fire up a @abbr{REPL}!
+@i{A.R, January, 2014}
+

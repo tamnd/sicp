@@ -1,0 +1,440 @@
+\input texinfo
+@comment  To crop page margins:
+@comment  @input marginless
+@comment
+@comment             **********************************************************
+@setfilename         en_US
+@settitle            Structure and Interpretation of Computer Programs, 2e
+@comment             Unofficial Texinfo Format
+@comment
+@set utfversion      2.andresraba6.6
+@set utfversiondate  September 16, 2015
+@comment
+@comment             This file is licensed under a Creative Commons
+@comment             Attribution-ShareAlike 4.0 International License
+@comment             http://creativecommons.org/licenses/by-sa/4.0/
+@comment             
+@comment             This is a Texinfo file.  To convert it to Info hypertext
+@comment             format, you will need the `makeinfo' program from the GNU
+@comment             Texinfo package.  To produce a PDF, use texi2pdf.
+@comment             For more information about this file,
+@comment             see the text under `@node UTF' below.
+@comment             
+@comment             Various versions of sicp.texi and preformatted sicp.info
+@comment             can be found at the following Web pages:
+@comment             
+@comment                 http://www.neilvandyke.org/sicp-texi/
+@comment                 http://sicpebook.wordpress.com/
+@comment                 [add your own here]
+@comment             
+@comment             **********************************************************
+
+@comment HISTORY:
+@comment
+@comment * Version 1 (April, 2001) by Lytha Ayth.
+@comment
+@comment * Version 2 (April 20, 2001) by Lytha Ayth.
+@comment
+@comment * Version 2.nwv1 (March 11, 2002) by Neil W. Van Dyke.
+@comment   Cosmetic change to heading in Info format, and comment changes.
+@comment 
+@comment * Version 2.neilvandyke1 (February 10, 2003) by Neil W. Van Dyke
+@comment   Correction to Exercise 1.39 formula, spotted by Steve VanDevender.
+@comment   Added URL of Abelson and Sussman video lectures.
+@comment
+@comment * Version 2.neilvandyke2 (unreleased)
+@comment
+@comment * Version 2.neilvandyke3 (April 20, 2006) by Neil W. Van Dyke
+@comment   Pedro Kr@"oger patch to add missing Lisp example.
+@comment
+@comment * Version 2.neilvandyke4 (January 10, 2007) by Neil W. Van Dyke
+@comment   Brad Walker patch to add @code{@@dircategory} and @code{@@direntry}.
+@comment
+@comment * Version 2.andresraba1 (May 23, 2011) by Andres Raba.
+@comment   Mathematics typeset in TeX, figures redrawn in vector graphics,
+@comment   typeface changed, cross-references improved, hyperlinks added,
+@comment   known errors and typos corrected.
+@comment
+@comment * Version 2.andresraba2 (November 21, 2011) by Andres Raba.
+@comment   Minor change to the appearance of diagrams. Adjusted page layout.
+@comment   Fixed some typos. License changed from CC BY-NC to CC BY-SA.
+@comment
+@comment * Version 2.gavrie1 (November 21, 2011) by Gavrie Philipson.
+@comment   Added @kindle (defined in texinfo.tex), and removed page numbers.
+@comment   Page layout and text size adapted to Kindle-like devices.
+@comment
+@comment * Version 2.araba1p-a2.1 (March 19, 2012) by Andres Raba.
+@comment   Two chapters reformatted to pocket format. Page geometry
+@comment   defined by @pocket (previously @kindle) in texinfo.tex.
+@comment
+@comment * Version 2.andresraba4 (November 23, 2012) by Andres Raba.
+@comment   Conversion to pocket format completed. The whole book 
+@comment   is now typeset to be read on 6-inch e-reader screen (PDF).
+@comment
+@comment * (Version 2.andresraba5 is the LaTeX version, described in
+@comment   sicp-pdf repository.)
+@comment
+@comment * Version 2.andresraba6 (January 7, 2014) by Andres Raba.
+@comment   Book converted to HTML5 and EPUB3. Mathematics is typeset 
+@comment   with MathML and MathJax.
+@comment
+@comment * Version 2.andresraba6.1 (February 15, 2014) by Andres Raba.
+@comment   Raised the splitting threshold from subsection to section.
+@comment
+@comment * Version 2.andresraba6.2 (February 23, 2014) by Andres Raba.
+@comment   Fixed the SVG files to pass epubcheck validation.
+@comment
+@comment * Version 2.andresraba6.3 (June 9, 2014) by Andres Raba.
+@comment   Improved the pretty-printing of some Scheme code.
+@comment   Decreased the default font size of epub from 170% to 100%.
+@comment
+@comment * Version 2.andresraba6.4 (June 24, 2014) by Andres Raba.
+@comment   Switched on hyphenation for all viewports, made text column
+@comment   wider, re-arranged some Scheme code, changed Mathjax
+@comment   protocol from http to https.
+@comment
+@comment * Version 2.andresraba6.5 (January 29, 2015) by Andres Raba.
+@comment   Added noncommercial clause to license, fixed broken links,
+@comment   added more fulltext links, replaced monospace with roman in
+@comment   MathML (Android rendering bug), adjusted math typography.
+@comment
+@comment * Version 2.andresraba6.6 (September 16, 2015) by Andres Raba.
+@comment   Fixed broken links. Tinted chapter and section numbers.
+@comment   License updated to CC BY-SA 4.0.
+
+@documentencoding UTF-8
+
+@dircategory The Algorithmic Language Scheme
+@direntry
+* SICP: (sicp). Structure and Interpretation of Computer Programs
+@end direntry
+
+@macro newterm{term}
+@cindex \term\
+@dfn{\term\}
+@end macro
+
+@setshortcontentsaftertitlepage
+
+@titlepage
+
+@titlefont{Structure and Interpretation@* of Computer Programs}
+
+@subtitle @abbr{Second Edition}@* Unofficial Texinfo Format @value{utfversion}
+
+@author Harold Abelson and Gerald Jay Sussman with Julie Sussman, foreword by Alan J. Perlis
+
+@page
+@vskip 0pt plus 1filll
+@noindent
+@copyright{}1996 by The Massachusetts Institute of Technology
+
+@noindent
+@image{fig/icons/cc, 6mm,,,.std.svg}
+@image{fig/icons/by, 6mm,,,.std.svg}
+@image{fig/icons/sa, 6mm,,,.std.svg}
+
+@noindent
+This work is licensed under a Creative Commons Attribution-ShareAlike 4.0
+International License (@url{http://creativecommons.org/licenses/by-sa/4.0/, @abbr{CC BY-SA 4.0}}).
+Based on a work at @url{http://mitpress.mit.edu/sicp/, mitpress.mit.edu}.
+
+@noindent
+The @abbr{MIT} Press@*
+Cambridge, Massachusetts@* 
+London, England
+
+@noindent
+McGraw-Hill Book Company@*
+New York, St. Louis, San Francisco,@*
+Montreal, Toronto
+
+@noindent
+This book is one of a series of texts written by faculty of the Electrical
+Engineering and Computer Science Department at the Massachusetts Institute of
+Technology.  It was edited and produced by The @abbr{MIT} Press under a
+joint production-distribution arrangement with the McGraw-Hill Book Company.
+
+@noindent
+Unofficial Texinfo Format @url{http://sicpebook.wordpress.com, @value{utfversion}} (@value{utfversiondate}),
+based on @url{http://www.neilvandyke.org/sicp-texi/, 2.neilvandyke4} (January 10, 2007).
+
+@end titlepage
+
+@shortcontents
+
+@contents
+
+@headings off
+
+@finalout
+
+@node Top, UTF, (dir), (dir)
+
+@ifinfo
+
+@heading Structure and Interpretation of Computer Programs
+
+@noindent
+Second Edition@*
+by Harold Abelson and Gerald Jay Sussman, with Julie Sussman@*
+foreword by Alan J. Perlis@*
+@copyright{} 1996 Massachusetts Institute of Technology
+
+@noindent
+Unofficial Texinfo Format version @value{utfversion} (@value{utfversiondate})
+
+@end ifinfo
+
+@menu
+* UTF::              Unofficial Texinfo Format
+* Dedication::       Dedication
+* Foreword::         Foreword
+* Preface::          Preface to the Second Edition
+* Preface 1e::       Preface to the First Edition
+* Acknowledgments::  Acknowledgments
+* Chapter 1::        Building Abstractions with Procedures
+* Chapter 2::        Building Abstractions with Data
+* Chapter 3::        Modularity, Objects, and State
+* Chapter 4::        Metalinguistic Abstraction
+* Chapter 5::        Computing with Register Machines
+* References::       References
+* Exercises::        List of Exercises
+* Figures::          List of Figures
+* Term Index::       Term Index
+* Colophon::         Colophon
+
+@detailmenu
+ --- The Detailed Node Listing ---
+
+Programming in Lisp
+
+* 1.1::              The Elements of Programming
+* 1.2::              Procedures and the Processes They Generate
+* 1.3::              Formulating Abstractions with Higher-Order Procedures
+
+The Elements of Programming
+
+* 1.1.1::            Expressions
+* 1.1.2::            Naming and the Environment
+* 1.1.3::            Evaluating Combinations
+* 1.1.4::            Compound Procedures
+* 1.1.5::            The Substitution Model for Procedure Application
+* 1.1.6::            Conditional Expressions and Predicates
+* 1.1.7::            Example: Square Roots by Newton's Method
+* 1.1.8::            Procedures as Black-Box Abstractions
+
+Procedures and the Processes They Generate
+
+* 1.2.1::            Linear Recursion and Iteration
+* 1.2.2::            Tree Recursion
+* 1.2.3::            Orders of Growth
+* 1.2.4::            Exponentiation
+* 1.2.5::            Greatest Common Divisors
+* 1.2.6::            Example: Testing for Primality
+
+Formulating Abstractions with Higher-Order Procedures
+
+* 1.3.1::            Procedures as Arguments
+* 1.3.2::            Constructing Procedures Using @code{Lambda}
+* 1.3.3::            Procedures as General Methods
+* 1.3.4::            Procedures as Returned Values
+
+Building Abstractions with Data
+
+* 2.1::              Introduction to Data Abstraction
+* 2.2::              Hierarchical Data and the Closure Property
+* 2.3::              Symbolic Data
+* 2.4::              Multiple Representations for Abstract Data
+* 2.5::              Systems with Generic Operations
+
+Introduction to Data Abstraction
+
+* 2.1.1::            Example: Arithmetic Operations for Rational Numbers
+* 2.1.2::            Abstraction Barriers
+* 2.1.3::            What Is Meant by Data?
+* 2.1.4::            Extended Exercise: Interval Arithmetic
+
+Hierarchical Data and the Closure Property
+
+* 2.2.1::            Representing Sequences
+* 2.2.2::            Hierarchical Structures
+* 2.2.3::            Sequences as Conventional Interfaces
+* 2.2.4::            Example: A Picture Language
+
+Symbolic Data
+
+* 2.3.1::            Quotation
+* 2.3.2::            Example: Symbolic Differentiation
+* 2.3.3::            Example: Representing Sets
+* 2.3.4::            Example: Huffman Encoding Trees
+
+Multiple Representations for Abstract Data
+
+* 2.4.1::            Representations for Complex Numbers
+* 2.4.2::            Tagged data
+* 2.4.3::            Data.Directed Programming and Additivity
+
+Systems with Generic Operations
+
+* 2.5.1::            Generic Arithmetic Operations
+* 2.5.2::            Combining Data of Different Types
+* 2.5.3::            Example: Symbolic Algebra
+
+Modularity, Objects, and State
+
+* 3.1::              Assignment and Local State
+* 3.2::              The Environment Model of Evaluation
+* 3.3::              Modeling with Mutable Data
+* 3.4::              Concurrency: Time Is of the Essence
+* 3.5::              Streams
+
+Assignment and Local State
+
+* 3.1.1::            Local State Variables
+* 3.1.2::            The Benefits of Introducing Assignment
+* 3.1.3::            The Costs of Introducing Assignment
+
+The Environment Model of Evaluation
+
+* 3.2.1::            The Rules for Evaluation
+* 3.2.2::            Applying Simple Procedures
+* 3.2.3::            Frames as the Repository of Local State
+* 3.2.4::            Internal Definitions
+
+Modeling with Mutable Data
+
+* 3.3.1::            Mutable List Structure
+* 3.3.2::            Representing Queues
+* 3.3.3::            Representing Tables
+* 3.3.4::            A Simulator for Digital Circuits
+* 3.3.5::            Propagation of Constraints
+
+Concurrency: Time Is of the Essence
+
+* 3.4.1::            The Nature of Time in Concurrent Systems
+* 3.4.2::            Mechanisms for Controlling Concurrency
+
+Streams
+
+* 3.5.1::            Streams Are Delayed Lists
+* 3.5.2::            Infinite Streams
+* 3.5.3::            Exploiting the Stream Paradigm
+* 3.5.4::            Streams and Delayed Evaluation
+* 3.5.5::            Modularity of Functional Programs and Modularity of
+                     Objects
+
+Metalinguistic Abstraction
+
+* 4.1::              The Metacircular Evaluator
+* 4.2::              Variations on a Scheme -- Lazy Evaluation
+* 4.3::              Variations on a Scheme -- Nondeterministic Computing
+* 4.4::              Logic Programming
+
+The Metacircular Evaluator
+
+* 4.1.1::            The Core of the Evaluator
+* 4.1.2::            Representing Expressions
+* 4.1.3::            Evaluator Data Structures
+* 4.1.4::            Running the Evaluator as a Program
+* 4.1.5::            Data as Programs
+* 4.1.6::            Internal Definitions
+* 4.1.7::            Separating Syntactic Analysis from Execution
+
+Variations on a Scheme -- Lazy Evaluation
+
+* 4.2.1::            Normal Order and Applicative Order
+* 4.2.2::            An Interpreter with Lazy Evaluation
+* 4.2.3::            Streams as Lazy Lists
+
+Variations on a Scheme -- Nondeterministic Computing
+
+* 4.3.1::            Amb and Search
+* 4.3.2::            Examples of Nondeterministic Programs
+* 4.3.3::            Implementing the @code{Amb} Evaluator
+
+Logic Programming
+
+* 4.4.1::            Deductive Information Retrieval
+* 4.4.2::            How the Query System Works
+* 4.4.3::            Is Logic Programming Mathematical Logic?
+* 4.4.4::            Implementing the Query System
+
+Implementing the Query System
+
+* 4.4.4.1::          The Driver Loop and Instantiation
+* 4.4.4.2::          The Evaluator
+* 4.4.4.3::          Finding Assertions by Pattern Matching
+* 4.4.4.4::          Rules and Unification
+* 4.4.4.5::          Maintaining the Data Base
+* 4.4.4.6::          Stream Operations
+* 4.4.4.7::          Query Syntax Procedures
+* 4.4.4.8::          Frames and Bindings
+
+Computing with Register Machines
+
+* 5.1::              Designing Register Machines
+* 5.2::              A Register.Machine Simulator
+* 5.3::              Storage Allocation and Garbage Collection
+* 5.4::              The Explicit-Control Evaluator
+* 5.5::              Compilation
+
+Designing Register Machines
+
+* 5.1.1::            A Language for Describing Register Machines
+* 5.1.2::            Abstraction in Machine Design
+* 5.1.3::            Subroutines
+* 5.1.4::            Using a Stack to Implement Recursion
+* 5.1.5::            Instruction Summary
+
+A Register.Machine Simulator
+
+* 5.2.1::            The Machine Model
+* 5.2.2::            The Assembler
+* 5.2.3::            Generating Execution Procedures for Instructions
+* 5.2.4::            Monitoring Machine Performance
+
+Storage Allocation and Garbage Collection
+
+* 5.3.1::            Memory as Vectors
+* 5.3.2::            Maintaining the Illusion of Infinite Memory
+
+Registers and operations
+
+* 5.4.1::            The Core of the Explicit.Control Evaluator
+* 5.4.2::            Sequence Evaluation and Tail Recursion
+* 5.4.3::            Conditionals, Assignments, and Definitions
+* 5.4.4::            Running the Evaluator
+
+An overview of the compiler
+
+* 5.5.1::            Structure of the Compiler
+* 5.5.2::            Compiling Expressions
+* 5.5.3::            Compiling Combinations
+* 5.5.4::            Combining Instruction Sequences
+* 5.5.5::            An Example of Compiled Code
+* 5.5.6::            Lexical Addressing
+* 5.5.7::            Interfacing Compiled Code to the Evaluator
+
+@end detailmenu
+@end menu
+
+
+@include front/utf.texi
+@include front/dedication.texi
+@include front/foreword.texi
+@include front/preface.texi
+@include front/preface-1e.texi
+@include front/acknowledgments.texi
+@include ch01/index.texi
+@include ch02/index.texi
+@include ch03/index.texi
+@include ch04/index.texi
+@include ch05/index.texi
+@include back/references.texi
+@include back/exercises.texi
+@include back/figures.texi
+@include back/term-index.texi
+@include back/colophon.texi
+
+@bye

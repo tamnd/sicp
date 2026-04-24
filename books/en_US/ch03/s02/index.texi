@@ -1,0 +1,103 @@
+@node	3.2, 3.3, 3.1, Chapter 3
+@section The Environment Model of Evaluation
+
+When we introduced compound procedures in @ref{Chapter 1}, we used the
+substitution model of evaluation (@ref{1.1.5}) to define what is meant
+by applying a procedure to arguments:
+
+@itemize @bullet
+
+@item
+To apply a compound procedure to arguments, evaluate the body of the procedure
+with each formal parameter replaced by the corresponding argument.
+
+@end itemize
+
+@noindent
+Once we admit assignment into our programming language, such a definition is no
+longer adequate.  In particular, @ref{3.1.3} argued that, in the
+presence of assignment, a variable can no longer be considered to be merely a
+name for a value.  Rather, a variable must somehow designate a ``place'' in
+which values can be stored.  In our new model of evaluation, these places will
+be maintained in structures called @newterm{environments}.
+
+An environment is a sequence of @newterm{frames}.  Each frame is a table
+(possibly empty) of @newterm{bindings}, which associate variable names with
+their corresponding values.  (A single frame may contain at most one binding
+for any variable.)  Each frame also has a pointer to its @newterm{enclosing environment}, 
+unless, for the purposes of discussion, the frame is considered
+to be @newterm{global}.  The @newterm{value of a variable} with respect to an
+environment is the value given by the binding of the variable in the first
+frame in the environment that contains a binding for that variable.  If no
+frame in the sequence specifies a binding for the variable, then the variable
+is said to be @newterm{unbound} in the environment.
+
+@ref{Figure 3.1} shows a simple environment structure consisting of three
+frames, labeled I, II, and III.  In the diagram, A, B, C, and D are pointers to
+environments.  C and D point to the same environment.  The variables @code{z}
+and @code{x} are bound in frame II, while @code{y} and @code{x} are bound in
+frame I.  The value of @code{x} in environment D is 3.  The value of @code{x}
+with respect to environment B is also 3.  This is determined as follows: We
+examine the first frame in the sequence (frame III) and do not find a binding
+for @code{x}, so we proceed to the enclosing environment D and find the binding
+in frame I.  On the other hand, the value of @code{x} in environment A is 7,
+because the first frame in the sequence (frame II) contains a binding of
+@code{x} to 7.  With respect to environment A, the binding of @code{x} to 7 in
+frame II is said to @newterm{shadow} the binding of @code{x} to 3 in frame I.
+
+@float
+@anchor{Figure 3.1}
+@ifinfo
+@quotation
+@strong{Figure 3.1:} A simple environment structure.
+
+@example
+           +--------+
+           |      I |
+           | x: 3   |
+           | y: 5   |
+           +--------+
+              ^  ^
+              |  |
+            C |  | D
++---------+   |  |   +----------+
+|      II |   |  |   |      III |
+| z: 6    +---+  +---+ m: 1     |
+| x: 7    |          | y: 2     |
++---------+          +----------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.1b,69mm,,,.std.svg}
+@caption{@strong{Figure 3.1:} A simple environment structure.}
+@end iftex
+@end float
+
+@noindent
+The environment is crucial to the evaluation process, because it determines the
+context in which an expression should be evaluated.  Indeed, one could say that
+expressions in a programming language do not, in themselves, have any meaning.
+Rather, an expression acquires a meaning only with respect to some environment
+in which it is evaluated.  Even the interpretation of an expression as
+straightforward as @code{(+ 1 1)} depends on an understanding that one is
+operating in a context in which @code{+} is the symbol for addition.  Thus, in
+our model of evaluation we will always speak of evaluating an expression with
+respect to some environment.  To describe interactions with the interpreter, we
+will suppose that there is a global environment, consisting of a single frame
+(with no enclosing environment) that includes values for the symbols associated
+with the primitive procedures.  For example, the idea that @code{+} is the
+symbol for addition is captured by saying that the symbol @code{+} is bound in
+the global environment to the primitive addition procedure.
+
+@menu
+* 3.2.1::            The Rules for Evaluation
+* 3.2.2::            Applying Simple Procedures
+* 3.2.3::            Frames as the Repository of Local State
+* 3.2.4::            Internal Definitions
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi

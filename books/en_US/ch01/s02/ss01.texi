@@ -1,0 +1,300 @@
+@node	1.2.1, 1.2.2, 1.2, 1.2
+@subsection Linear Recursion and Iteration
+
+We begin by considering the factorial function, defined by
+@ifinfo
+
+@example
+n! = n * (n - 1) * (n - 2) ... 3 * 2 * 1
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :5:
+ 
+n! \,=\, {n \cdot (n - 1)} \cdot {(n - 2)} \cdots {3 \cdot 2 \cdot 1.}
+\]
+
+@end tex
+There are many ways to compute factorials.  One way is to make use of the
+observation that @math{{n!}} is equal to @math{n} times @math{{(n - 1)!}} for any positive
+integer @math{n}:
+@ifinfo
+
+@example
+n! = n * [(n - 1) * (n - 2) ... 3 * 2 * 1] = n * (n - 1)!
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :6:
+ 
+n! \,=\, {n \cdot [(n - 1)} \cdot {(n - 2)} \cdots {3 \cdot 2 \cdot 1]} \,=\, {n \cdot (n - 1)!.}
+\]
+
+@end tex
+Thus, we can compute @math{{n!}} by computing @math{{(n - 1)!}} and multiplying the
+result by @math{n}.  If we add the stipulation that 1! is equal to 1, this
+observation translates directly into a procedure:
+
+@lisp
+(define (factorial n)
+  (if (= n 1) 
+      1 
+      (* n (factorial (- n 1)))))
+@end lisp
+
+@noindent
+We can use the substitution model of @ref{1.1.5} to watch this
+procedure in action computing 6!, as shown in @ref{Figure 1.3}.
+
+@float
+@anchor{Figure 1.3}
+@ifinfo
+@quotation
+@strong{Figure 1.3:} A linear recursive process for computing 6!.
+
+@example
+(factorial 6)        ----------------
+(* 6 (factorial 5))                   \
+(* 6 (* 5 (factorial 4)))               \
+(* 6 (* 5 (* 4 (factorial 3))))           \
+(* 6 (* 5 (* 4 (* 3 (factorial 2)))))       \
+(* 6 (* 5 (* 4 (* 3 (* 2 (factorial 1))))))  |
+(* 6 (* 5 (* 4 (* 3 (* 2 1)))))             /
+(* 6 (* 5 (* 4 (* 3 2))))                 /
+(* 6 (* 5 (* 4 6)))                     /
+(* 6 (* 5 24))                        /
+(* 6 120)                           /
+720          <---------------------
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.3d,139mm,,,.std.svg}
+@caption{@strong{Figure 1.3:} A linear recursive process for computing 6!.}
+@end iftex
+@end float
+
+@noindent
+Now let's take a different perspective on computing factorials.  We could
+describe a rule for computing @math{{n!}} by specifying that we first multiply 1 by
+2, then multiply the result by 3, then by 4, and so on until we reach @math{n}.
+More formally, we maintain a running product, together with a counter that
+counts from 1 up to @math{n}.  We can describe the computation by saying that the
+counter and the product simultaneously change from one step to the next
+according to the rule
+
+@example
+product @math{\gets} counter * product
+counter @math{\gets} counter + 1
+@end example
+
+@noindent
+and stipulating that @math{{n!}} is the value of the product when the counter
+exceeds @math{n}.
+
+Once again, we can recast our description as a procedure for computing
+factorials:@footnote{In a real program we would probably use the block
+structure introduced in the last section to hide the definition of
+@code{fact-iter}:
+
+@lisp
+(define (factorial n)
+  (define (iter product counter)
+    (if (> counter n)
+        product
+        (iter (* counter product)
+              (+ counter 1))))
+  (iter 1 1))
+@end lisp
+
+We avoided doing this here so as to minimize the number of things to think
+about at once.}
+
+@lisp
+(define (factorial n) 
+  (fact-iter 1 1 n))
+
+(define (fact-iter product counter max-count)
+  (if (> counter max-count)
+      product
+      (fact-iter (* counter product)
+                 (+ counter 1)
+                 max-count)))
+@end lisp
+
+@noindent
+As before, we can use the substitution model to visualize the process of
+computing 6!, as shown in @ref{Figure 1.4}.
+
+@float
+@anchor{Figure 1.4}
+@ifinfo
+@quotation
+@strong{Figure 1.4:} A linear iterative process for computing 6!.
+
+@example
+(factorial 6)   -----.
+(fact-iter   1 1 6)  |
+(fact-iter   1 2 6)  |
+(fact-iter   2 3 6)  |
+(fact-iter   6 4 6)  |
+(fact-iter  24 5 6)  |
+(fact-iter 120 6 6)  |
+(fact-iter 720 7 6)  V
+720
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.4d,,62mm,,.std.svg}
+@caption{@strong{Figure 1.4:} A linear iterative process for computing 6!.}
+@end iftex
+@end float
+
+@noindent
+Compare the two processes.  From one point of view, they seem hardly different
+at all.  Both compute the same mathematical function on the same domain, and
+each requires a number of steps proportional to @math{n} to compute @math{{n!}}.
+Indeed, both processes even carry out the same sequence of multiplications,
+obtaining the same sequence of partial products.  On the other hand, when we
+consider the ``shapes'' of the two processes, we find that they evolve quite
+differently.
+
+Consider the first process.  The substitution model reveals a shape of
+expansion followed by contraction, indicated by the arrow in @ref{Figure 1.3}.
+The expansion occurs as the process builds up a chain of @newterm{deferred operations} 
+(in this case, a chain of multiplications).  The contraction occurs
+as the operations are actually performed.  This type of process, characterized
+by a chain of deferred operations, is called a @newterm{recursive process}.
+Carrying out this process requires that the interpreter keep track of the
+operations to be performed later on.  In the computation of @math{{n!}}, the length
+of the chain of deferred multiplications, and hence the amount of information
+needed to keep track of it, grows linearly with @math{n} (is proportional to
+@math{n}), just like the number of steps.  Such a process is called a
+@newterm{linear recursive process}.
+
+By contrast, the second process does not grow and shrink.  At each step, all we
+need to keep track of, for any @math{n}, are the current values of the variables
+@code{product}, @code{counter}, and @code{max-count}.  We call this an
+@newterm{iterative process}.  In general, an iterative process is one whose
+state can be summarized by a fixed number of @newterm{state variables},
+together with a fixed rule that describes how the state variables should be
+updated as the process moves from state to state and an (optional) end test
+that specifies conditions under which the process should terminate.  In
+computing @math{{n!}}, the number of steps required grows linearly with @math{n}.  Such
+a process is called a @newterm{linear iterative process}.
+
+The contrast between the two processes can be seen in another way.  In the
+iterative case, the program variables provide a complete description of the
+state of the process at any point.  If we stopped the computation between
+steps, all we would need to do to resume the computation is to supply the
+interpreter with the values of the three program variables.  Not so with the
+recursive process.  In this case there is some additional ``hidden''
+information, maintained by the interpreter and not contained in the program
+variables, which indicates ``where the process is'' in negotiating the chain of
+deferred operations.  The longer the chain, the more information must be
+maintained.@footnote{When we discuss the implementation of procedures on
+register machines in @ref{Chapter 5}, we will see that any iterative process
+can be realized ``in hardware'' as a machine that has a fixed set of registers
+and no auxiliary memory.  In contrast, realizing a recursive process requires a
+machine that uses an auxiliary data structure known as a @newterm{stack}.}
+
+In contrasting iteration and recursion, we must be careful not to confuse the
+notion of a recursive @newterm{process} with the notion of a recursive
+@newterm{procedure}.  When we describe a procedure as recursive, we are
+referring to the syntactic fact that the procedure definition refers (either
+directly or indirectly) to the procedure itself.  But when we describe a
+process as following a pattern that is, say, linearly recursive, we are
+speaking about how the process evolves, not about the syntax of how a procedure
+is written.  It may seem disturbing that we refer to a recursive procedure such
+as @code{fact-iter} as generating an iterative process.  However, the process
+really is iterative: Its state is captured completely by its three state
+variables, and an interpreter need keep track of only three variables in order
+to execute the process.
+
+One reason that the distinction between process and procedure may be confusing
+is that most implementations of common languages (including Ada, Pascal, and C)
+are designed in such a way that the interpretation of any recursive procedure
+consumes an amount of memory that grows with the number of procedure calls,
+even when the process described is, in principle, iterative.  As a consequence,
+these languages can describe iterative processes only by resorting to
+special-purpose ``looping constructs'' such as @code{do}, @code{repeat},
+@code{until}, @code{for}, and @code{while}.  The implementation of Scheme we
+shall consider in @ref{Chapter 5} does not share this defect.  It will execute
+an iterative process in constant space, even if the iterative process is
+described by a recursive procedure.  An implementation with this property is
+called @newterm{tail-recursive}.  With a tail-recursive implementation,
+iteration can be expressed using the ordinary procedure call mechanism, so that
+special iteration constructs are useful only as syntactic sugar.@footnote{Tail
+recursion has long been known as a compiler optimization trick.  A coherent
+semantic basis for tail recursion was provided by Carl @ref{Hewitt (1977)}, who
+explained it in terms of the ``message-passing'' model of computation that we
+shall discuss in @ref{Chapter 3}.  Inspired by this, Gerald Jay Sussman and Guy
+Lewis Steele Jr. (see @ref{Steele and Sussman 1975}) constructed a tail-recursive interpreter for
+Scheme.  Steele later showed how tail recursion is a consequence of the natural
+way to compile procedure calls (@ref{Steele 1977}).  The @abbr{IEEE} standard for
+Scheme requires that Scheme implementations be tail-recursive.}
+
+@quotation
+@strong{@anchor{Exercise 1.9}Exercise 1.9:} Each of the following two
+procedures defines a method for adding two positive integers in terms of the
+procedures @code{inc}, which increments its argument by 1, and @code{dec},
+which decrements its argument by 1.
+
+@lisp
+(define (+ a b)
+  (if (= a 0) 
+      b 
+      (inc (+ (dec a) b))))
+
+(define (+ a b)
+  (if (= a 0) 
+      b 
+      (+ (dec a) (inc b))))
+@end lisp
+
+Using the substitution model, illustrate the process generated by each
+procedure in evaluating @code{(+ 4 5)}.  Are these processes iterative or
+recursive?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.10}Exercise 1.10:} The following procedure computes
+a mathematical function called Ackermann's function.
+
+@lisp
+(define (A x y)
+  (cond ((= y 0) 0)
+        ((= x 0) (* 2 y))
+        ((= y 1) 2)
+        (else (A (- x 1)
+                 (A x (- y 1))))))
+@end lisp
+
+What are the values of the following expressions?
+
+@lisp
+(A 1 10)
+(A 2 4)
+(A 3 3)
+@end lisp
+
+Consider the following procedures, where @code{A} is the procedure
+defined above:
+
+@lisp
+(define (f n) (A 0 n))
+(define (g n) (A 1 n))
+(define (h n) (A 2 n))
+(define (k n) (* 5 n n))
+@end lisp
+
+Give concise mathematical definitions for the functions computed by the
+procedures @code{f}, @code{g}, and @code{h} for positive integer values of
+@math{n}.  For example, @code{(k n)} computes @math{{5n^2}}.
+@end quotation
+

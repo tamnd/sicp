@@ -1,0 +1,17 @@
+sicp.pdf
+sicp.tex
+sicp.log
+sicp.aux
+sicp.fdb_latexmk
+sicp.fls
+sicp.toc
+sicp.idx
+sicp.ilg
+sicp.ind
+sicp.out
+coverpage.pdf
+exercises.tex
+figures.tex
+fig/chap*/*.pdf
+fig/icons/black_chess_queen.pdf
+fig/icons/white_chess_queen.pdf

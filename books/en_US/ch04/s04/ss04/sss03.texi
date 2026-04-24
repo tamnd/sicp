@@ -1,0 +1,131 @@
+@node 4.4.4.3, 4.4.4.4, 4.4.4.2, 4.4.4
+@subsubsection Finding Assertions by Pattern Matching
+
+@code{Find-assertions}, called by @code{simple-query} (@ref{4.4.4.2}),
+takes as input a pattern and a frame.  It returns a stream of frames, each
+extending the given one by a data-base match of the given pattern.  It uses
+@code{fetch-assertions} (@ref{4.4.4.5}) to get a stream of all the
+assertions in the data base that should be checked for a match against the
+pattern and the frame.  The reason for @code{fetch-assertions} here is that we
+can often apply simple tests that will eliminate many of the entries in the
+data base from the pool of candidates for a successful match.  The system would
+still work if we eliminated @code{fetch-assertions} and simply checked a stream
+of all assertions in the data base, but the computation would be less efficient
+because we would need to make many more calls to the matcher.
+
+@lisp
+(define (find-assertions pattern frame)
+  (stream-flatmap 
+    (lambda (datum) 
+      (check-an-assertion datum pattern frame))
+    (fetch-assertions pattern frame)))
+@end lisp
+
+@noindent
+@code{Check-an-assertion} takes as arguments a pattern, a data object
+(assertion), and a frame and returns either a one-element stream containing the
+extended frame or @code{the-empty-stream} if the match fails.
+
+@lisp
+(define (check-an-assertion 
+         assertion query-pat query-frame)
+  (let ((match-result
+         (pattern-match 
+          query-pat assertion query-frame)))
+    (if (eq? match-result 'failed)
+        the-empty-stream
+        (singleton-stream match-result))))
+@end lisp
+
+@noindent
+The basic pattern matcher returns either the symbol @code{failed} or an
+extension of the given frame.  The basic idea of the matcher is to check the
+pattern against the data, element by element, accumulating bindings for the
+pattern variables.  If the pattern and the data object are the same, the match
+succeeds and we return the frame of bindings accumulated so far.  Otherwise, if
+the pattern is a variable we extend the current frame by binding the variable
+to the data, so long as this is consistent with the bindings already in the
+frame.  If the pattern and the data are both pairs, we (recursively) match the
+@code{car} of the pattern against the @code{car} of the data to produce a
+frame; in this frame we then match the @code{cdr} of the pattern against the
+@code{cdr} of the data.  If none of these cases are applicable, the match fails
+and we return the symbol @code{failed}.
+
+@lisp
+(define (pattern-match pat dat frame)
+  (cond ((eq? frame 'failed) 'failed)
+        ((equal? pat dat) frame)
+        ((var? pat) 
+         (extend-if-consistent 
+          pat dat frame))
+        ((and (pair? pat) (pair? dat))
+         (pattern-match 
+          (cdr pat) 
+          (cdr dat)
+          (pattern-match
+           (car pat) (car dat) frame)))
+        (else 'failed)))
+@end lisp
+
+@noindent
+Here is the procedure that extends a frame by adding a new binding, if this is
+consistent with the bindings already in the frame:
+
+@lisp
+(define (extend-if-consistent var dat frame)
+  (let ((binding (binding-in-frame var frame)))
+    (if binding
+        (pattern-match 
+         (binding-value binding) dat frame)
+        (extend var dat frame))))
+@end lisp
+
+@noindent
+If there is no binding for the variable in the frame, we simply add the binding
+of the variable to the data.  Otherwise we match, in the frame, the data
+against the value of the variable in the frame.  If the stored value contains
+only constants, as it must if it was stored during pattern matching by
+@code{extend-if-consistent}, then the match simply tests whether the stored and
+new values are the same.  If so, it returns the unmodified frame; if not, it
+returns a failure indication.  The stored value may, however, contain pattern
+variables if it was stored during unification (see @ref{4.4.4.4}).  The
+recursive match of the stored pattern against the new data will add or check
+bindings for the variables in this pattern.  For example, suppose we have a
+frame in which @code{?x} is bound to @code{(f ?y)} and @code{?y} is unbound,
+and we wish to augment this frame by a binding of @code{?x} to @code{(f b)}.
+We look up @code{?x} and find that it is bound to @code{(f ?y)}.  This leads us
+to match @code{(f ?y)} against the proposed new value @code{(f b)} in the same
+frame.  Eventually this match extends the frame by adding a binding of
+@code{?y} to @code{b}.  @code{?X} remains bound to @code{(f ?y)}.  We never
+modify a stored binding and we never store more than one binding for a given
+variable.
+
+The procedures used by @code{extend-if-consistent} to manipulate bindings are
+defined in @ref{4.4.4.8}.
+
+@subsubheading Patterns with dotted tails
+
+If a pattern contains a dot followed by a pattern variable, the pattern
+variable matches the rest of the data list (rather than the next element of the
+data list), just as one would expect with the dotted-tail notation described in
+@ref{Exercise 2.20}.  Although the pattern matcher we have just implemented
+doesn't look for dots, it does behave as we want.  This is because the Lisp
+@code{read} primitive, which is used by @code{query-driver-loop} to read the
+query and represent it as a list structure, treats dots in a special way.
+
+When @code{read} sees a dot, instead of making the next item be the next
+element of a list (the @code{car} of a @code{cons} whose @code{cdr} will be the
+rest of the list) it makes the next item be the @code{cdr} of the list
+structure.  For example, the list structure produced by @code{read} for the
+pattern @code{(computer ?type)} could be constructed by evaluating the
+expression @code{(cons 'computer (cons '?type '()))}, and that for
+@code{(computer . ?type)} could be constructed by evaluating the expression
+@code{(cons 'computer '?type)}.
+
+Thus, as @code{pattern-match} recursively compares @code{car}s and @code{cdr}s
+of a data list and a pattern that had a dot, it eventually matches the variable
+after the dot (which is a @code{cdr} of the pattern) against a sublist of the
+data list, binding the variable to that list.  For example, matching the
+pattern @code{(computer . ?type)} against @code{(computer programmer trainee)}
+will match @code{?type} against the list @code{(programmer trainee)}.
+

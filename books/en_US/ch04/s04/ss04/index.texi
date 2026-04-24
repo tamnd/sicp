@@ -1,0 +1,25 @@
+@node	4.4.4, 4.4.4.1, 4.4.3, 4.4
+@subsection Implementing the Query System
+
+Section @ref{4.4.2} described how the query system works. Now we fill in the
+details by presenting a complete implementation of the system.
+
+@menu
+* 4.4.4.1::          The Driver Loop and Instantiation
+* 4.4.4.2::          The Evaluator
+* 4.4.4.3::          Finding Assertions by Pattern Matching
+* 4.4.4.4::          Rules and Unification
+* 4.4.4.5::          Maintaining the Data Base
+* 4.4.4.6::          Stream Operations
+* 4.4.4.7::          Query Syntax Procedures
+* 4.4.4.8::          Frames and Bindings
+@end menu
+
+@include sss01.texi
+@include sss02.texi
+@include sss03.texi
+@include sss04.texi
+@include sss05.texi
+@include sss06.texi
+@include sss07.texi
+@include sss08.texi

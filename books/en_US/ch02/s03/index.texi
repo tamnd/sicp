@@ -1,0 +1,18 @@
+@node	2.3, 2.4, 2.2, Chapter 2
+@section Symbolic Data
+
+All the compound data objects we have used so far were constructed ultimately
+from numbers.  In this section we extend the representational capability of our
+language by introducing the ability to work with arbitrary symbols as data.
+
+@menu
+* 2.3.1::            Quotation
+* 2.3.2::            Example: Symbolic Differentiation
+* 2.3.3::            Example: Representing Sets
+* 2.3.4::            Example: Huffman Encoding Trees
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi

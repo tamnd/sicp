@@ -1,0 +1,177 @@
+@node 4.4.4.5, 4.4.4.6, 4.4.4.4, 4.4.4
+@subsubsection Maintaining the Data Base
+
+One important problem in designing logic programming languages is that of
+arranging things so that as few irrelevant data-base entries as possible will
+be examined in checking a given pattern.  In our system, in addition to storing
+all assertions in one big stream, we store all assertions whose @code{car}s are
+constant symbols in separate streams, in a table indexed by the symbol.  To
+fetch an assertion that may match a pattern, we first check to see if the
+@code{car} of the pattern is a constant symbol.  If so, we return (to be tested
+using the matcher) all the stored assertions that have the same @code{car}.  If
+the pattern's @code{car} is not a constant symbol, we return all the stored
+assertions.  Cleverer methods could also take advantage of information in the
+frame, or try also to optimize the case where the @code{car} of the pattern is
+not a constant symbol.  We avoid building our criteria for indexing (using the
+@code{car}, handling only the case of constant symbols) into the program;
+instead we call on predicates and selectors that embody our criteria.
+
+@lisp
+(define THE-ASSERTIONS the-empty-stream)
+
+(define (fetch-assertions pattern frame)
+  (if (use-index? pattern)
+      (get-indexed-assertions pattern)
+      (get-all-assertions)))
+
+(define (get-all-assertions) THE-ASSERTIONS)
+
+(define (get-indexed-assertions pattern)
+  (get-stream (index-key-of pattern)
+              'assertion-stream))
+@end lisp
+
+@noindent
+@code{Get-stream} looks up a stream in the table and returns an empty stream if
+nothing is stored there.
+
+@lisp
+(define (get-stream key1 key2)
+  (let ((s (get key1 key2)))
+    (if s s the-empty-stream)))
+@end lisp
+
+@noindent
+Rules are stored similarly, using the @code{car} of the rule conclusion.  Rule
+conclusions are arbitrary patterns, however, so they differ from assertions in
+that they can contain variables.  A pattern whose @code{car} is a constant
+symbol can match rules whose conclusions start with a variable as well as rules
+whose conclusions have the same @code{car}.  Thus, when fetching rules that
+might match a pattern whose @code{car} is a constant symbol we fetch all rules
+whose conclusions start with a variable as well as those whose conclusions have
+the same @code{car} as the pattern.  For this purpose we store all rules whose
+conclusions start with a variable in a separate stream in our table, indexed by
+the symbol @code{?}.
+
+@lisp
+(define THE-RULES the-empty-stream)
+
+(define (fetch-rules pattern frame)
+  (if (use-index? pattern)
+      (get-indexed-rules pattern)
+      (get-all-rules)))
+
+(define (get-all-rules) THE-RULES)
+
+(define (get-indexed-rules pattern)
+  (stream-append
+   (get-stream (index-key-of pattern)
+               'rule-stream)
+   (get-stream '? 'rule-stream)))
+@end lisp
+
+@noindent
+@code{Add-rule-or-assertion!} is used by @code{query-driver-loop} to add
+assertions and rules to the data base.  Each item is stored in the index, if
+appropriate, and in a stream of all assertions or rules in the data base.
+
+@lisp
+(define (add-rule-or-assertion! assertion)
+  (if (rule? assertion)
+      (add-rule! assertion)
+      (add-assertion! assertion)))
+
+(define (add-assertion! assertion)
+  (store-assertion-in-index assertion)
+  (let ((old-assertions THE-ASSERTIONS))
+    (set! THE-ASSERTIONS
+          (cons-stream assertion 
+                       old-assertions))
+    'ok))
+
+(define (add-rule! rule)
+  (store-rule-in-index rule)
+  (let ((old-rules THE-RULES))
+    (set! THE-RULES
+          (cons-stream rule old-rules))
+    'ok))
+@end lisp
+
+@noindent
+To actually store an assertion or a rule, we check to see if it can be indexed.
+If so, we store it in the appropriate stream.
+
+@lisp
+(define (store-assertion-in-index assertion)
+  (if (indexable? assertion)
+      (let ((key (index-key-of assertion)))
+        (let ((current-assertion-stream
+               (get-stream 
+                key 'assertion-stream)))
+          (put key
+               'assertion-stream
+               (cons-stream 
+                assertion
+                current-assertion-stream))))))
+
+(define (store-rule-in-index rule)
+  (let ((pattern (conclusion rule)))
+    (if (indexable? pattern)
+        (let ((key (index-key-of pattern)))
+          (let ((current-rule-stream
+                 (get-stream 
+                  key 'rule-stream)))
+            (put key
+                 'rule-stream
+                 (cons-stream 
+                  rule
+                  current-rule-stream)))))))
+@end lisp
+
+@noindent
+The following procedures define how the data-base index is used.  A pattern (an
+assertion or a rule conclusion) will be stored in the table if it starts with a
+variable or a constant symbol.
+
+@lisp
+(define (indexable? pat)
+  (or (constant-symbol? (car pat))
+      (var? (car pat))))
+@end lisp
+
+@noindent
+The key under which a pattern is stored in the table is either @code{?} (if it
+starts with a variable) or the constant symbol with which it starts.
+
+@lisp
+(define (index-key-of pat)
+  (let ((key (car pat)))
+    (if (var? key) '? key)))
+@end lisp
+
+@noindent
+The index will be used to retrieve items that might match a pattern if the
+pattern starts with a constant symbol.
+
+@lisp
+(define (use-index? pat)
+  (constant-symbol? (car pat)))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.70}Exercise 4.70:} What is the purpose of the
+@code{let} bindings in the procedures @code{add-assertion!} and
+@code{add-rule!}?  What would be wrong with the following implementation of
+@code{add-assertion!}?  Hint: Recall the definition of the infinite stream of
+ones in @ref{3.5.2}: @code{(define ones (cons-stream 1 ones))}.
+
+@lisp
+(define (add-assertion! assertion)
+  (store-assertion-in-index assertion)
+  (set! THE-ASSERTIONS
+        (cons-stream assertion 
+                     THE-ASSERTIONS))
+  'ok)
+@end lisp
+@end quotation
+

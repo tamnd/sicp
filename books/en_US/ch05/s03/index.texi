@@ -1,0 +1,38 @@
+@node	5.3, 5.4, 5.2, Chapter 5
+@section Storage Allocation and Garbage Collection
+
+In section @ref{5.4}, we will show how to implement a Scheme evaluator as a
+register machine.  In order to simplify the discussion, we will assume that our
+register machines can be equipped with a @newterm{list-structured memory}, in
+which the basic operations for manipulating list-structured data are primitive.
+Postulating the existence of such a memory is a useful abstraction when one is
+focusing on the mechanisms of control in a Scheme interpreter, but this does
+not reflect a realistic view of the actual primitive data operations of
+contemporary computers.  To obtain a more complete picture of how a Lisp system
+operates, we must investigate how list structure can be represented in a way
+that is compatible with conventional computer memories.
+
+There are two considerations in implementing list structure.  The first is
+purely an issue of representation: how to represent the ``box-and-pointer''
+structure of Lisp pairs, using only the storage and addressing capabilities of
+typical computer memories.  The second issue concerns the management of memory
+as a computation proceeds.  The operation of a Lisp system depends crucially on
+the ability to continually create new data objects.  These include objects that
+are explicitly created by the Lisp procedures being interpreted as well as
+structures created by the interpreter itself, such as environments and argument
+lists.  Although the constant creation of new data objects would pose no
+problem on a computer with an infinite amount of rapidly addressable memory,
+computer memories are available only in finite sizes (more's the pity).  Lisp
+systems thus provide an @newterm{automatic storage allocation} facility to
+support the illusion of an infinite memory.  When a data object is no longer
+needed, the memory allocated to it is automatically recycled and used to
+construct new data objects.  There are various techniques for providing such
+automatic storage allocation.  The method we shall discuss in this section is
+called @newterm{garbage collection}.
+@menu
+* 5.3.1::            Memory as Vectors
+* 5.3.2::            Maintaining the Illusion of Infinite Memory
+@end menu
+
+@include ss01.texi
+@include ss02.texi

@@ -1,0 +1,185 @@
+@node 4.4.4.2, 4.4.4.3, 4.4.4.1, 4.4.4
+@subsubsection The Evaluator
+
+The @code{qeval} procedure, called by the @code{query-driver-loop}, is the
+basic evaluator of the query system.  It takes as inputs a query and a stream
+of frames, and it returns a stream of extended frames.  It identifies special
+forms by a data-directed dispatch using @code{get} and @code{put}, just as we
+did in implementing generic operations in @ref{Chapter 2}.  Any query that is
+not identified as a special form is assumed to be a simple query, to be
+processed by @code{simple-query}.
+
+@lisp
+(define (qeval query frame-stream)
+  (let ((qproc (get (type query) 'qeval)))
+    (if qproc
+        (qproc (contents query) frame-stream)
+        (simple-query query frame-stream))))
+@end lisp
+
+@noindent
+@code{Type} and @code{contents}, defined in @ref{4.4.4.7}, implement
+the abstract syntax of the special forms.
+
+@subsubheading Simple queries
+
+The @code{simple-query} procedure handles simple queries.  It takes as
+arguments a simple query (a pattern) together with a stream of frames, and it
+returns the stream formed by extending each frame by all data-base matches of
+the query.
+
+@lisp
+(define (simple-query query-pattern 
+                      frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (stream-append-delayed
+      (find-assertions query-pattern frame)
+      (delay 
+        (apply-rules query-pattern frame))))
+   frame-stream))
+@end lisp
+
+@noindent
+For each frame in the input stream, we use @code{find-assertions} 
+(@ref{4.4.4.3}) to match the pattern against all assertions in the data base,
+producing a stream of extended frames, and we use @code{apply-rules} 
+(@ref{4.4.4.4}) to apply all possible rules, producing another stream of
+extended frames.  These two streams are combined (using
+@code{stream-append-delayed}, @ref{4.4.4.6}) to make a stream of all
+the ways that the given pattern can be satisfied consistent with the original
+frame (see @ref{Exercise 4.71}).  The streams for the individual input frames
+are combined using @code{stream-flatmap} (@ref{4.4.4.6}) to form one
+large stream of all the ways that any of the frames in the original input
+stream can be extended to produce a match with the given pattern.
+
+@subsubheading Compound queries
+
+@code{And} queries are handled as illustrated in @ref{Figure 4.5} by the
+@code{conjoin} procedure.  @code{Conjoin} takes as inputs the conjuncts and the
+frame stream and returns the stream of extended frames.  First, @code{conjoin}
+processes the stream of frames to find the stream of all possible frame
+extensions that satisfy the first query in the conjunction.  Then, using this
+as the new frame stream, it recursively applies @code{conjoin} to the rest of
+the queries.
+
+@lisp
+(define (conjoin conjuncts frame-stream)
+  (if (empty-conjunction? conjuncts)
+      frame-stream
+      (conjoin (rest-conjuncts conjuncts)
+               (qeval 
+                (first-conjunct conjuncts)
+                frame-stream))))
+@end lisp
+
+@noindent
+The expression
+
+@lisp
+(put 'and 'qeval conjoin)
+@end lisp
+
+@noindent
+sets up @code{qeval} to dispatch to @code{conjoin} when an @code{and} form is
+encountered.
+
+@code{Or} queries are handled similarly, as shown in @ref{Figure 4.6}.  The
+output streams for the various disjuncts of the @code{or} are computed
+separately and merged using the @code{interleave-delayed} procedure from
+@ref{4.4.4.6}.  (See @ref{Exercise 4.71} and @ref{Exercise 4.72}.)
+
+@lisp
+(define (disjoin disjuncts frame-stream)
+  (if (empty-disjunction? disjuncts)
+      the-empty-stream
+      (interleave-delayed
+       (qeval (first-disjunct disjuncts) 
+              frame-stream)
+       (delay (disjoin 
+               (rest-disjuncts disjuncts)
+               frame-stream)))))
+(put 'or 'qeval disjoin)
+@end lisp
+
+@noindent
+The predicates and selectors for the syntax of conjuncts and disjuncts are
+given in @ref{4.4.4.7}.
+
+@subsubheading Filters
+
+@code{Not} is handled by the method outlined in @ref{4.4.2}.  We
+attempt to extend each frame in the input stream to satisfy the query being
+negated, and we include a given frame in the output stream only if it cannot be
+extended.
+
+@lisp
+(define (negate operands frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (if (stream-null? 
+          (qeval (negated-query operands)
+                 (singleton-stream frame)))
+         (singleton-stream frame)
+         the-empty-stream))
+   frame-stream))
+(put 'not 'qeval negate)
+@end lisp
+
+@noindent
+@code{Lisp-value} is a filter similar to @code{not}.  Each frame in the stream
+is used to instantiate the variables in the pattern, the indicated predicate is
+applied, and the frames for which the predicate returns false are filtered out
+of the input stream.  An error results if there are unbound pattern variables.
+
+@lisp
+(define (lisp-value call frame-stream)
+  (stream-flatmap
+   (lambda (frame)
+     (if (execute
+          (instantiate
+           call
+           frame
+           (lambda (v f)
+             (error 
+              "Unknown pat var: LISP-VALUE" 
+              v))))
+         (singleton-stream frame)
+         the-empty-stream))
+   frame-stream))
+(put 'lisp-value 'qeval lisp-value)
+@end lisp
+
+@noindent
+@code{Execute}, which applies the predicate to the arguments, must @code{eval}
+the predicate expression to get the procedure to apply.  However, it must not
+evaluate the arguments, since they are already the actual arguments, not
+expressions whose evaluation (in Lisp) will produce the arguments.  Note that
+@code{execute} is implemented using @code{eval} and @code{apply} from the
+underlying Lisp system.
+
+@lisp
+(define (execute exp)
+  (apply (eval (predicate exp) 
+               user-initial-environment)
+         (args exp)))
+@end lisp
+
+@noindent
+The @code{always-true} special form provides for a query that is always
+satisfied.  It ignores its contents (normally empty) and simply passes through
+all the frames in the input stream.  @code{Always-true} is used by the
+@code{rule-body} selector (@ref{4.4.4.7}) to provide bodies for rules
+that were defined without bodies (that is, rules whose conclusions are always
+satisfied).
+
+@lisp
+(define (always-true ignore frame-stream) 
+  frame-stream)
+(put 'always-true 'qeval always-true)
+@end lisp
+
+@noindent
+The selectors that define the syntax of @code{not} and @code{lisp-value} are
+given in @ref{4.4.4.7}.
+

@@ -1,0 +1,70 @@
+@node	2.5, Chapter 3, 2.4, Chapter 2
+@section Systems with Generic Operations
+
+In the previous section, we saw how to design systems in which data objects can
+be represented in more than one way.  The key idea is to link the code that
+specifies the data operations to the several representations by means of
+generic interface procedures.  Now we will see how to use this same idea not
+only to define operations that are generic over different representations but
+also to define operations that are generic over different kinds of arguments.
+We have already seen several different packages of arithmetic operations: the
+primitive arithmetic (@code{+}, @code{-}, @code{*}, @code{/}) built into our
+language, the rational-number arithmetic (@code{add-rat}, @code{sub-rat},
+@code{mul-rat}, @code{div-rat}) of @ref{2.1.1}, and the complex-number
+arithmetic that we implemented in @ref{2.4.3}.  We will now use
+data-directed techniques to construct a package of arithmetic operations that
+incorporates all the arithmetic packages we have already constructed.
+
+@ref{Figure 2.23} shows the structure of the system we shall build.  Notice the
+abstraction barriers.  From the perspective of someone using ``numb@-ers,'' there
+is a single procedure @code{add} that operates on whatever numb@-ers are
+supplied.  @code{Add} is part of a generic interface that allows the separate
+or@-di@-na@-ry-arithmetic, rational-arithmetic, and complex-arithmetic pack@-ag@-es to be
+accessed uniformly by programs that use numbers.  Any individual arithmetic
+package (such as the complex package) may itself be accessed through generic
+procedures (such as @code{add-complex}) that combine packages designed for
+different representations (such as rectangular and polar).  Moreover, the
+structure of the system is additive, so that one can design the individual
+arithmetic packages separately and combine them to produce a generic arithmetic
+system.
+
+@float
+@anchor{Figure 2.23}
+@ifinfo
+@quotation
+@strong{Figure 2.23:} Generic arithmetic system.
+
+@example
+                        Programs that use numbers
+                           +-----------------+
+---------------------------| add sub mul div |-------------------
+                           +-----------------+
+                        Generic arithmetic package
+ +-----------------+   +-------------------------+
+ | add-rat sub-rat |   | add-complex sub-complex |   +---------+
+-|                 |-+-|                         |-+-| + - * / |-
+ | mul-rat div-rat | | | mul-complex div-complex | | +---------+
+ +-----------------+ | +-------------------------+ |
+      Rational       |     Complex artithmetic     |   Ordinary
+     arithmetic      +--------------+--------------+  arithmetic
+                     | Rectangular  |     Polar    |
+---------------------+--------------+--------------+-------------
+             List structure and primitive machine arithmetic
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.23b,138mm,,,.std.svg}
+@caption{@strong{Figure 2.23:} Generic arithmetic system.}
+@end iftex
+@end float
+
+@menu
+* 2.5.1::            Generic Arithmetic Operations
+* 2.5.2::            Combining Data of Different Types
+* 2.5.3::            Example: Symbolic Algebra
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi

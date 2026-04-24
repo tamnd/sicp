@@ -1,0 +1,158 @@
+@node 4.4.4.7, 4.4.4.8, 4.4.4.6, 4.4.4
+@subsubsection Query Syntax Procedures
+
+@code{Type} and @code{contents}, used by @code{qeval} (@ref{4.4.4.2}),
+specify that a special form is identified by the symbol in its @code{car}.
+They are the same as the @code{type-tag} and @code{contents} procedures in
+@ref{2.4.2}, except for the error message.
+
+@lisp
+(define (type exp)
+  (if (pair? exp)
+      (car exp)
+      (error "Unknown expression TYPE"
+             exp)))
+
+(define (contents exp)
+  (if (pair? exp)
+      (cdr exp)
+      (error "Unknown expression CONTENTS"
+             exp)))
+@end lisp
+
+@noindent
+The following procedures, used by @code{query-driver-loop} (in 
+@ref{4.4.4.1}), specify that rules and assertions are added to the data base by
+expressions of the form @code{(assert! ⟨@var{rule-or-assertion}⟩)}:
+
+@lisp
+(define (assertion-to-be-added? exp)
+  (eq? (type exp) 'assert!))
+
+(define (add-assertion-body exp)
+  (car (contents exp)))
+@end lisp
+
+@noindent
+Here are the syntax definitions for the @code{and}, @code{or}, @code{not}, and
+@code{lisp-value} special forms (@ref{4.4.4.2}):
+
+@lisp
+(define (empty-conjunction? exps) (null? exps))
+(define (first-conjunct exps) (car exps))
+(define (rest-conjuncts exps) (cdr exps))
+(define (empty-disjunction? exps) (null? exps))
+(define (first-disjunct exps) (car exps))
+(define (rest-disjuncts exps) (cdr exps))
+(define (negated-query exps) (car exps))
+(define (predicate exps) (car exps))
+(define (args exps) (cdr exps))
+@end lisp
+
+@noindent
+The following three procedures define the syntax of rules:
+
+@lisp
+(define (rule? statement)
+  (tagged-list? statement 'rule))
+
+(define (conclusion rule) (cadr rule))
+
+(define (rule-body rule)
+  (if (null? (cddr rule))
+      '(always-true)
+      (caddr rule)))
+@end lisp
+
+@noindent
+@code{Query-driver-loop} (@ref{4.4.4.1}) calls
+@code{query-syntax-process} to transform pattern variables in the expression,
+which have the form @code{?symbol}, into the internal format @code{(? symbol)}.
+That is to say, a pattern such as @code{(job ?x ?y)} is actually represented
+internally by the system as @code{(job (? x) (? y))}.  This increases the
+efficiency of query processing, since it means that the system can check to see
+if an expression is a pattern variable by checking whether the @code{car} of
+the expression is the symbol @code{?}, rather than having to extract characters
+from the symbol.  The syntax transformation is accomplished by the following
+procedure:@footnote{Most Lisp systems give the user the ability to modify the
+ordinary @code{read} procedure to perform such transformations by defining
+@newterm{reader macro characters}.  Quoted expressions are already handled in
+this way: The reader automatically translates @code{'expression} into
+@code{(quote expression)} before the evaluator sees it.  We could arrange for
+@code{?expression} to be transformed into @code{(? expression)} in the same
+way; however, for the sake of clarity we have included the transformation
+procedure here explicitly.
+
+@code{Expand-question-mark} and @code{contract-question-mark} use several
+procedures with @code{string} in their names.  These are Scheme primitives.}
+
+@lisp
+(define (query-syntax-process exp)
+  (map-over-symbols expand-question-mark exp))
+
+(define (map-over-symbols proc exp)
+  (cond ((pair? exp)
+         (cons (map-over-symbols 
+                proc (car exp))
+               (map-over-symbols 
+                proc (cdr exp))))
+        ((symbol? exp) (proc exp))
+        (else exp)))
+
+(define (expand-question-mark symbol)
+  (let ((chars (symbol->string symbol)))
+    (if (string=? (substring chars 0 1) "?")
+        (list '? (string->symbol
+                  (substring
+                   chars 
+                   1 
+                   (string-length chars))))
+        symbol)))
+@end lisp
+
+@noindent
+Once the variables are transformed in this way, the variables in a pattern are
+lists starting with @code{?}, and the constant symbols (which need to be
+recognized for data-base indexing, @ref{4.4.4.5}) are just the symbols.
+
+@lisp
+(define (var? exp) (tagged-list? exp '?))
+(define (constant-symbol? exp) (symbol? exp))
+@end lisp
+
+@noindent
+Unique variables are constructed during rule application (in 
+@ref{4.4.4.4}) by means of the following procedures.  The unique identifier for
+a rule application is a number, which is incremented each time a rule is
+applied.
+
+@lisp
+(define rule-counter 0)
+
+(define (new-rule-application-id)
+  (set! rule-counter (+ 1 rule-counter))
+  rule-counter)
+
+(define (make-new-variable 
+         var rule-application-id)
+  (cons '? (cons rule-application-id
+                 (cdr var))))
+@end lisp
+
+@noindent
+When @code{query-driver-loop} instantiates the query to print the answer, it
+converts any unbound pattern variables back to the right form for printing,
+using
+
+@lisp
+(define (contract-question-mark variable)
+  (string->symbol
+   (string-append "?"
+     (if (number? (cadr variable))
+         (string-append
+          (symbol->string (caddr variable))
+          "-"
+          (number->string (cadr variable)))
+         (symbol->string (cadr variable))))))
+@end lisp
+

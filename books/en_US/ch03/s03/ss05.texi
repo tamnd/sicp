@@ -1,0 +1,673 @@
+@node	3.3.5, 3.4, 3.2, 3.3
+@subsection Propagation of Constraints
+
+Computer programs are traditionally organized as one-directional computations,
+which perform operations on prespecified arguments to produce desired outputs.
+On the other hand, we often model systems in terms of relations among
+quantities.  For example, a mathematical model of a mechanical structure might
+include the information that the deflection @math{d} of a metal rod is related to
+the force @math{F} on the rod, the length @math{L} of the rod, the cross-sectional
+area @math{A}, and the elastic modulus @math{E} via the equation
+@ifinfo
+
+@example
+dAE = FL
+@end example
+
+@end ifinfo
+@tex
+\[ % :61:
+  {dAE} \,=\, {FL.}  \]
+@end tex
+Such an equation is not one-directional.  Given any four of the quantities, we
+can use it to compute the fifth.  Yet translating the equation into a
+traditional computer language would force us to choose one of the quantities to
+be computed in terms of the other four.  Thus, a procedure for computing the
+area @math{A} could not be used to compute the deflection @math{d}, even though the
+computations of @math{A} and @math{d} arise from the same
+equation.@footnote{Constraint propagation first appeared in the incredibly
+forward-looking @abbr{SKETCHPAD} system of Ivan @ref{Sutherland (1963)}.  A
+beautiful constraint-propagation system based on the Smalltalk language was
+developed by Alan @ref{Borning (1977)} at Xerox Palo Alto Research Center.  Sussman,
+Stallman, and Steele applied constraint propagation to electrical circuit
+analysis (@ref{Sussman and Stallman 1975}; @ref{Sussman and Steele 1980}). TK!Solver
+(@ref{Konopasek and Jayaraman 1984}) is an extensive modeling environment based on
+constraints.}
+
+In this section, we sketch the design of a language that enables us to work in
+terms of relations themselves.  The primitive elements of the language are
+@newterm{primitive constraints}, which state that certain relations hold
+between quantities.  For example, @code{(adder a b c)} specifies that the
+quantities @math{a}, @math{b}, and @math{c} must be related by the equation 
+@math{{a + b = c}}, @code{(multiplier x y z)} expresses the constraint 
+@math{{xy = z}}, and @code{(constant 3.14 x)} says that the value of @math{x} must be 3.14.
+
+Our language provides a means of combining primitive constraints in order to
+express more complex relations.  We combine constraints by constructing
+@newterm{constraint networks}, in which constraints are joined by
+@newterm{connectors}.  A connector is an object that ``holds'' a value that may
+participate in one or more constraints.  For example, we know that the
+relationship between Fahrenheit and Celsius temperatures is
+@ifinfo
+
+@example
+9C = 5(F - 32)
+@end example
+
+@end ifinfo
+@tex
+\[ % :62:
+  {9C} \,=\, {5(F - 32).}  \]
+@end tex
+Such a constraint can be thought of as a network consisting of primitive adder,
+multiplier, and constant constraints (@ref{Figure 3.28}).  In the figure, we
+see on the left a multiplier box with three terminals, labeled @math{{m1}}, @math{{m2}},
+and @math{p}.  These connect the multiplier to the rest of the network as follows:
+The @math{{m1}} terminal is linked to a connector @math{C}, which will hold the Celsius
+temperature.  The @math{{m2}} terminal is linked to a connector @math{w}, which is also
+linked to a constant box that holds 9.  The @math{p} terminal, which the
+multiplier box constrains to be the product of @math{{m1}} and @math{{m2}}, is linked to
+the @math{p} terminal of another multiplier box, whose @math{{m2}} is connected to a
+constant 5 and whose @math{{m1}} is connected to one of the terms in a sum.
+
+@float
+@anchor{Figure 3.28}
+@ifinfo
+@strong{Figure 3.28:} The relation @math{9C = 5(F - 32)} expressed as a constraint network.
+
+@example
+       +---------+     +---------+   v   +---------+
+C -----+ m1      |  u  |      m1 +-------+ a1      |
+       |    *  p +-----+ p  *    |       |    *  s +---- F
+    +--+ m2      |     |      m2 +--+ +--+ a2      |
+    |  +---------+     +---------+  | |  +---------+
+  w |                              x| |y
+    |    +-----+        +-----+     | |     +-----+
+    +----+  9  |        |  5  +-----+ +-----+  32 |
+         +-----+        +-----+             +-----+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.28,142mm,,,.std.svg}
+@caption{@strong{Figure 3.28:} The relation @math{{9C = 5(F - 32)}} expressed as a constraint network.}
+@end iftex
+@end float
+
+@noindent
+Computation by such a network proceeds as follows: When a connector is given a
+value (by the user or by a constraint box to which it is linked), it awakens
+all of its associated constraints (except for the constraint that just awakened
+it) to inform them that it has a value.  Each awakened constraint box then
+polls its connectors to see if there is enough information to determine a value
+for a connector.  If so, the box sets that connector, which then awakens all of
+its associated constraints, and so on.  For instance, in conversion between
+Celsius and Fahrenheit, @math{w}, @math{x}, and @math{y} are immediately set by the
+constant boxes to 9, 5, and 32, respectively.  The connectors awaken the
+multipliers and the adder, which determine that there is not enough information
+to proceed.  If the user (or some other part of the network) sets @math{C} to a
+value (say 25), the leftmost multiplier will be awakened, and it will set @math{u}
+to @math{{25 \cdot 9 = 225}}.  Then @math{u} awakens the second multiplier, which sets @math{v} to
+45, and @math{v} awakens the adder, which sets @math{f} to 77.
+
+@subsubheading Using the constraint system
+
+To use the constraint system to carry out the temperature computation outlined
+above, we first create two connectors, @code{C} and @code{F}, by calling the
+constructor @code{make-connector}, and link @code{C} and @code{F} in an
+appropriate network:
+
+@lisp
+(define C (make-connector))
+(define F (make-connector))
+(celsius-fahrenheit-converter C F)
+@i{ok}
+@end lisp
+
+@noindent
+The procedure that creates the network is defined as follows:
+
+@lisp
+(define (celsius-fahrenheit-converter c f)
+  (let ((u (make-connector))
+        (v (make-connector))
+        (w (make-connector))
+        (x (make-connector))
+        (y (make-connector)))
+    (multiplier c w u)
+    (multiplier v x u)
+    (adder v y f)
+    (constant 9 w)
+    (constant 5 x)
+    (constant 32 y)
+    'ok))
+@end lisp
+
+@noindent
+This procedure creates the internal connectors @code{u}, @code{v}, @code{w},
+@code{x}, and @code{y}, and links them as shown in @ref{Figure 3.28} using the
+primitive constraint constructors @code{adder}, @code{multiplier}, and
+@code{constant}.  Just as with the digital-circuit simulator of 
+@ref{3.3.4}, expressing these combinations of primitive elements in terms of
+procedures automatically provides our language with a means of abstraction for
+compound objects.
+
+To watch the network in action, we can place probes on the connectors @code{C}
+and @code{F}, using a @code{probe} procedure similar to the one we used to
+monitor wires in @ref{3.3.4}.  Placing a probe on a connector will
+cause a message to be printed whenever the connector is given a value:
+
+@lisp
+(probe "Celsius temp" C)
+(probe "Fahrenheit temp" F)
+@end lisp
+
+@noindent
+Next we set the value of @code{C} to 25.  (The third argument to
+@code{set-value!} tells @code{C} that this directive comes from the
+@code{user}.)
+
+@lisp
+(set-value! C 25 'user)
+@i{Probe: Celsius temp = 25}
+@i{Probe: Fahrenheit temp = 77}
+@i{done}
+@end lisp
+
+@noindent
+The probe on @code{C} awakens and reports the value.  @code{C} also propagates
+its value through the network as described above.  This sets @code{F} to 77,
+which is reported by the probe on @code{F}.
+
+Now we can try to set @code{F} to a new value, say 212:
+
+@lisp
+(set-value! F 212 'user)
+@i{Error! Contradiction (77 212)}
+@end lisp
+
+@noindent
+The connector complains that it has sensed a contradiction: Its value is 77,
+and someone is trying to set it to 212.  If we really want to reuse the network
+with new values, we can tell @code{C} to forget its old value:
+
+@lisp
+(forget-value! C 'user)
+@i{Probe: Celsius temp = ?}
+@i{Probe: Fahrenheit temp = ?}
+@i{done}
+@end lisp
+
+@noindent
+@code{C} finds that the @code{user}, who set its value originally, is now
+retracting that value, so @code{C} agrees to lose its value, as shown by the
+probe, and informs the rest of the network of this fact.  This information
+eventually propagates to @code{F}, which now finds that it has no reason for
+continuing to believe that its own value is 77.  Thus, @code{F} also gives up
+its value, as shown by the probe.
+
+Now that @code{F} has no value, we are free to set it to 212:
+
+@lisp
+(set-value! F 212 'user)
+@i{Probe: Fahrenheit temp = 212}
+@i{Probe: Celsius temp = 100}
+@i{done}
+@end lisp
+
+@noindent
+This new value, when propagated through the network, forces @code{C} to have a
+value of 100, and this is registered by the probe on @code{C}.  Notice that the
+very same network is being used to compute @code{C} given @code{F} and to
+compute @code{F} given @code{C}.  This nondirectionality of computation is the
+distinguishing feature of constraint-based systems.
+
+@subsubheading Implementing the constraint system
+
+The constraint system is implemented via procedural objects with local state,
+in a manner very similar to the digital-circuit simulator of 
+@ref{3.3.4}.  Although the primitive objects of the constraint system are
+somewhat more complex, the overall system is simpler, since there is no concern
+about agendas and logic delays.
+
+The basic operations on connectors are the following:
+
+@itemize @bullet
+
+@item
+@code{(has-value? ⟨@var{connector}⟩)} tells whether the connector has a value.
+
+@item
+@code{(get-value ⟨@var{connector}⟩)} returns the connector's current value.
+
+@item
+@code{(set-value! ⟨@var{connector}⟩ ⟨@var{new-value}⟩ ⟨@var{informant}⟩)}
+indicates that the informant is requesting the connector to set its value to
+the new value.
+
+@item
+@code{(forget-value! ⟨@var{connector}⟩ ⟨@var{retractor}⟩)} tells the connector
+that the retractor is requesting it to forget its value.
+
+@item
+@code{(connect ⟨@var{connector}⟩ ⟨@var{new-constraint}⟩)} tells the connector
+to participate in the new constraint.
+
+@end itemize
+
+@noindent
+The connectors communicate with the constraints by means of the procedures
+@code{inform-about-value}, which tells the given constraint that the connector
+has a value, and @code{inform-about-no-value}, which tells the constraint that
+the connector has lost its value.
+
+@code{Adder} constructs an adder constraint among summand connectors @code{a1}
+and @code{a2} and a @code{sum} connector.  An adder is implemented as a
+procedure with local state (the procedure @code{me} below):
+
+@lisp
+(define (adder a1 a2 sum)
+  (define (process-new-value)
+    (cond ((and (has-value? a1) 
+                (has-value? a2))
+           (set-value! sum
+                       (+ (get-value a1) 
+                          (get-value a2))
+                       me))
+          ((and (has-value? a1) 
+                (has-value? sum))
+           (set-value! a2
+                       (- (get-value sum) 
+                          (get-value a1))
+                       me))
+          ((and (has-value? a2) 
+                (has-value? sum))
+           (set-value! a1
+                       (- (get-value sum) 
+                          (get-value a2))
+                       me))))
+  (define (process-forget-value)
+    (forget-value! sum me)
+    (forget-value! a1 me)
+    (forget-value! a2 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else (error "Unknown request: 
+                        ADDER" request))))
+  (connect a1 me)
+  (connect a2 me)
+  (connect sum me)
+  me)
+@end lisp
+
+@noindent
+@code{Adder} connects the new adder to the designated connectors and returns it
+as its value.  The procedure @code{me}, which represents the adder, acts as a
+dispatch to the local procedures.  The following ``syntax interfaces'' (see
+@ref{Footnote 155} in @ref{3.3.4}) are used in conjunction with
+the dispatch:
+
+@lisp
+(define (inform-about-value constraint)
+  (constraint 'I-have-a-value))
+(define (inform-about-no-value constraint)
+  (constraint 'I-lost-my-value))
+@end lisp
+
+@noindent
+The adder's local procedure @code{process-new-value} is called when the adder
+is informed that one of its connectors has a value. The adder first checks to
+see if both @code{a1} and @code{a2} have values. If so, it tells @code{sum} to
+set its value to the sum of the two addends.  The @code{informant} argument to
+@code{set-value!} is @code{me}, which is the adder object itself.  If @code{a1}
+and @code{a2} do not both have values, then the adder checks to see if perhaps
+@code{a1} and @code{sum} have values.  If so, it sets @code{a2} to the
+difference of these two.  Finally, if @code{a2} and @code{sum} have values,
+this gives the adder enough information to set @code{a1}.  If the adder is told
+that one of its connectors has lost a value, it requests that all of its
+connectors now lose their values.  (Only those values that were set by this
+adder are actually lost.)  Then it runs @code{process-new-value}.  The reason
+for this last step is that one or more connectors may still have a value (that
+is, a connector may have had a value that was not originally set by the adder),
+and these values may need to be propagated back through the adder.
+
+A multiplier is very similar to an adder. It will set its @code{product} to 0
+if either of the factors is 0, even if the other factor is not known.
+
+@lisp
+(define (multiplier m1 m2 product)
+  (define (process-new-value)
+    (cond ((or (and (has-value? m1) 
+                    (= (get-value m1) 0))
+               (and (has-value? m2) 
+                    (= (get-value m2) 0)))
+           (set-value! product 0 me))
+          ((and (has-value? m1) 
+                (has-value? m2))
+           (set-value! product
+                       (* (get-value m1) 
+                          (get-value m2))
+                       me))
+          ((and (has-value? product) 
+                (has-value? m1))
+           (set-value! m2
+                       (/ (get-value product) 
+                          (get-value m1))
+                       me))
+          ((and (has-value? product) 
+                (has-value? m2))
+           (set-value! m1
+                       (/ (get-value product) 
+                          (get-value m2))
+                       me))))
+  (define (process-forget-value)
+    (forget-value! product me)
+    (forget-value! m1 me)
+    (forget-value! m2 me)
+    (process-new-value))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else
+           (error "Unknown request: 
+                   MULTIPLIER" 
+                  request))))
+  (connect m1 me)
+  (connect m2 me)
+  (connect product me)
+  me)
+@end lisp
+
+@noindent
+A @code{constant} constructor simply sets the value of the designated
+connector.  Any @code{I-have-a-value} or @code{I-lost-my-value} message sent to
+the constant box will produce an error.
+
+@lisp
+(define (constant value connector)
+  (define (me request)
+    (error "Unknown request: CONSTANT" 
+           request))
+  (connect connector me)
+  (set-value! connector value me)
+  me)
+@end lisp
+
+@noindent
+Finally, a probe prints a message about the setting or unsetting of
+the designated connector:
+
+@lisp
+(define (probe name connector)
+  (define (print-probe value)
+    (newline) (display "Probe: ")
+    (display name) (display " = ")
+    (display value))
+  (define (process-new-value)
+    (print-probe (get-value connector)))
+  (define (process-forget-value)
+    (print-probe "?"))
+  (define (me request)
+    (cond ((eq? request 'I-have-a-value)
+           (process-new-value))
+          ((eq? request 'I-lost-my-value)
+           (process-forget-value))
+          (else (error "Unknown request: 
+                        PROBE" request))))
+  (connect connector me)
+  me)
+@end lisp
+
+@subsubheading Representing connectors
+
+A connector is represented as a procedural object with local state variables
+@code{value}, the current value of the connector; @code{informant}, the object
+that set the connector's value; and @code{constraints}, a list of the
+constraints in which the connector participates.
+
+@lisp
+(define (make-connector)
+  (let ((value false) 
+        (informant false) 
+        (constraints '()))
+    (define (set-my-value newval setter)
+      (cond ((not (has-value? me))
+             (set! value newval)
+             (set! informant setter)
+             (for-each-except 
+              setter
+              inform-about-value
+              constraints))
+            ((not (= value newval))
+             (error "Contradiction" 
+                    (list value newval)))
+            (else 'ignored)))
+    (define (forget-my-value retractor)
+      (if (eq? retractor informant)
+          (begin (set! informant false)
+                 (for-each-except 
+                  retractor
+                  inform-about-no-value
+                  constraints))
+          'ignored))
+    (define (connect new-constraint)
+      (if (not (memq new-constraint 
+                     constraints))
+          (set! constraints
+                (cons new-constraint 
+                      constraints)))
+      (if (has-value? me)
+          (inform-about-value new-constraint))
+      'done)
+    (define (me request)
+      (cond ((eq? request 'has-value?)
+             (if informant true false))
+            ((eq? request 'value) value)
+            ((eq? request 'set-value!) 
+             set-my-value)
+            ((eq? request 'forget) 
+             forget-my-value)
+            ((eq? request 'connect) connect)
+            (else (error "Unknown operation: 
+                          CONNECTOR"
+                         request))))
+    me))
+@end lisp
+
+@noindent
+The connector's local procedure @code{set-my-value} is called when there is a
+request to set the connector's value.  If the connector does not currently have
+a value, it will set its value and remember as @code{informant} the constraint
+that requested the value to be set.@footnote{The @code{setter} might not be a
+constraint.  In our temperature example, we used @code{user} as the
+@code{setter}.}  Then the connector will notify all of its participating
+constraints except the constraint that requested the value to be set.  This is
+accomplished using the following iterator, which applies a designated procedure
+to all items in a list except a given one:
+
+@lisp
+(define (for-each-except exception 
+                         procedure 
+                         list)
+  (define (loop items)
+    (cond ((null? items) 'done)
+          ((eq? (car items) exception) 
+           (loop (cdr items)))
+          (else (procedure (car items))
+                (loop (cdr items)))))
+  (loop list))
+@end lisp
+
+@noindent
+If a connector is asked to forget its value, it runs the local procedure
+@code{forget-my-value}, which first checks to make sure that the request is
+coming from the same object that set the value originally.  If so, the
+connector informs its associated constraints about the loss of the value.
+
+The local procedure @code{connect} adds the designated new constraint to the
+list of constraints if it is not already in that list.  Then, if the connector
+has a value, it informs the new constraint of this fact.
+
+The connector's procedure @code{me} serves as a dispatch to the other internal
+procedures and also represents the connector as an object.  The following
+procedures provide a syntax interface for the dispatch:
+
+@lisp
+(define (has-value? connector)
+  (connector 'has-value?))
+(define (get-value connector)
+  (connector 'value))
+(define (set-value! connector 
+                    new-value 
+                    informant)
+  ((connector 'set-value!) 
+   new-value 
+   informant))
+(define (forget-value! connector retractor)
+  ((connector 'forget) retractor))
+(define (connect connector new-constraint)
+  ((connector 'connect) new-constraint))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 3.33}Exercise 3.33:} Using primitive multiplier,
+adder, and constant constraints, define a procedure @code{averager} that takes
+three connectors @code{a}, @code{b}, and @code{c} as inputs and establishes the
+constraint that the value of @code{c} is the average of the values of @code{a}
+and @code{b}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.34}Exercise 3.34:} Louis Reasoner wants to build a
+squarer, a constraint device with two terminals such that the value of
+connector @code{b} on the second terminal will always be the square of the
+value @code{a} on the first terminal.  He proposes the following simple device
+made from a multiplier:
+
+@lisp
+(define (squarer a b) (multiplier a a b))
+@end lisp
+
+There is a serious flaw in this idea.  Explain.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.35}Exercise 3.35:} Ben Bitdiddle tells Louis that
+one way to avoid the trouble in @ref{Exercise 3.34} is to define a squarer as a
+new primitive constraint.  Fill in the missing portions in Ben's outline for a
+procedure to implement such a constraint:
+
+@lisp
+(define (squarer a b)
+  (define (process-new-value)
+    (if (has-value? b)
+        (if (< (get-value b) 0)
+            (error "square less than 0: 
+                    SQUARER" 
+                   (get-value b))
+            ⟨@var{alternative1}⟩)
+        ⟨@var{alternative2}⟩))
+  (define (process-forget-value) ⟨@var{body1}⟩)
+  (define (me request) ⟨@var{body2}⟩)
+  ⟨@var{rest of definition}⟩
+  me)
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.36}Exercise 3.36:} Suppose we evaluate the following
+sequence of expressions in the global environment:
+
+@lisp
+(define a (make-connector))
+(define b (make-connector))
+(set-value! a 10 'user)
+@end lisp
+
+At some time during evaluation of the @code{set-value!}, the following
+expression from the connector's local procedure is evaluated:
+
+@lisp
+(for-each-except 
+  setter inform-about-value constraints)
+@end lisp
+
+Draw an environment diagram showing the environment in which the above
+expression is evaluated.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 3.37}Exercise 3.37:} The
+@code{celsius-fahrenheit-converter} procedure is cumbersome when compared with
+a more expression-oriented style of definition, such as
+
+@lisp
+(define (celsius-fahrenheit-converter x)
+  (c+ (c* (c/ (cv 9) (cv 5))
+          x)
+      (cv 32)))
+
+(define C (make-connector))
+(define F (celsius-fahrenheit-converter C))
+@end lisp
+
+Here @code{c+}, @code{c*}, etc. are the ``constraint'' versions of the
+arithmetic operations.  For example, @code{c+} takes two connectors as
+arguments and returns a connector that is related to these by an adder
+constraint:
+
+@lisp
+(define (c+ x y)
+  (let ((z (make-connector)))
+    (adder x y z)
+    z))
+@end lisp
+
+Define analogous procedures @code{c-}, @code{c*}, @code{c/}, and @code{cv}
+(constant value) that enable us to define compound constraints as in the
+converter example above.@footnote{The expression-oriented format is convenient
+because it avoids the need to name the intermediate expressions in a
+computation.  Our original formulation of the constraint language is cumbersome
+in the same way that many languages are cumbersome when dealing with operations
+on compound data.  For example, if we wanted to compute the product 
+@math{{(a + b) \cdot (c + d)}}, where the variables represent vectors, we could work
+in ``imperative style,'' using procedures that set the values of designated
+vector arguments but do not themselves return vectors as values:
+
+@lisp
+(v-sum a b temp1)
+(v-sum c d temp2)
+(v-prod temp1 temp2 answer)
+@end lisp
+
+Alternatively, we could deal with expressions, using procedures that return
+vectors as values, and thus avoid explicitly mentioning @code{temp1} and
+@code{temp2}:
+
+@lisp
+(define answer 
+  (v-prod (v-sum a b) (v-sum c d)))
+@end lisp
+
+Since Lisp allows us to return compound objects as values of procedures, we can
+transform our imperative-style constraint language into an expression-oriented
+style as shown in this exercise.  In languages that are impoverished in
+handling compound objects, such as Algol, Basic, and Pascal (unless one
+explicitly uses Pascal pointer variables), one is usually stuck with the
+imperative style when manipulating compound objects.  Given the advantage of
+the expression-oriented format, one might ask if there is any reason to have
+implemented the system in imperative style, as we did in this section.  One
+reason is that the non-expression-oriented constraint language provides a
+handle on constraint objects (e.g., the value of the @code{adder} procedure) as
+well as on connector objects.  This is useful if we wish to extend the system
+with new operations that communicate with constraints directly rather than only
+indirectly via operations on connectors.  Although it is easy to implement the
+expression-oriented style in terms of the imperative implementation, it is very
+difficult to do the converse.}
+@end quotation
+

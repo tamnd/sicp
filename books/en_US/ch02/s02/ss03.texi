@@ -1,0 +1,882 @@
+@node	2.2.3, 2.2.4, 2.2.2, 2.2
+@subsection Sequences as Conventional Interfaces
+
+In working with compound data, we've stressed how data abstraction permits us
+to design programs without becoming enmeshed in the details of data
+representations, and how abstraction preserves for us the flexibility to
+experiment with alternative representations.  In this section, we introduce
+another powerful design principle for working with data structures---the use of
+@newterm{conventional interfaces}.
+
+In @ref{1.3} we saw how program abstractions, implemented as
+higher-order procedures, can capture common patterns in programs that deal with
+numerical data.  Our ability to formulate analogous operations for working with
+compound data depends crucially on the style in which we manipulate our data
+structures.  Consider, for example, the following procedure, analogous to the
+@code{count-leaves} procedure of @ref{2.2.2}, which takes a tree as
+argument and computes the sum of the squares of the leaves that are odd:
+
+@lisp
+(define (sum-odd-squares tree)
+  (cond ((null? tree) 0)
+        ((not (pair? tree))
+         (if (odd? tree) (square tree) 0))
+        (else (+ (sum-odd-squares 
+                  (car tree))
+                 (sum-odd-squares 
+                  (cdr tree))))))
+@end lisp
+
+@noindent
+On the surface, this procedure is very different from the following one, which
+constructs a list of all the even Fibonacci numbers @math{{\text{Fib}(k)}}, where
+@math{k} is less than or equal to a given integer @math{n}:
+
+@lisp
+(define (even-fibs n)
+  (define (next k)
+    (if (> k n)
+        nil
+        (let ((f (fib k)))
+          (if (even? f)
+              (cons f (next (+ k 1)))
+              (next (+ k 1))))))
+  (next 0))
+@end lisp
+
+@noindent
+Despite the fact that these two procedures are structurally very different, a
+more abstract description of the two computations reveals a great deal of
+similarity.  The first program
+
+@itemize @bullet
+
+@item
+enumerates the leaves of a tree;
+
+@item
+filters them, selecting the odd ones;
+
+@item
+squares each of the selected ones; and
+
+@item
+accumulates the results using @code{+}, starting with 0.
+
+@end itemize
+
+@noindent
+The second program
+
+@itemize @bullet
+
+@item
+enumerates the integers from 0 to @math{n};
+
+@item
+computes the Fibonacci number for each integer;
+
+@item
+filters them, selecting the even ones; and
+
+@item
+accumulates the results using @code{cons},  starting with the
+empty list.
+
+@end itemize
+
+@noindent
+A signal-processing engineer would find it natural to conceptualize these
+processes in terms of signals flowing through a cascade of stages, each of
+which implements part of the program plan, as shown in @ref{Figure 2.7}.  In
+@code{sum-odd-squares}, we begin with an @newterm{enumerator}, which generates
+a ``signal'' consisting of the leaves of a given tree.  This signal is passed
+through a @newterm{filter}, which eliminates all but the odd elements.  The
+resulting signal is in turn passed through a @newterm{map}, which is a
+``transducer'' that applies the @code{square} procedure to each element.  The
+output of the map is then fed to an @newterm{accumulator}, which combines the
+elements using @code{+}, starting from an initial 0.  The plan for
+@code{even-fibs} is analogous.
+
+@float
+@anchor{Figure 2.7}
+@ifinfo
+@quotation
+@strong{Figure 2.7:} The signal-flow plans for the
+procedures @code{sum-odd-squares} (top) and @code{even-fibs} (bottom) reveal
+the commonality between the two programs.
+
+@example
++-------------+   +-------------+   +-------------+   +-------------+
+| enumerate:  |-->| filter:     |-->| map:        |-->| accumulate: |
+| tree leaves |   | odd?        |   | square      |   | +, 0        |
++-------------+   +-------------+   +-------------+   +-------------+
+
++-------------+   +-------------+   +-------------+   +-------------+
+| enumerate:  |-->| map:        |-->| filter:     |-->| accumulate: |
+| integers    |   | fib         |   | even?       |   | cons, ()    |
++-------------+   +-------------+   +-------------+   +-------------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.7e,147mm,,,.std.svg} 
+@caption{@strong{Figure 2.7:} The signal-flow plans for the procedures @code{sum-odd-squares} (top) and @code{even-fibs} (bottom) reveal the commonality between the two programs.}
+@end iftex
+@end float
+
+@noindent
+Unfortunately, the two procedure definitions above fail to exhibit this
+signal-flow structure.  For instance, if we examine the @code{sum-odd-squares}
+procedure, we find that the enumeration is implemented partly by the
+@code{null?} and @code{pair?} tests and partly by the tree-recursive structure
+of the procedure.  Similarly, the accumulation is found partly in the tests and
+partly in the addition used in the recursion.  In general, there are no
+distinct parts of either procedure that correspond to the elements in the
+signal-flow description.  Our two procedures decompose the computations in a
+different way, spreading the enumeration over the program and mingling it with
+the map, the filter, and the accumulation.  If we could organize our programs
+to make the signal-flow structure manifest in the procedures we write, this
+would increase the conceptual clarity of the resulting code.
+
+@subsubheading Sequence Operations
+
+The key to organizing programs so as to more clearly reflect the signal-flow
+structure is to concentrate on the ``signals'' that flow from one stage in the
+process to the next.  If we represent these signals as lists, then we can use
+list operations to implement the processing at each of the stages.  For
+instance, we can implement the mapping stages of the signal-flow diagrams using
+the @code{map} procedure from @ref{2.2.1}:
+
+@lisp
+(map square (list 1 2 3 4 5))
+@i{(1 4 9 16 25)}
+@end lisp
+
+@noindent
+Filtering a sequence to select only those elements that satisfy a given
+predicate is accomplished by
+
+@lisp
+(define (filter predicate sequence)
+  (cond ((null? sequence) nil)
+        ((predicate (car sequence))
+         (cons (car sequence)
+               (filter predicate 
+                       (cdr sequence))))
+        (else  (filter predicate 
+                       (cdr sequence)))))
+@end lisp
+
+@noindent
+For example,
+
+@lisp
+(filter odd? (list 1 2 3 4 5))
+@i{(1 3 5)}
+@end lisp
+
+@noindent
+Accumulations can be implemented by
+
+@lisp
+(define (accumulate op initial sequence)
+  (if (null? sequence)
+      initial
+      (op (car sequence)
+          (accumulate op 
+                      initial 
+                      (cdr sequence)))))
+
+(accumulate + 0 (list 1 2 3 4 5))
+@i{15}
+(accumulate * 1 (list 1 2 3 4 5))
+@i{120}
+(accumulate cons nil (list 1 2 3 4 5))
+@i{(1 2 3 4 5)}
+@end lisp
+
+@noindent
+All that remains to implement signal-flow diagrams is to enumerate the sequence
+of elements to be processed.  For @code{even-fibs}, we need to generate the
+sequence of integers in a given range, which we can do as follows:
+
+@lisp
+(define (enumerate-interval low high)
+  (if (> low high)
+      nil
+      (cons low 
+            (enumerate-interval 
+             (+ low 1) 
+             high))))
+
+(enumerate-interval 2 7)
+@i{(2 3 4 5 6 7)}
+@end lisp
+
+@noindent
+To enumerate the leaves of a tree, we can use@footnote{This is, in fact,
+precisely the @code{fringe} procedure from @ref{Exercise 2.28}.  Here we've
+renamed it to emphasize that it is part of a family of general
+sequence-manipulation procedures.}
+
+@lisp
+(define (enumerate-tree tree)
+  (cond ((null? tree) nil)
+        ((not (pair? tree)) (list tree))
+        (else (append 
+               (enumerate-tree (car tree))
+               (enumerate-tree (cdr tree))))))
+
+(enumerate-tree (list 1 (list 2 (list 3 4)) 5))
+@i{(1 2 3 4 5)}
+@end lisp
+
+@noindent
+Now we can reformulate @code{sum-odd-squares} and @code{even-fibs} as in the
+signal-flow diagrams.  For @code{sum-odd-squares}, we enumerate the sequence of
+leaves of the tree, filter this to keep only the odd numbers in the sequence,
+square each element, and sum the results:
+
+@lisp
+(define (sum-odd-squares tree)
+  (accumulate 
+   +
+   0
+   (map square
+        (filter odd?
+                (enumerate-tree tree)))))
+@end lisp
+
+@noindent
+For @code{even-fibs}, we enumerate the integers from 0 to @math{n}, generate the
+Fibonacci number for each of these integers, filter the resulting sequence to
+keep only the even elements, and accumulate the results into a list:
+
+@lisp
+(define (even-fibs n)
+  (accumulate 
+   cons
+   nil
+   (filter even?
+           (map fib
+                (enumerate-interval 0 n)))))
+@end lisp
+
+@noindent
+The value of expressing programs as sequence operations is that this helps us
+make program designs that are modular, that is, designs that are constructed by
+combining relatively independent pieces.  We can encourage modular design by
+providing a library of standard components together with a conventional
+interface for connecting the components in flexible ways.
+
+Modular construction is a powerful strategy for controlling complexity in
+engineering design.  In real signal-processing applications, for example,
+designers regularly build systems by cascading elements selected from
+standardized families of filters and transducers.  Similarly, sequence
+operations provide a library of standard program elements that we can mix and
+match.  For instance, we can reuse pieces from the @code{sum-odd-squares} and
+@code{even-fibs} procedures in a program that constructs a list of the squares
+of the first @math{{n + 1}} Fibonacci numbers:
+
+@lisp
+(define (list-fib-squares n)
+  (accumulate 
+   cons
+   nil
+   (map square
+        (map fib
+             (enumerate-interval 0 n)))))
+
+(list-fib-squares 10)
+@i{(0 1 1 4 9 25 64 169 441 1156 3025)}
+@end lisp
+
+@noindent
+We can rearrange the pieces and use them in computing the product of the squares of the odd
+integers in a sequence:
+
+@lisp
+(define 
+  (product-of-squares-of-odd-elements
+   sequence)
+  (accumulate 
+   *
+   1
+   (map square (filter odd? sequence))))
+
+(product-of-squares-of-odd-elements 
+ (list 1 2 3 4 5))
+@i{225}
+@end lisp
+
+@noindent
+We can also formulate conventional data-processing applications in terms of
+sequence operations.  Suppose we have a sequence of personnel records and we
+want to find the salary of the highest-paid programmer.  Assume that we have a
+selector @code{salary} that returns the salary of a record, and a predicate
+@code{programmer?} that tests if a record is for a programmer.  Then we can
+write
+
+@lisp
+(define 
+  (salary-of-highest-paid-programmer
+   records)
+  (accumulate 
+   max
+   0
+   (map salary
+        (filter programmer? records))))
+@end lisp
+
+@noindent
+These examples give just a hint of the vast range of operations that can be
+expressed as sequence operations.@footnote{Richard @ref{Waters (1979)} developed a
+program that automatically analyzes traditional Fortran programs, viewing them
+in terms of maps, filters, and accumulations.  He found that fully 90 percent
+of the code in the Fortran Scientific Subroutine Package fits neatly into this
+paradigm.  One of the reasons for the success of Lisp as a programming language
+is that lists provide a standard medium for expressing ordered collections so
+that they can be manipulated using higher-order operations.  The programming
+language APL owes much of its power and appeal to a similar choice. In APL all
+data are represented as arrays, and there is a universal and convenient set of
+generic operators for all sorts of array operations.}
+
+Sequences, implemented here as lists, serve as a conventional interface that
+permits us to combine processing modules.  Additionally, when we uniformly
+represent structures as sequences, we have localized the data-structure
+dependencies in our programs to a small number of sequence operations.  By
+changing these, we can experiment with alternative representations of
+sequences, while leaving the overall design of our programs intact.  We will
+exploit this capability in @ref{3.5}, when we generalize the
+sequence-processing paradigm to admit infinite sequences.
+
+@quotation
+@strong{@anchor{Exercise 2.33}Exercise 2.33:} Fill in the missing expressions
+to complete the following definitions of some basic list-manipulation
+operations as accumulations:
+
+@lisp
+(define (map p sequence)
+  (accumulate (lambda (x y) ⟨??⟩) 
+              nil sequence))
+
+(define (append seq1 seq2)
+  (accumulate cons ⟨??⟩ ⟨??⟩))
+
+(define (length sequence)
+  (accumulate ⟨??⟩ 0 sequence))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.34}Exercise 2.34:} Evaluating a polynomial in @math{x}
+at a given value of @math{x} can be formulated as an accumulation.  We evaluate
+the polynomial
+@ifinfo
+
+@example
+a_n x^n + a_(n-1) x^(n-1) + ... + a_1 x + a_0
+@end example
+
+@end ifinfo
+@tex
+\[ % :35:
+  {a_n x^n} + {a_{n-1} x^{n-1}} + \dots + {a_1 x} + a_0  \]
+@end tex
+@noindent
+using a well-known algorithm called @newterm{Horner's rule}, which structures
+the computation as
+@ifinfo
+
+@example
+(... (a_n x + a_(n-1)) x + ... + a_1) x + a_0
+@end example
+
+@end ifinfo
+@tex
+\[ % :36:
+  {(\dots (a_n x} + {a_{n-1}) x} + \dots + {a_1) x} + {a_0.}  \]
+@end tex
+@noindent
+In other words, we start with @math{a_n}, multiply by @math{x}, add
+@math{a_{n-1}}, multiply by @math{x}, and so on, until we reach
+@math{a_0}.@footnote{According to @ref{Knuth 1981}, this rule was formulated by
+W. G. Horner early in the nineteenth century, but the method was actually used
+by Newton over a hundred years earlier.  Horner's rule evaluates the polynomial
+using fewer additions and multiplications than does the straightforward method
+of first computing @math{{a_n x^n}}, then adding
+@math{{a_{n-1}x^{n-1}}}, and so on.  In fact, it is possible to prove
+that any algorithm for evaluating arbitrary polynomials must use at least as
+many additions and multiplications as does Horner's rule, and thus Horner's
+rule is an optimal algorithm for polynomial evaluation.  This was proved (for
+the number of additions) by A. M. Ostrowski in a 1954 paper that essentially
+founded the modern study of optimal algorithms.  The analogous statement for
+multiplications was proved by V. Y. Pan in 1966.  The book by @ref{Borodin and Munro (1975)} 
+provides an overview of these and other results about optimal
+algorithms.}
+
+Fill in the following template to produce a procedure that evaluates a
+polynomial using Horner's rule.  Assume that the coefficients of the polynomial
+are arranged in a sequence, from @math{a_0} through @math{a_n}.
+
+@lisp
+(define 
+  (horner-eval x coefficient-sequence)
+  (accumulate 
+   (lambda (this-coeff higher-terms)
+     ⟨??⟩)
+   0
+   coefficient-sequence))
+@end lisp
+
+For example, to compute @math{{1 + 3x} + {5x^3 + x^5}} at @math{{x = 2}} you
+would evaluate
+
+@lisp
+(horner-eval 2 (list 1 3 0 5 0 1))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.35}Exercise 2.35:} Redefine @code{count-leaves} from
+@ref{2.2.2} as an accumulation:
+
+@lisp
+(define (count-leaves t)
+  (accumulate ⟨??⟩ ⟨??⟩ (map ⟨??⟩ ⟨??⟩)))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.36}Exercise 2.36:} The procedure @code{accumulate-n}
+is similar to @code{accumulate} except that it takes as its third argument a
+sequence of sequences, which are all assumed to have the same number of
+elements.  It applies the designated accumulation procedure to combine all the
+first elements of the sequences, all the second elements of the sequences, and
+so on, and returns a sequence of the results.  For instance, if @code{s} is a
+sequence containing four sequences, @code{((1 2 3) (4 5 6) (7 8 9) (10 11
+12)),} then the value of @code{(accumulate-n + 0 s)} should be the sequence
+@code{(22 26 30)}.  Fill in the missing expressions in the following definition
+of @code{accumulate-n}:
+
+@lisp
+(define (accumulate-n op init seqs)
+  (if (null? (car seqs))
+      nil
+      (cons (accumulate op init ⟨??⟩)
+            (accumulate-n op init ⟨??⟩))))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.37}Exercise 2.37:}
+Suppose we represent vectors @b{v} = @math{{(v_i)}} as sequences of numbers, and
+matrices @b{m} = @math{{(m_{ij})}} as sequences of vectors (the rows of the
+matrix).  For example, the matrix
+@ifinfo
+
+@example
++-         -+
+|  1 2 3 4  |
+|  4 5 6 6  |
+|  6 7 8 9  |
++-         -+
+@end example
+
+@end ifinfo
+@tex
+\[ % :37:
+  
+\left(\matrix{	1 & 2 & 3 & 4 \cr
+		4 & 5 & 6 & 6 \cr
+		6 & 7 & 8 & 9 \cr }\right)  \]
+@end tex
+@noindent
+is represented as the sequence @code{((1 2 3 4) (4 5 6 6) (6 7 8 9))}.  With
+this representation, we can use sequence operations to concisely express the
+basic matrix and vector operations.  These operations (which are described in
+any book on matrix algebra) are the following:
+@ifinfo
+
+@example
+                                       __
+(dot-product v w)      returns the sum >_i v_i w_i
+
+(matrix-*-vector m v)  returns the vector t,
+                                   __
+                       where t_i = >_j m_(ij) v_j
+
+(matrix-*-matrix m n)  returns the matrix p,
+                                      __
+                       where p_(ij) = >_k m_(ik) n_(kj)
+
+(transpose m)          returns the matrix n,
+                       where n_(ij) = m_(ji)
+@end example
+
+@end ifinfo
+@tex
+\[ % :38:
+  
+\eqalign{ 
+	\text{(dot-product v w)} 	& \text{returns the sum}\;\Sigma_i v_i w_i; \cr
+	\text{(matrix-*-vector m v)} 	& \text{returns the vector}\;{\bf t}, \cr
+		& \text{where}\; t_i = \Sigma_j m_{ij} v_j; \cr
+	\text{(matrix-*-matrix m n)} 	& \text{returns the matrix}\;{\bf p}, \cr
+		& \text{where}\; p_{ij} = \Sigma_k m_{ik} n_{kj}; \cr
+	\text{(transpose m)} 		& \text{returns the matrix}\;{\bf n}, \cr
+		& \text{where}\; n_{ij} = m_{ji}. \cr
+}  \]
+@end tex
+We can define the dot product as@footnote{This definition uses the extended
+version of @code{map} described in @ref{Footnote 78}.}
+
+@lisp
+(define (dot-product v w)
+  (accumulate + 0 (map * v w)))
+@end lisp
+
+Fill in the missing expressions in the following procedures for computing the
+other matrix operations.  (The procedure @code{accumulate-n} is defined in
+@ref{Exercise 2.36}.)
+
+@lisp
+(define (matrix-*-vector m v)
+  (map ⟨??⟩ m))
+
+(define (transpose mat)
+  (accumulate-n ⟨??⟩ ⟨??⟩ mat))
+
+(define (matrix-*-matrix m n)
+  (let ((cols (transpose n)))
+    (map ⟨??⟩ m)))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.38}Exercise 2.38:} The @code{accumulate} procedure
+is also known as @code{fold-right}, because it combines the first element of
+the sequence with the result of combining all the elements to the right.  There
+is also a @code{fold-left}, which is similar to @code{fold-right}, except that
+it combines elements working in the opposite direction:
+
+@lisp
+(define (fold-left op initial sequence)
+  (define (iter result rest)
+    (if (null? rest)
+        result
+        (iter (op result (car rest))
+              (cdr rest))))
+  (iter initial sequence))
+@end lisp
+
+What are the values of
+
+@lisp
+(fold-right / 1 (list 1 2 3))
+(fold-left  / 1 (list 1 2 3))
+(fold-right list nil (list 1 2 3))
+(fold-left  list nil (list 1 2 3))
+@end lisp
+
+Give a property that @code{op} should satisfy to guarantee that
+@code{fold-right} and @code{fold-left} will produce the same values for any
+sequence.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.39}Exercise 2.39:} Complete the following
+definitions of @code{reverse} (@ref{Exercise 2.18}) in terms of
+@code{fold-right} and @code{fold-left} from @ref{Exercise 2.38}:
+
+@lisp
+(define (reverse sequence)
+  (fold-right 
+   (lambda (x y) ⟨??⟩) nil sequence))
+
+(define (reverse sequence)
+  (fold-left 
+   (lambda (x y) ⟨??⟩) nil sequence))
+@end lisp
+@end quotation
+
+@subsubheading Nested Mappings
+
+We can extend the sequence paradigm to include many computations that are
+commonly expressed using nested loops.@footnote{This approach to nested
+mappings was shown to us by David Turner, whose languages KRC and Miranda
+provide elegant formalisms for dealing with these constructs.  The examples in
+this section (see also @ref{Exercise 2.42}) are adapted from @ref{Turner 1981}.  In
+@ref{3.5.3}, we'll see how this approach generalizes to infinite
+sequences.} Consider this problem: Given a positive integer @math{n}, find all
+ordered pairs of distinct positive integers @math{i} and @math{j}, where 
+@math{{1 \le j} < {i \le n}}, such that @math{{i + j}} is prime.  For example, if @math{n} is 6,
+then the pairs are the following:
+@ifinfo
+
+@example
+  i   | 2 3 4 4 5 6 6
+  j   | 1 2 1 3 2 1 5
+------+---------------
+i + j | 3 5 5 7 7 7 11
+@end example
+
+@end ifinfo
+@tex
+\[ % :39:
+ 
+\begin{array}{c|ccccccc}
+i 	& 2 & 3 & 4 & 4 & 5 & 6 & 6 \\
+j 	& 1 & 2 & 1 & 3 & 2 & 1 & 5 \\
+\hline
+i + j	& 3 & 5 & 5 & 7 & 7 & 7 & 11 
+\end{array}
+\]
+@end tex
+A natural way to organize this computation is to generate the sequence of all
+ordered pairs of positive integers less than or equal to @math{n}, filter to
+select those pairs whose sum is prime, and then, for each pair @math{{(i, j)}}
+that passes through the filter, produce the triple @math{{(i, j, i + j)}}.
+
+Here is a way to generate the sequence of pairs: For each integer @math{{i \le n}}, 
+enumerate the integers @math{{j < i}}, and for each such @math{i} and @math{j}
+generate the pair @math{{(i, j)}}.  In terms of sequence operations, we map along
+the sequence @code{(enumerate-interval 1 n)}.  For each @math{i} in this sequence,
+we map along the sequence @code{(enumerate-interval 1 (- i 1))}.  For each
+@math{j} in this latter sequence, we generate the pair @code{(list i j)}.  This
+gives us a sequence of pairs for each @math{i}.  Combining all the sequences for
+all the @math{i} (by accumulating with @code{append}) produces the required
+sequence of pairs:@footnote{We're representing a pair here as a list of two
+elements rather than as a Lisp pair.  Thus, the ``pair'' @math{{(i, j)}} is
+represented as @code{(list i j)}, not @code{(cons i j)}.}
+
+@lisp
+(accumulate 
+ append
+ nil
+ (map (lambda (i)
+        (map (lambda (j) 
+               (list i j))
+             (enumerate-interval 1 (- i 1))))
+      (enumerate-interval 1 n)))
+@end lisp
+
+@noindent
+The combination of mapping and accumulating with @code{append} is so common in
+this sort of program that we will isolate it as a separate procedure:
+
+@lisp
+(define (flatmap proc seq)
+  (accumulate append nil (map proc seq)))
+@end lisp
+
+@noindent
+Now filter this sequence of pairs to find those whose sum is prime. The filter
+predicate is called for each element of the sequence; its argument is a pair
+and it must extract the integers from the pair.  Thus, the predicate to apply
+to each element in the sequence is
+
+@lisp
+(define (prime-sum? pair)
+  (prime? (+ (car pair) (cadr pair))))
+@end lisp
+
+@noindent
+Finally, generate the sequence of results by mapping over the filtered pairs
+using the following procedure, which constructs a triple consisting of the two
+elements of the pair along with their sum:
+
+@lisp
+(define (make-pair-sum pair)
+  (list (car pair) 
+        (cadr pair) 
+        (+ (car pair) (cadr pair))))
+@end lisp
+
+@noindent
+Combining all these steps yields the complete procedure:
+
+@lisp
+(define (prime-sum-pairs n)
+  (map make-pair-sum
+       (filter 
+        prime-sum?
+        (flatmap
+         (lambda (i)
+           (map (lambda (j) 
+                  (list i j))
+                (enumerate-interval 
+                 1 
+                 (- i 1))))
+         (enumerate-interval 1 n)))))
+@end lisp
+
+@noindent
+Nested mappings are also useful for sequences other than those that enumerate
+intervals.  Suppose we wish to generate all the permutations of a set @math{{S;}}
+that is, all the ways of ordering the items in the set.  For instance, the
+permutations of @math{{\{1, 2, 3\}}} are @math{{\{1, 2, 3\}}}, @math{{\{1, 3, 2\}}}, @math{{\{2, 1, 3\}}}, @math{{\{2, 3, 1\}}},
+@math{{\{3, 1, 2\}}}, and @math{{\{3, 2, 1\}}}.  Here is a plan for generating the permutations of
+@math{S}: For each item @math{x} in @math{S}, recursively generate the sequence of
+permutations of @math{{S - x}},@footnote{The set @math{{S - x}} is the set of all
+elements of @math{S}, excluding @math{x}.} and adjoin @math{x} to the front of each one.
+This yields, for each @math{x} in @math{S}, the sequence of permutations of @math{S}
+that begin with @math{x}.  Combining these sequences for all @math{x} gives all the
+permutations of @math{S}:@footnote{Semicolons in Scheme code are used to introduce
+@newterm{comments}.  Everything from the semicolon to the end of the line is
+ignored by the interpreter.  In this book we don't use many comments; we try to
+make our programs self-documenting by using descriptive names.}
+
+@lisp
+(define (permutations s)
+  (if (null? s)   @r{; empty set?}
+      (list nil)  @r{; sequence containing empty set}
+      (flatmap (lambda (x)
+                 (map (lambda (p) 
+                        (cons x p))
+                      (permutations 
+                       (remove x s))))
+               s)))
+@end lisp
+
+@noindent
+Notice how this strategy reduces the problem of generating permutations of
+@math{S} to the problem of generating the permutations of sets with fewer elements
+than @math{S}.  In the terminal case, we work our way down to the empty list,
+which represents a set of no elements.  For this, we generate @code{(list
+nil)}, which is a sequence with one item, namely the set with no elements.  The
+@code{remove} procedure used in @code{permutations} returns all the items in a
+given sequence except for a given item.  This can be expressed as a simple
+filter:
+
+@lisp
+(define (remove item sequence)
+  (filter (lambda (x) (not (= x item)))
+          sequence))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 2.40}Exercise 2.40:} Define a procedure
+@code{unique-pairs} that, given an integer @math{n}, generates the sequence of
+pairs @math{{(i, j)}} with @math{{1 \le j} < {i \le n}}.  Use @code{unique-pairs}
+to simplify the definition of @code{prime-sum-pairs} given above.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.41}Exercise 2.41:} Write a procedure to find all
+ordered triples of distinct positive integers @math{i}, @math{j}, and @math{k} less than
+or equal to a given integer @math{n} that sum to a given integer @math{s}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.42}Exercise 2.42:} The ``eight-queens puzzle'' asks
+how to place eight queens on a chessboard so that no queen is in check from any
+other (i.e., no two queens are in the same row, column, or diagonal).  One
+possible solution is shown in @ref{Figure 2.8}.  One way to solve the puzzle is
+to work across the board, placing a queen in each column.  Once we have placed
+@math{{k - 1}} queens, we must place the @math{k^{\text{th}}} queen in a position where it does
+not check any of the queens already on the board.  We can formulate this
+approach recursively: Assume that we have already generated the sequence of all
+possible ways to place @math{{k - 1}} queens in the first @math{{k - 1}} columns of the
+board.  For each of these ways, generate an extended set of positions by
+placing a queen in each row of the @math{k^{\text{th}}} column.  Now filter these, keeping
+only the positions for which the queen in the @math{k^{\text{th}}} column is safe with
+respect to the other queens.  This produces the sequence of all ways to place
+@math{k} queens in the first @math{k} columns.  By continuing this process, we will
+produce not only one solution, but all solutions to the puzzle.
+
+@float
+@anchor{Figure 2.8}
+@ifinfo
+@strong{Figure 2.8:} A solution to the eight-queens puzzle.
+
+@example
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   | Q |   |   |
++---+---+---+---+---+---+---+---+
+|   |   | Q |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+| Q |   |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   | Q |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   | Q |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   |   |   |   |   | Q |
++---+---+---+---+---+---+---+---+
+|   | Q |   |   |   |   |   |   |
++---+---+---+---+---+---+---+---+
+|   |   |   | Q |   |   |   |   |
++---+---+---+---+---+---+---+---+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.8c,73mm,,,.std.svg}
+@caption{@strong{Figure 2.8:} A solution to the eight-queens puzzle.}
+@end iftex
+@end float
+
+We implement this solution as a procedure @code{queens}, which returns a
+sequence of all solutions to the problem of placing @math{n} queens on an
+@math{{n \times n}} chessboard.  @code{Queens} has an internal procedure
+@code{queen-cols} that returns the sequence of all ways to place queens in the
+first @math{k} columns of the board.
+
+@lisp
+(define (queens board-size)
+  (define (queen-cols k)
+    (if (= k 0)
+        (list empty-board)
+        (filter
+         (lambda (positions) 
+           (safe? k positions))
+         (flatmap
+          (lambda (rest-of-queens)
+            (map (lambda (new-row)
+                   (adjoin-position 
+                    new-row 
+                    k 
+                    rest-of-queens))
+                 (enumerate-interval 
+                  1 
+                  board-size)))
+          (queen-cols (- k 1))))))
+  (queen-cols board-size))
+@end lisp
+
+In this procedure @code{rest-of-queens} is a way to place @math{{k - 1}} queens in
+the first @math{{k - 1}} columns, and @code{new-row} is a proposed row in which to
+place the queen for the @math{k^{\text{th}}} column.  Complete the program by implementing
+the representation for sets of board positions, including the procedure
+@code{adjoin-position}, which adjoins a new row-column position to a set of
+positions, and @code{empty-board}, which represents an empty set of positions.
+You must also write the procedure @code{safe?}, which determines for a set of
+positions, whether the queen in the @math{k^{\text{th}}} column is safe with respect to the
+others.  (Note that we need only check whether the new queen is safe---the
+other queens are already guaranteed safe with respect to each other.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.43}Exercise 2.43:} Louis Reasoner is having a
+terrible time doing @ref{Exercise 2.42}.  His @code{queens} procedure seems to
+work, but it runs extremely slowly.  (Louis never does manage to wait long
+enough for it to solve even the @math{{6\times6}} case.)  When Louis asks Eva Lu Ator for
+help, she points out that he has interchanged the order of the nested mappings
+in the @code{flatmap}, writing it as
+
+@lisp
+(flatmap
+ (lambda (new-row)
+   (map (lambda (rest-of-queens)
+          (adjoin-position 
+           new-row k rest-of-queens))
+        (queen-cols (- k 1))))
+ (enumerate-interval 1 board-size))
+@end lisp
+
+Explain why this interchange makes the program run slowly.  Estimate how long
+it will take Louis's program to solve the eight-queens puzzle, assuming that
+the program in @ref{Exercise 2.42} solves the puzzle in time @math{T}.
+@end quotation
+

@@ -1,0 +1,335 @@
+@node	3.2.3, 3.2.4, 3.2.2, 3.2
+@subsection Frames as the Repository of Local State
+
+We can turn to the environment model to see how procedures and assignment can
+be used to represent objects with local state.  As an example, consider the
+``withdrawal processor'' from @ref{3.1.1} created by calling the
+procedure
+
+@lisp
+(define (make-withdraw balance)
+  (lambda (amount)
+    (if (>= balance amount)
+        (begin (set! balance 
+                     (- balance amount))
+               balance)
+        "Insufficient funds")))
+@end lisp
+
+@noindent
+Let us describe the evaluation of
+
+@lisp
+(define W1 (make-withdraw 100))
+@end lisp
+
+@noindent
+followed by
+
+@lisp
+(W1 50)
+@i{50}
+@end lisp
+
+@noindent
+@ref{Figure 3.6} shows the result of defining the @code{make-withdraw}
+procedure in the global environment.  This produces a procedure object that
+contains a pointer to the global environment.  So far, this is no different
+from the examples we have already seen, except that the body of the procedure
+is itself a λ-expression.
+
+@float
+@anchor{Figure 3.6}
+@ifinfo
+@quotation
+@strong{Figure 3.6:} Result of defining @code{make-withdraw} in the global environment.
+
+@example
+          +---------------------------+
+global -->| make-withdraw: --+        |
+env       +------------------|--------+
+                             |      ^
+                             V      |
+                         .---.---.  |
+                         | O | O-+--+
+                         `-|-^---'
+                           |
+                           V
+         parameters: balance
+         body: (lambda (amount)
+                 (if (>= balance amount)
+                     (begin (set! balance
+                                  (- balance amount))
+                            balance)
+                     "Insufficient funds"))
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.6c,128mm,,,.std.svg}
+@caption{@strong{Figure 3.6:} Result of defining @code{make-withdraw} in the global environment.}
+@end iftex
+@end float
+
+@noindent
+The interesting part of the computation happens when we apply the procedure
+@code{make-withdraw} to an argument:
+
+@lisp
+(define W1 (make-withdraw 100))
+@end lisp
+
+@noindent
+We begin, as usual, by setting up an environment E1 in which the formal
+parameter @code{balance} is bound to the argument 100.  Within this
+environment, we evaluate the body of @code{make-withdraw}, namely the
+λ-expression.  This constructs a new procedure object, whose code
+is as specified by the @code{lambda} and whose environment is E1, the
+environment in which the @code{lambda} was evaluated to produce the procedure.
+The resulting procedure object is the value returned by the call to
+@code{make-withdraw}.  This is bound to @code{W1} in the global environment,
+since the @code{define} itself is being evaluated in the global environment.
+@ref{Figure 3.7} shows the resulting environment structure.
+
+@float
+@anchor{Figure 3.7}
+@ifinfo
+@strong{Figure 3.7:} Result of evaluating @code{(define W1 (make-withdraw 100))}.
+
+@example
+          +-----------------------------------------------+
+          | make-withdraw: -----------------------+       |
+global -->|                                       |       |
+          | W1: --+                               |       |
+          +-------|-------------------------------|-------+
+                  |                ^              |     ^
+                  |                |              V     |
+                  |        +-------+------+   .---.---. |
+                  |  E1 -->| balance: 100 |   | O | O-+-+
+                  |        +--------------+   `-|-^---'
+                  V                ^            |
+              .---.---.            |            V
+            +-+-O | O-+------------+    parameters: balance
+            | `---^---'                 body: ...
+            V
+    parameters: amount
+    body: (if (>= balance amount)
+              (begin (set! balance (- balance amount))
+                     balance)
+              "Insufficient funds")
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.7b,145mm,,,.std.svg}
+@caption{@strong{Figure 3.7:} Result of evaluating @code{(define W1 (make-withdraw 100))}.}
+@end iftex
+@end float
+
+Now we can analyze what happens when @code{W1} is applied to an argument:
+
+@lisp
+(W1 50)
+@i{50}
+@end lisp
+
+@noindent
+We begin by constructing a frame in which @code{amount}, the formal parameter
+of @code{W1}, is bound to the argument 50.  The crucial point to observe is
+that this frame has as its enclosing environment not the global environment,
+but rather the environment E1, because this is the environment that is
+specified by the @code{W1} procedure object.  Within this new environment, we
+evaluate the body of the procedure:
+
+@lisp
+(if (>= balance amount)
+    (begin (set! balance (- balance amount))
+           balance)
+    "Insufficient funds")
+@end lisp
+
+@noindent
+The resulting environment structure is shown in @ref{Figure 3.8}.  The
+expression being evaluated references both @code{amount} and @code{balance}.
+@code{Amount} will be found in the first frame in the environment, while
+@code{balance} will be found by following the enclosing-environment pointer to
+E1.
+
+@float
+@anchor{Figure 3.8}
+@ifinfo
+@strong{Figure 3.8:} Environments created by applying the procedure object @code{W1}.
+
+@example
+          +---------------------------------------------------+
+          | make-withdraw: ...                                |
+global -->|                                                   |
+env       | W1: --+                                           |
+          +-------|-------------------------------------------+
+                  |               ^
+                  |               |
+                  |       +-------+------+ Here is the balance
+                  | E1 -->| balance: 100 | that will be changed
+                  |       +--------------+ by the set!.
+                  V               ^   ^
+              .---.---.           |   +----+
+              | O | O-+-----------+        |
+              `-|-^---'             +------+-----+
+                |                   | amount: 50 |
+                V                   +------------+
+      parameters: amount   (if (>= balance amount)
+      body: ...                (begin (set! balance
+                                            (- balance amount))
+                                      balance)
+                               "Insufficient funds")
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.8c,145mm,,,.std.svg}
+@caption{@strong{Figure 3.8:} Environments created by applying the procedure object @code{W1}.}
+@end iftex
+@end float
+
+When the @code{set!} is executed, the binding of @code{balance} in E1 is
+changed.  At the completion of the call to @code{W1}, @code{balance} is 50, and
+the frame that contains @code{balance} is still pointed to by the procedure
+object @code{W1}.  The frame that binds @code{amount} (in which we executed the
+code that changed @code{balance}) is no longer relevant, since the procedure
+call that constructed it has terminated, and there are no pointers to that
+frame from other parts of the environment.  The next time @code{W1} is called,
+this will build a new frame that binds @code{amount} and whose enclosing
+environment is E1.  We see that E1 serves as the ``place'' that holds the local
+state variable for the procedure object @code{W1}.  @ref{Figure 3.9} shows the
+situation after the call to @code{W1}.
+
+@float
+@anchor{Figure 3.9}
+@ifinfo
+@strong{Figure 3.9:} Environments after the call to @code{W1}.
+
+@example
+           +------------------------------------+
+           | make-withdraw: ...                 |
+global --->|                                    |
+env        | W1: --+                            |
+           +-------|----------------------------+
+                   |                   ^
+                   |                   |
+                   |            +------+------+
+                   |     E1 --->| balance: 50 |
+                   |            +-------------+
+                   V                   ^
+               .---.---.               |
+               | O | O-+---------------+
+               `-|-^---'
+                 |
+                 V
+          parameters: amount
+          body: ...
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.9b,147mm,,,.std.svg}
+@caption{@strong{Figure 3.9:} Environments after the call to @code{W1}.}
+@end iftex
+@end float
+
+Observe what happens when we create a second ``withdraw'' object by making
+another call to @code{make-withdraw}:
+
+@lisp
+(define W2 (make-withdraw 100))
+@end lisp
+
+@noindent
+This produces the environment structure of @ref{Figure 3.10}, which shows that
+@code{W2} is a procedure object, that is, a pair with some code and an
+environment.  The environment E2 for @code{W2} was created by the call to
+@code{make-withdraw}.  It contains a frame with its own local binding for
+@code{balance}.  On the other hand, @code{W1} and @code{W2} have the same code:
+the code specified by the λ-expression in the body of
+@code{make-withdraw}.@footnote{Whether @code{W1} and @code{W2} share the same
+physical code stored in the computer, or whether they each keep a copy of the
+code, is a detail of the implementation.  For the interpreter we implement in
+@ref{Chapter 4}, the code is in fact shared.} We see here why @code{W1} and
+@code{W2} behave as independent objects.  Calls to @code{W1} reference the
+state variable @code{balance} stored in E1, whereas calls to @code{W2}
+reference the @code{balance} stored in E2. Thus, changes to the local state of
+one object do not affect the other object.
+
+@float
+@anchor{Figure 3.10}
+@ifinfo
+@strong{Figure 3.10:} Using @code{(define W2 (make-withdraw 100))} to create a second object.
+
+@example
+         +-------------------------------------------------+
+         | make-withdraw: ...                              |
+global ->| W2: ---------------------------+                |
+env      | W1: --+                        |                |
+         +-------|------------------------|----------------+
+                 |              ^         |              ^
+                 |              |         |              |
+                 |       +------+------+  |       +------+-------+
+                 |  E1 ->| balance: 50 |  |  E2 ->| balance: 100 |
+                 |       +-------------+  |       +--------------+
+                 V              ^         V              ^
+             .---.---.          |     .---.---.          |
+             | O | O-+----------+     | O | O-+----------+
+             `-|-^---'                `-|-^---'
+               | +----------------------+
+               V V
+        parameters: amount
+        body: ...
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap3/Fig3.10b,147mm,,,.std.svg}
+@caption{@strong{Figure 3.10:} Using @code{(define W2 (make-withdraw 100))} to create a second object.}
+@end iftex
+@end float
+
+@quotation
+@strong{@anchor{Exercise 3.10}Exercise 3.10:} In the @code{make-withdraw}
+procedure, the local variable @code{balance} is created as a parameter of
+@code{make-withdraw}.  We could also create the local state variable
+explicitly, using @code{let}, as follows:
+
+@lisp
+(define (make-withdraw initial-amount)
+  (let ((balance initial-amount))
+    (lambda (amount)
+      (if (>= balance amount)
+          (begin (set! balance 
+                       (- balance amount))
+                 balance)
+          "Insufficient funds"))))
+@end lisp
+
+Recall from @ref{1.3.2} that @code{let} is simply syntactic sugar for a
+procedure call:
+
+@lisp
+(let ((⟨@var{var}⟩ ⟨@var{exp}⟩)) ⟨@var{body}⟩)
+@end lisp
+
+@noindent
+is interpreted as an alternate syntax for
+
+@lisp
+((lambda (⟨@var{var}⟩) ⟨@var{body}⟩) ⟨@var{exp}⟩)
+@end lisp
+
+Use the environment model to analyze this alternate version of
+@code{make-withdraw}, drawing figures like the ones above to illustrate the
+interactions
+
+@lisp
+(define W1 (make-withdraw 100))
+(W1 50)
+(define W2 (make-withdraw 100))
+@end lisp
+
+Show that the two versions of @code{make-withdraw} create objects with the same
+behavior.  How do the environment structures differ for the two versions?
+@end quotation
+

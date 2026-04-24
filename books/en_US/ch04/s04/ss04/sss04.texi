@@ -1,0 +1,263 @@
+@node 4.4.4.4, 4.4.4.5, 4.4.4.3, 4.4.4
+@subsubsection Rules and Unification
+
+@code{Apply-rules} is the rule analog of @code{find-assertions} 
+(@ref{4.4.4.3}).  It takes as input a pattern and a frame, and it forms a stream
+of extension frames by applying rules from the data base.
+@code{Stream-flatmap} maps @code{apply-a-rule} down the stream of possibly
+applicable rules (selected by @code{fetch-rules}, @ref{4.4.4.5}) and
+combines the resulting streams of frames.
+
+@lisp
+(define (apply-rules pattern frame)
+  (stream-flatmap 
+   (lambda (rule)
+     (apply-a-rule rule pattern frame))
+   (fetch-rules pattern frame)))
+@end lisp
+
+@noindent
+@code{Apply-a-rule} applies rules using the method outlined in 
+@ref{4.4.2}.  It first augments its argument frame by unifying the rule
+conclusion with the pattern in the given frame.  If this succeeds, it evaluates
+the rule body in this new frame.
+
+Before any of this happens, however, the program renames all the variables in
+the rule with unique new names.  The reason for this is to prevent the
+variables for different rule applications from becoming confused with each
+other.  For instance, if two rules both use a variable named @code{?x}, then
+each one may add a binding for @code{?x} to the frame when it is applied.
+These two @code{?x}'s have nothing to do with each other, and we should not be
+fooled into thinking that the two bindings must be consistent.  Rather than
+rename variables, we could devise a more clever environment structure; however,
+the renaming approach we have chosen here is the most straightforward, even if
+not the most efficient.  (See @ref{Exercise 4.79}.)  Here is the
+@code{apply-a-rule} procedure:
+
+@lisp
+(define (apply-a-rule rule
+                      query-pattern
+                      query-frame)
+  (let ((clean-rule 
+         (rename-variables-in rule)))
+    (let ((unify-result
+           (unify-match query-pattern
+                        (conclusion clean-rule)
+                        query-frame)))
+      (if (eq? unify-result 'failed)
+          the-empty-stream
+          (qeval (rule-body clean-rule)
+                 (singleton-stream 
+                  unify-result))))))
+@end lisp
+
+@noindent
+The selectors @code{rule-body} and @code{conclusion} that extract parts of a
+rule are defined in @ref{4.4.4.7}.
+
+We generate unique variable names by associating a unique identifier (such as a
+number) with each rule application and combining this identifier with the
+original variable names.  For example, if the rule-application identifier is 7,
+we might change each @code{?x} in the rule to @code{?x-7} and each @code{?y} in
+the rule to @code{?y-7}.  (@code{Make-new-variable} and
+@code{new-rule-application-id} are included with the syntax procedures in
+@ref{4.4.4.7}.)
+
+@lisp
+(define (rename-variables-in rule)
+  (let ((rule-application-id 
+         (new-rule-application-id)))
+    (define (tree-walk exp)
+      (cond ((var? exp)
+             (make-new-variable 
+              exp 
+              rule-application-id))
+            ((pair? exp)
+             (cons (tree-walk (car exp))
+                   (tree-walk (cdr exp))))
+            (else exp)))
+    (tree-walk rule)))
+@end lisp
+
+@noindent
+The unification algorithm is implemented as a procedure that takes as inputs
+two patterns and a frame and returns either the extended frame or the symbol
+@code{failed}.  The unifier is like the pattern matcher except that it is
+symmetrical---variables are allowed on both sides of the match.
+@code{Unify-match} is basically the same as @code{pattern-match}, except that
+there is extra code (marked ``@code{***}'' below) to handle the case where the
+object on the right side of the match is a variable.
+
+@lisp
+(define (unify-match p1 p2 frame)
+  (cond ((eq? frame 'failed) 'failed)
+        ((equal? p1 p2) frame)
+        ((var? p1)
+         (extend-if-possible p1 p2 frame))
+        ((var? p2)
+         (extend-if-possible 
+          p2 
+          p1 
+          frame))        ; @r{***}
+        ((and (pair? p1) 
+              (pair? p2))
+         (unify-match 
+          (cdr p1) 
+          (cdr p2)
+          (unify-match 
+           (car p1)
+           (car p2)
+           frame)))
+        (else 'failed)))
+@end lisp
+
+@noindent
+In unification, as in one-sided pattern matching, we want to accept a proposed
+extension of the frame only if it is consistent with existing bindings.  The
+procedure @code{extend-if-possible} used in unification is the same as the
+@code{extend-if-consistent} used in pattern matching except for two special
+checks, marked ``@code{***}'' in the program below.  In the first case, if the
+variable we are trying to match is not bound, but the value we are trying to
+match it with is itself a (different) variable, it is necessary to check to see
+if the value is bound, and if so, to match its value.  If both parties to the
+match are unbound, we may bind either to the other.
+
+The second check deals with attempts to bind a variable to a pattern that
+includes that variable.  Such a situation can occur whenever a variable is
+repeated in both patterns.  Consider, for example, unifying the two patterns
+@code{(?x ?x)} and @code{(?y ⟨@var{expression involving @code{?y}}⟩)} in a
+frame where both @code{?x} and @code{?y} are unbound.  First @code{?x} is
+matched against @code{?y}, making a binding of @code{?x} to @code{?y}.  Next,
+the same @code{?x} is matched against the given expression involving @code{?y}.
+Since @code{?x} is already bound to @code{?y}, this results in matching
+@code{?y} against the expression.  If we think of the unifier as finding a set
+of values for the pattern variables that make the patterns the same, then these
+patterns imply instructions to find a @code{?y} such that @code{?y} is equal to
+the expression involving @code{?y}.  There is no general method for solving
+such equations, so we reject such bindings; these cases are recognized by the
+predicate @code{depends-on?}.@footnote{In general, unifying @code{?y} with an
+expression involving @code{?y} would require our being able to find a fixed
+point of the equation @code{?y} = @code{⟨}@var{expression involving @code{?y}}@code{⟩}.  It
+is sometimes possible to syntactically form an expression that appears to be
+the solution.  For example, @code{?y} = @code{(f ?y)} seems to have the fixed
+point @code{(f (f (f @r{…} )))}, which we can produce by beginning with the
+expression @code{(f ?y)} and repeatedly substituting @code{(f ?y)} for
+@code{?y}.  Unfortunately, not every such equation has a meaningful fixed
+point.  The issues that arise here are similar to the issues of manipulating
+infinite series in mathematics.  For example, we know that 2 is the solution to
+the equation @math{{y = 1 + y / 2}}.  Beginning with the expression @math{{1 + y / 2}}
+and repeatedly substituting @math{{1 + y / 2}} for @math{y} gives
+@ifinfo
+
+@example
+2 = y = 1 + y/2 = 1 + (1 + y/2)/2 = 1 + 1/2 + y/4 = ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :78:
+  2 = y = 1 + {y \over 2} = 1 + {{1\over2}\left(1 + {y \over 2}\right)} = 
+  1 + {1\over2} + {y \over 4} = {\dots,}  \]
+@end tex
+@noindent
+which leads to
+@ifinfo
+
+@example
+2 = 1 + 1/2 + 1/4 + 1/8 + ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :79:
+  2 = 1 + {1\over2} + {1\over4} + {1\over8} + {\dots.}  \]
+@end tex
+@noindent
+However, if we try the same manipulation beginning with the observation that @math{{−1}} 
+is the solution to the equation @math{{y = 1 + 2y}}, we obtain
+@ifinfo
+
+@example
+-1 = y = 1 + 2y = 1 + 2(1 + 2y) = 1 + 2 + 4y = ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :80:
+  {-1} = y = 1 + {2y} = 1 + {2(1 + 2y)} = 1 + 2 + {4y} = {\dots,}  \]
+@end tex
+@noindent
+which leads to
+@ifinfo
+
+@example
+-1 = 1 + 2 + 4 + 8 + ...
+@end example
+
+@end ifinfo
+@tex
+\[ % :81:
+  -1 = 1 + 2 + 4 + 8 + {\dots.}  \]
+@end tex
+@noindent
+Although the formal manipulations used in deriving these two equations are
+identical, the first result is a valid assertion about infinite series but the
+second is not.  Similarly, for our unification results, reasoning with an
+arbitrary syntactically constructed expression may lead to errors.}  On the
+other hand, we do not want to reject attempts to bind a variable to itself.
+For example, consider unifying @code{(?x ?x)} and @code{(?y ?y)}.  The second
+attempt to bind @code{?x} to @code{?y} matches @code{?y} (the stored value of
+@code{?x}) against @code{?y} (the new value of @code{?x}).  This is taken care
+of by the @code{equal?}  clause of @code{unify-match}.
+
+@lisp
+(define (extend-if-possible var val frame)
+  (let ((binding (binding-in-frame var frame)))
+    (cond (binding
+           (unify-match
+            (binding-value binding) val frame))
+          ((var? val)                   @r{; ***}
+           (let ((binding 
+                  (binding-in-frame 
+                   val
+                   frame)))
+             (if binding
+                 (unify-match
+                  var 
+                  (binding-value binding) 
+                  frame)
+                 (extend var val frame))))
+          ((depends-on? val var frame)  @r{; ***}
+           'failed)
+          (else (extend var val frame)))))
+@end lisp
+
+@noindent
+@code{Depends-on?} is a predicate that tests whether an expression proposed to
+be the value of a pattern variable depends on the variable.  This must be done
+relative to the current frame because the expression may contain occurrences of
+a variable that already has a value that depends on our test variable.  The
+structure of @code{depends-on?} is a simple recursive tree walk in which we
+substitute for the values of variables whenever necessary.
+
+@lisp
+(define (depends-on? exp var frame)
+  (define (tree-walk e)
+    (cond ((var? e)
+           (if (equal? var e)
+               true
+               (let
+                 ((b (binding-in-frame 
+                      e 
+                      frame)))
+                  (if b
+                      (tree-walk 
+                       (binding-value b))
+                      false))))
+          ((pair? e)
+           (or (tree-walk (car e))
+               (tree-walk (cdr e))))
+          (else false)))
+  (tree-walk exp))
+@end lisp
+
