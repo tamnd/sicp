@@ -18,8 +18,11 @@ RUN apt-get update -qq && apt-get install -y --no-install-recommends \
     perl \
     ruby \
     ruby-nokogiri \
+    texinfo \
+    nodejs \
     zip \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/share/texinfo /usr/local/share/texinfo
 
 # Install Inconsolata LGC (OpenType) so fontspec can find it by name
 RUN curl -fsSL \

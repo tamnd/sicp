@@ -29,6 +29,7 @@ jobs:
         run: docker pull ${{ env.BUILD_IMAGE }}
 
       - name: Build HTML for non-English languages
+        continue-on-error: true  # won't block deploy while Docker image rebuilds
         # English HTML is pre-built and committed to src/en_US/.
         # Other languages are generated here from their books/ sources.
         run: |
