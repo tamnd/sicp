@@ -1,4 +1,4 @@
-# Makefile for compiling sicp.epub from the sources.
+# Makefile for compiling sicp.epub and sicp.pdf from the sources.
 # (c) 2014 Andres Raba, GNU GPL v.3.
 
 # Constants
@@ -6,6 +6,7 @@
 DIR = html/
 SRC = sicp-pocket.texi          # book's Texinfo source
 GOAL = ../sicp.epub             # the end product of compilation
+PDF  = pdf/sicp.pdf             # PDF output
 NEXUS = $(DIR)index.xhtml       # the central file with table of contents
 META = content.opf toc.xhtml    # epub metafiles generated from NEXUS
 HTML = $(DIR)*.xhtml            # all the HTML files of the book
@@ -29,7 +30,7 @@ GITHUB = <a href=\"https://github.com/sarabander/sicp\"><img style=\"position: a
 
 # Targets
 
-all: $(GOAL)
+all: $(GOAL) $(PDF)
 # Add scripts to the unpacked HTML5 version that is to be read in a browser.
 	@if ! grep -m 1 -l 'browsertest' $(NEXUS); then \
 	  for file in $(HTML); do \
@@ -87,7 +88,8 @@ $(META): $(NEXUS) create_metafiles.rb
 	./create_metafiles.rb
 
 $(THUMB): $(COVER)
-	@inkscape -b "#fbfbfb" -C -e $(THUMB) -f $(DIR)fig/coverpage.std.svg > /dev/null
+	@inkscape --export-background="#fbfbfb" --export-area-page \
+	  --export-filename=$(THUMB) $(DIR)fig/coverpage.std.svg > /dev/null 2>&1
 
 $(GOAL): $(META) $(THUMB) $(FIG) $(CSS) $(FONT) mimetype META-INF/* LICENSE
 	@if [ -f $(GOAL) ]; then rm $(GOAL); fi; \
@@ -104,4 +106,9 @@ $(GOAL): $(META) $(THUMB) $(FIG) $(CSS) $(FONT) mimetype META-INF/* LICENSE
 	  index.xhtml $(DIR)css/* $(DIR)fig/* ; \
 	echo "done."
 
-.PHONY: all epub html
+pdf: $(PDF)
+
+$(PDF): $(SRC)
+	$(MAKE) -C pdf
+
+.PHONY: all epub html pdf

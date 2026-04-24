@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  release:
+    types: [created]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            texinfo \
+            texlive-latex-recommended \
+            texlive-fonts-recommended \
+            texlive-latex-extra \
+            inkscape \
+            ruby \
+            zip
+          gem install nokogiri
+
+      - name: Build PDF
+        run: make -C src/pdf
+
+      - name: Build epub
+        run: |
+          touch src/html/*.xhtml
+          make -C src epub
+
+      - name: Package HTML
+        run: |
+          cd src && zip -r ../sicp-html.zip html/
+
+      - name: Attach assets to release
+        run: |
+          gh release upload "${{ github.ref_name }}" \
+            src/pdf/sicp.pdf \
+            sicp.epub \
+            sicp-html.zip
+        env:
+          GH_TOKEN: ${{ github.token }}
