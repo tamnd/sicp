@@ -90,13 +90,15 @@ ifeq ($(LANG),en_US)
 	@./texi2any --no-warn --html --split=section --no-headers --iftex \
 	  --output $(DIR) $(SRC)
 else
-	@# texi2any 7.x only searches CWD + -I dirs for @include, not the
-	@# includer's directory — so pass every subdir of the book as -I.
+	@# Pre-flatten the source so texi2any doesn't need to resolve @include
+	@# paths (texi2any 7.x doesn't search the includer's dir, and using -I
+	@# per subdir causes same-named files like ss01.texi to collide).
 	@# --force writes output even with errors (e.g., @ref to untranslated nodes).
+	@../scripts/flatten-texi.pl $(SRC) > $(DIR)sicp-flat.texi
 	@texi2any --no-warn --html --split=section --no-headers --iftex --force \
 	  --set-customization-variable EXTENSION=xhtml \
-	  $(addprefix -I ,$(shell find ../books/$(LANG) -type d 2>/dev/null)) \
-	  --output $(DIR) $(SRC)
+	  --output $(DIR) $(DIR)sicp-flat.texi
+	@rm -f $(DIR)sicp-flat.texi
 endif
 	@grep -lZ 'This file redirects' $(HTML) | xargs -0 rm -f --
 	@echo "Replacing LaTeX with MathML..."
