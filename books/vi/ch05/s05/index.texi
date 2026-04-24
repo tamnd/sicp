@@ -1,0 +1,56 @@
+@node	5.5, References, 5.4, Chapter 5
+@section Biên Dịch
+
+Trình định giá điều khiển tường minh của @ref{5.4} là một máy thanh ghi có bộ điều khiển thông dịch các chương trình Scheme. Trong phần này ta sẽ thấy cách chạy các chương trình Scheme trên một máy thanh ghi có bộ điều khiển không phải là trình thông dịch Scheme.
+
+Máy trình định giá điều khiển tường minh là đa năng---nó có thể thực hiện bất kỳ quá trình tính toán nào có thể được mô tả bằng Scheme. Bộ điều khiển của trình định giá điều phối việc sử dụng các đường dữ liệu của nó để thực hiện phép tính mong muốn. Do đó, các đường dữ liệu của trình định giá là đa năng: Chúng đủ để thực hiện bất kỳ phép tính nào ta mong muốn, được cung cấp một bộ điều khiển thích hợp.@footnote{Đây là một tuyên bố lý thuyết. Ta không tuyên bố rằng các đường dữ liệu của trình định giá là một tập hợp đường dữ liệu đặc biệt tiện lợi hoặc hiệu quả cho một máy tính đa dụng. Ví dụ, chúng không tốt lắm để hiện thực hóa các phép tính dấu phẩy động hiệu suất cao hoặc các phép tính thao tác mạnh mẽ các vectơ bit.}
+
+Các máy tính đa dụng thương mại là các máy thanh ghi được tổ chức xung quanh một tập hợp các thanh ghi và phép toán cấu thành một tập hợp đường dữ liệu đa năng hiệu quả và tiện lợi. Bộ điều khiển cho một máy đa dụng là một trình thông dịch cho một ngôn ngữ máy thanh ghi như ngôn ngữ ta đã sử dụng. Ngôn ngữ này được gọi là @newterm{ngôn ngữ gốc} của máy, hoặc đơn giản là @newterm{ngôn ngữ máy}. Các chương trình được viết bằng ngôn ngữ máy là các chuỗi các lệnh sử dụng các đường dữ liệu của máy. Ví dụ, chuỗi lệnh của trình định giá điều khiển tường minh có thể được coi là một chương trình ngôn ngữ máy cho một máy tính đa dụng chứ không phải là bộ điều khiển cho một máy trình thông dịch chuyên dụng.
+
+Có hai chiến lược phổ biến để thu hẹp khoảng cách giữa các ngôn ngữ cấp cao hơn và các ngôn ngữ máy thanh ghi. Trình định giá điều khiển tường minh minh họa chiến lược thông dịch. Một trình thông dịch được viết bằng ngôn ngữ gốc của máy cấu hình máy để thực thi các chương trình được viết bằng một ngôn ngữ (được gọi là @newterm{ngôn ngữ nguồn}) có thể khác với ngôn ngữ gốc của máy thực hiện định giá. Các thủ tục nguyên thủy của ngôn ngữ nguồn được hiện thực hóa như một thư viện các chương con được viết bằng ngôn ngữ gốc của máy đã cho. Một chương trình cần được thông dịch (được gọi là @newterm{chương trình nguồn}) được biểu diễn như một cấu trúc dữ liệu. Trình thông dịch đi qua cấu trúc dữ liệu này, phân tích chương trình nguồn. Khi làm vậy, nó mô phỏng hành vi dự định của chương trình nguồn bằng cách gọi các chương con nguyên thủy thích hợp từ thư viện.
+
+Trong phần này, ta khám phá chiến lược thay thế là @newterm{biên dịch}. Một trình biên dịch cho một ngôn ngữ nguồn và máy đã cho dịch một chương trình nguồn thành một chương trình tương đương (được gọi là @newterm{chương trình đích}) được viết bằng ngôn ngữ gốc của máy. Trình biên dịch mà ta hiện thực hóa trong phần này dịch các chương trình được viết bằng Scheme thành các chuỗi các lệnh được thực thi bằng cách sử dụng các đường dữ liệu của máy trình định giá điều khiển tường minh.@footnote{Thực ra, máy chạy mã biên dịch có thể đơn giản hơn máy trình thông dịch, vì ta sẽ không sử dụng các thanh ghi @code{exp} và @code{unev}. Trình thông dịch sử dụng chúng để giữ các mảnh của các biểu thức chưa được định giá. Tuy nhiên, với trình biên dịch, các biểu thức này được xây dựng vào mã biên dịch mà máy thanh ghi sẽ chạy. Vì lý do tương tự, ta không cần các phép toán máy xử lý cú pháp biểu thức. Nhưng mã biên dịch sẽ sử dụng một số phép toán máy bổ sung (để biểu diễn các đối tượng thủ tục biên dịch) không xuất hiện trong máy trình định giá điều khiển tường minh.}
+
+So với thông dịch, biên dịch có thể cung cấp sự tăng đáng kể trong hiệu quả thực thi chương trình, như ta sẽ giải thích bên dưới trong tổng quan về trình biên dịch. Mặt khác, một trình thông dịch cung cấp môi trường mạnh mẽ hơn cho việc phát triển và gỡ lỗi chương trình tương tác, vì chương trình nguồn đang được thực thi có sẵn tại thời gian chạy để kiểm tra và sửa đổi. Ngoài ra, vì toàn bộ thư viện các nguyên thủy đều hiện diện, các chương trình mới có thể được xây dựng và thêm vào hệ thống trong quá trình gỡ lỗi.
+
+Xem xét các ưu điểm bổ sung của biên dịch và thông dịch, các môi trường phát triển chương trình hiện đại theo đuổi một chiến lược hỗn hợp. Các trình thông dịch Lisp nói chung được tổ chức để các thủ tục được thông dịch và các thủ tục được biên dịch có thể gọi nhau. Điều này cho phép lập trình viên biên dịch những phần của chương trình được giả định là đã gỡ lỗi, do đó đạt được lợi thế hiệu quả của biên dịch, trong khi vẫn giữ chế độ thực thi thông dịch cho những phần của chương trình đang trong quá trình phát triển và gỡ lỗi tương tác. Trong @ref{5.5.7}, sau khi ta đã hiện thực hóa trình biên dịch, ta sẽ chỉ ra cách giao tiếp nó với trình thông dịch của ta để tạo ra một hệ thống phát triển trình thông dịch-biên dịch tích hợp.
+
+@subsubheading Tổng quan về trình biên dịch
+
+Trình biên dịch của ta rất giống trình thông dịch của ta, cả về cấu trúc và chức năng mà nó thực hiện. Theo đó, các cơ chế được sử dụng bởi trình biên dịch để phân tích các biểu thức sẽ tương tự như những cơ chế được sử dụng bởi trình thông dịch. Hơn nữa, để dễ dàng giao tiếp mã được biên dịch và mã được thông dịch, ta sẽ thiết kế trình biên dịch để tạo ra mã tuân theo các quy ước sử dụng thanh ghi giống như trình thông dịch: Môi trường sẽ được giữ trong thanh ghi @code{env}, danh sách đối số sẽ được tích lũy trong @code{argl}, thủ tục cần áp dụng sẽ ở trong @code{proc}, các thủ tục sẽ trả về câu trả lời của chúng trong @code{val}, và vị trí mà một thủ tục nên trả về sẽ được giữ trong @code{continue}. Nói chung, trình biên dịch dịch một chương trình nguồn thành một chương trình đích thực hiện về cơ bản cùng các phép toán thanh ghi mà trình thông dịch sẽ thực hiện khi định giá cùng một chương trình nguồn.
+
+Mô tả này gợi ý một chiến lược để hiện thực hóa một trình biên dịch sơ bộ: Ta đi qua biểu thức theo cùng cách trình thông dịch làm. Khi ta gặp một lệnh thanh ghi mà trình thông dịch sẽ thực hiện khi định giá biểu thức, ta không thực thi lệnh mà thay vào đó tích lũy nó vào một chuỗi. Chuỗi các lệnh kết quả sẽ là mã đối tượng. Hãy quan sát lợi thế hiệu quả của biên dịch so với thông dịch. Mỗi lần trình thông dịch định giá một biểu thức---ví dụ, @code{(f 84 96)}---nó thực hiện công việc phân loại biểu thức (phát hiện rằng đây là một ứng dụng thủ tục) và kiểm tra cuối danh sách toán hạng (phát hiện rằng có hai toán hạng). Với trình biên dịch, biểu thức chỉ được phân tích một lần, khi chuỗi lệnh được tạo ra tại thời gian biên dịch. Mã đối tượng được tạo ra bởi trình biên dịch chỉ chứa các lệnh định giá toán tử và hai toán hạng, lắp ráp danh sách đối số, và áp dụng thủ tục (trong @code{proc}) cho các đối số (trong @code{argl}).
+
+Đây là cùng loại tối ưu hóa mà ta đã hiện thực hóa trong trình định giá phân tích của @ref{4.1.7}. Nhưng có thêm các cơ hội để đạt được hiệu quả trong mã biên dịch. Khi trình thông dịch chạy, nó theo một quá trình phải áp dụng được cho bất kỳ biểu thức nào trong ngôn ngữ. Ngược lại, một đoạn mã biên dịch nhất định có nghĩa là thực thi một biểu thức cụ thể nào đó. Điều này có thể tạo ra sự khác biệt lớn, ví dụ trong việc sử dụng ngăn xếp để lưu các thanh ghi. Khi trình thông dịch định giá một biểu thức, nó phải chuẩn bị cho bất kỳ tình huống bất ngờ nào. Trước khi định giá một biểu thức con, trình thông dịch lưu tất cả các thanh ghi sẽ cần sau này, vì biểu thức con có thể yêu cầu một định giá tùy ý. Một trình biên dịch, mặt khác, có thể khai thác cấu trúc của biểu thức cụ thể mà nó đang xử lý để tạo ra mã tránh các phép toán ngăn xếp không cần thiết.
+
+Để minh họa, hãy xem xét tổ hợp @code{(f 84 96)}. Trước khi trình thông dịch định giá toán tử của tổ hợp, nó chuẩn bị cho lần định giá này bằng cách lưu các thanh ghi chứa các toán hạng và môi trường, có giá trị sẽ cần sau đó. Trình thông dịch sau đó định giá toán tử để thu được kết quả trong @code{val}, khôi phục các thanh ghi đã lưu, và cuối cùng chuyển kết quả từ @code{val} sang @code{proc}. Tuy nhiên, trong biểu thức cụ thể mà ta đang xử lý, toán tử là ký hiệu @code{f}, định giá của nó được thực hiện bởi phép toán máy @code{lookup-variable-value}, không thay đổi bất kỳ thanh ghi nào. Trình biên dịch mà ta hiện thực hóa trong phần này sẽ tận dụng thực tế này và tạo ra mã định giá toán tử bằng lệnh
+
+@lisp
+(assign proc
+        (op lookup-variable-value)
+        (const f)
+        (reg env))
+@end lisp
+
+@noindent
+Mã này không chỉ tránh các lưu và khôi phục không cần thiết mà còn gán giá trị của tra cứu trực tiếp cho @code{proc}, trong khi trình thông dịch sẽ thu được kết quả trong @code{val} và sau đó chuyển cái này sang @code{proc}.
+
+Một trình biên dịch cũng có thể tối ưu hóa việc truy cập môi trường. Sau khi đã phân tích mã, trình biên dịch trong nhiều trường hợp có thể biết một biến cụ thể sẽ được đặt ở khung nào và truy cập trực tiếp vào khung đó, thay vì thực hiện tìm kiếm @code{lookup-variable-value}. Ta sẽ thảo luận về cách hiện thực hóa truy cập biến như vậy trong @ref{5.5.6}. Tuy nhiên, cho đến lúc đó, ta sẽ tập trung vào loại tối ưu hóa thanh ghi và ngăn xếp được mô tả ở trên. Có nhiều tối ưu hóa khác có thể được thực hiện bởi một trình biên dịch, chẳng hạn như mã hóa các phép toán nguyên thủy ``trong dòng'' thay vì sử dụng cơ chế @code{apply} chung (xem @ref{Exercise 5.38}); nhưng ta sẽ không nhấn mạnh điều này ở đây. Mục tiêu chính của ta trong phần này là minh họa quá trình biên dịch trong một ngữ cảnh đơn giản hóa (nhưng vẫn thú vị).
+
+@menu
+* 5.5.1::            Cấu Trúc của Trình Biên Dịch
+* 5.5.2::            Biên Dịch Các Biểu Thức
+* 5.5.3::            Biên Dịch Các Tổ Hợp
+* 5.5.4::            Kết Hợp Các Chuỗi Lệnh
+* 5.5.5::            Ví Dụ về Mã Biên Dịch
+* 5.5.6::            Địa Chỉ từ Vựng
+* 5.5.7::            Giao Tiếp Mã Biên Dịch với Trình Định Giá
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi
+@include ss05.texi
+@include ss06.texi
+@include ss07.texi

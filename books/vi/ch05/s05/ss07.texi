@@ -1,0 +1,226 @@
+@node	5.5.7, References, 5.4, 5.5
+@subsection Giao Tiếp Mã Biên Dịch với Trình Định Giá
+
+Ta chưa giải thích cách tải mã được biên dịch vào máy trình định giá hay cách chạy nó. Ta sẽ hiện thực hóa một thủ tục @code{compile-and-go} biên dịch một biểu thức Scheme, tải mã đối tượng kết quả vào máy trình định giá, và khiến máy chạy mã trong môi trường toàn cục của trình định giá, in kết quả, và nhập vòng lặp điều khiển của trình định giá. Ta cũng sẽ sửa đổi trình định giá để các biểu thức được thông dịch có thể gọi các thủ tục được biên dịch cũng như các thủ tục được thông dịch. Ta sau đó có thể đặt một thủ tục được biên dịch vào máy và sử dụng trình định giá để gọi nó:
+
+@lisp
+(compile-and-go
+ '(define (factorial n)
+    (if (= n 1)
+        1
+        (* (factorial (- n 1)) n))))
+
+@i{;;; EC-Eval value:}
+@i{ok}
+
+@i{;;; EC-Eval input:}
+(factorial 5)
+
+@i{;;; EC-Eval value:}
+@i{120}
+@end lisp
+
+@noindent
+Để cho phép trình định giá xử lý các thủ tục được biên dịch (ví dụ, để định giá lời gọi tới @code{factorial} ở trên), ta cần thay đổi mã tại @code{apply-dispatch} (@ref{5.4.1}) để nó nhận ra các thủ tục được biên dịch (khác với các thủ tục hỗn hợp hay nguyên thủy) và chuyển điều khiển trực tiếp tới điểm nhập của mã được biên dịch:@footnote{Tất nhiên, các thủ tục được biên dịch cũng như các thủ tục được thông dịch đều là hỗn hợp (không nguyên thủy). Để tương thích với thuật ngữ được sử dụng trong trình định giá điều khiển tường minh, trong phần này ta sẽ sử dụng ``hỗn hợp'' để có nghĩa là được thông dịch (trái với được biên dịch).}
+
+@lisp
+apply-dispatch
+  (test (op primitive-procedure?) (reg proc))
+  (branch (label primitive-apply))
+  (test (op compound-procedure?) (reg proc))
+  (branch (label compound-apply))
+  (test (op compiled-procedure?) (reg proc))
+  (branch (label compiled-apply))
+  (goto (label unknown-procedure-type))
+
+compiled-apply
+  (restore continue)
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+@end lisp
+
+@noindent
+Lưu ý lệnh khôi phục của @code{continue} tại @code{compiled-apply}. Nhớ lại rằng trình định giá được sắp xếp sao cho tại @code{apply-dispatch}, việc tiếp tục sẽ ở đầu ngăn xếp. Tuy nhiên, điểm nhập mã được biên dịch mong đợi việc tiếp tục ở trong @code{continue}, vì vậy @code{continue} phải được khôi phục trước khi mã được biên dịch được thực thi.
+
+Để cho phép ta chạy một số mã được biên dịch khi ta khởi động máy trình định giá, ta thêm một lệnh @code{branch} vào đầu máy trình định giá, khiến máy đi tới một điểm nhập mới nếu thanh ghi @code{flag} được đặt.@footnote{Bây giờ khi máy trình định giá bắt đầu bằng một lệnh @code{branch}, ta phải luôn khởi tạo thanh ghi @code{flag} trước khi khởi động máy trình định giá. Để khởi động máy tại vòng lặp đọc-định giá-in thông thường của nó, ta có thể sử dụng
+
+@lisp
+(define (start-eceval)
+  (set! the-global-environment
+        (setup-environment))
+  (set-register-contents! eceval 'flag false)
+  (start eceval))
+@end lisp
+}
+
+@lisp
+@r{;; rẽ nhánh nếu @code{flag} được đặt:}
+(branch (label external-entry))
+read-eval-print-loop
+  (perform (op initialize-stack))
+  @r{…}
+@end lisp
+
+@noindent
+@code{External-entry} giả định rằng máy được khởi động với @code{val} chứa vị trí của một chuỗi lệnh đặt kết quả vào @code{val} và kết thúc bằng @code{(goto (reg continue))}. Bắt đầu tại điểm nhập này nhảy tới vị trí được chỉ định bởi @code{val}, nhưng trước tiên gán @code{continue} để thực thi sẽ trở về @code{print-result}, in giá trị trong @code{val} và sau đó đi tới đầu vòng lặp đọc-định giá-in của trình định giá.@footnote{Vì một thủ tục được biên dịch là một đối tượng mà hệ thống có thể cố gắng in, ta cũng sửa đổi phép toán in hệ thống @code{user-print} (từ @ref{4.1.4}) để nó sẽ không cố gắng in các thành phần của một thủ tục được biên dịch:
+
+@lisp
+(define (user-print object)
+  (cond ((compound-procedure? object)
+         (display
+          (list 'compound-procedure
+                (procedure-parameters object)
+                (procedure-body object)
+                '<procedure-env>)))
+        ((compiled-procedure? object)
+         (display '<compiled-procedure>))
+        (else (display object))))
+@end lisp
+}
+
+@lisp
+external-entry
+  (perform (op initialize-stack))
+  (assign env (op get-global-environment))
+  (assign continue (label print-result))
+  (goto (reg val))
+@end lisp
+
+@noindent
+Bây giờ ta có thể sử dụng thủ tục sau để biên dịch một định nghĩa thủ tục, thực thi mã được biên dịch, và chạy vòng lặp đọc-định giá-in để ta có thể thử thủ tục. Vì ta muốn mã được biên dịch trả về tới vị trí trong @code{continue} với kết quả của nó trong @code{val}, ta biên dịch biểu thức với đích @code{val} và liên kết @code{return}. Để chuyển đổi mã đối tượng do trình biên dịch tạo ra thành các lệnh thực thi được cho máy thanh ghi trình định giá, ta sử dụng thủ tục @code{assemble} từ trình mô phỏng máy thanh ghi (@ref{5.2.2}). Sau đó ta khởi tạo thanh ghi @code{val} để chỉ tới danh sách các lệnh, đặt @code{flag} để trình định giá sẽ đi tới @code{external-entry}, và khởi động trình định giá.
+
+@lisp
+(define (compile-and-go expression)
+  (let ((instructions
+         (assemble
+          (statements
+           (compile
+            expression 'val 'return))
+          eceval)))
+    (set! the-global-environment
+          (setup-environment))
+    (set-register-contents!
+     eceval 'val instructions)
+    (set-register-contents!
+     eceval 'flag true)
+    (start eceval)))
+@end lisp
+
+@noindent
+Nếu ta đã thiết lập giám sát ngăn xếp, như ở cuối @ref{5.4.4}, ta có thể kiểm tra việc sử dụng ngăn xếp của mã được biên dịch:
+
+@lisp
+(compile-and-go
+ '(define (factorial n)
+    (if (= n 1)
+        1
+        (* (factorial (- n 1)) n))))
+@i{(total-pushes = 0, maximum-depth = 0)}
+
+@i{;;; EC-Eval value:}
+@i{ok}
+
+@i{;;; EC-Eval input:}
+(factorial 5)
+@i{(total-pushes = 31, maximum-depth = 14)}
+
+@i{;;; EC-Eval value:}
+@i{120}
+@end lisp
+
+@noindent
+So sánh ví dụ này với việc định giá @code{(factorial 5)} bằng cách sử dụng phiên bản được thông dịch của cùng thủ tục, được hiển thị ở cuối @ref{5.4.4}. Phiên bản được thông dịch yêu cầu 144 lần đẩy và độ sâu ngăn xếp tối đa là 28. Điều này minh họa sự tối ưu hóa kết quả từ chiến lược biên dịch của ta.
+
+@subsubheading Thông dịch và biên dịch
+
+Với các chương trình trong phần này, bây giờ ta có thể thử nghiệm với các chiến lược thực thi thay thế là thông dịch và biên dịch.@footnote{Ta có thể làm tốt hơn bằng cách mở rộng trình biên dịch để cho phép mã được biên dịch gọi các thủ tục được thông dịch. Xem @ref{Exercise 5.47}.} Một trình thông dịch nâng máy lên cấp độ của chương trình người dùng; một trình biên dịch hạ chương trình người dùng xuống cấp độ của ngôn ngữ máy. Ta có thể coi ngôn ngữ Scheme (hay bất kỳ ngôn ngữ lập trình nào) là một họ các sự trừu tượng nhất quán được dựng trên ngôn ngữ máy. Các trình thông dịch tốt cho phát triển và gỡ lỗi chương trình tương tác vì các bước thực thi chương trình được tổ chức theo các sự trừu tượng này, và do đó dễ hiểu hơn với lập trình viên. Mã được biên dịch có thể thực thi nhanh hơn, vì các bước thực thi chương trình được tổ chức theo ngôn ngữ máy, và trình biên dịch có thể tự do thực hiện các tối ưu hóa cắt qua các sự trừu tượng cấp cao hơn.@footnote{Bất kể chiến lược thực thi nào, ta phải chịu chi phí đáng kể nếu ta nhất quyết rằng các lỗi gặp phải trong khi thực thi một chương trình người dùng phải được phát hiện và báo hiệu, thay vì được phép giết hệ thống hay tạo ra các câu trả lời sai. Ví dụ, một tham chiếu mảng ngoài giới hạn có thể được phát hiện bằng cách kiểm tra tính hợp lệ của tham chiếu trước khi thực hiện nó. Tuy nhiên, chi phí kiểm tra có thể nhiều lần chi phí của bản thân tham chiếu mảng, và lập trình viên nên cân nhắc tốc độ với an toàn trong việc xác định xem kiểm tra như vậy có mong muốn không. Một trình biên dịch tốt phải có khả năng tạo ra mã với các kiểm tra như vậy, phải tránh các kiểm tra dư thừa, và phải cho phép lập trình viên kiểm soát phạm vi và loại kiểm tra lỗi trong mã được biên dịch.
+
+Các trình biên dịch cho các ngôn ngữ phổ biến, chẳng hạn như C và C++, hầu như không đặt bất kỳ phép toán kiểm tra lỗi nào vào mã đang chạy, để làm cho mọi thứ chạy nhanh nhất có thể. Kết quả là, lập trình viên phải cung cấp kiểm tra lỗi một cách tường minh. Thật không may, người ta thường bỏ qua điều này, ngay cả trong các ứng dụng quan trọng nơi tốc độ không phải là ràng buộc. Các chương trình của họ dẫn đến những cuộc sống nhanh và nguy hiểm. Ví dụ, ``Sâu'' nổi tiếng đã làm tê liệt Internet năm 1988 đã khai thác sự thất bại của hệ điều hành @abbr{UNIX}(tm) trong việc kiểm tra xem bộ đệm đầu vào có bị tràn trong finger daemon hay không. (Xem @ref{Spafford 1989}.)}
+
+Các lựa chọn thay thế về thông dịch và biên dịch cũng dẫn đến các chiến lược khác nhau để chuyển các ngôn ngữ sang các máy tính mới. Giả sử ta muốn hiện thực hóa Lisp cho một máy mới. Một chiến lược là bắt đầu với trình định giá điều khiển tường minh của @ref{5.4} và dịch các lệnh của nó thành các lệnh cho máy mới. Một chiến lược khác là bắt đầu với trình biên dịch và thay đổi các bộ sinh mã để chúng sinh ra mã cho máy mới. Chiến lược thứ hai cho phép ta chạy bất kỳ chương trình Lisp nào trên máy mới bằng cách đầu tiên biên dịch nó với trình biên dịch chạy trên hệ thống Lisp gốc của ta, và liên kết nó với phiên bản được biên dịch của thư viện thời gian chạy.@footnote{Tất nhiên, với chiến lược thông dịch hay biên dịch, ta cũng phải hiện thực hóa cho máy mới phân bổ bộ nhớ, đầu vào và đầu ra, và tất cả các phép toán khác nhau mà ta đã coi là ``nguyên thủy'' trong phần thảo luận về trình định giá và trình biên dịch của ta. Một chiến lược để giảm thiểu công việc ở đây là viết càng nhiều phép toán này càng tốt bằng Lisp và sau đó biên dịch chúng cho máy mới. Cuối cùng, mọi thứ đều rút gọn về một nhân nhỏ (chẳng hạn như thu gom rác và cơ chế áp dụng các nguyên thủy máy thực sự) được mã hóa thủ công cho máy mới.} Thậm chí còn tốt hơn, ta có thể biên dịch chính trình biên dịch, và chạy cái này trên máy mới để biên dịch các chương trình Lisp khác.@footnote{Chiến lược này dẫn đến các bài kiểm tra thú vị về tính đúng đắn của trình biên dịch, chẳng hạn như kiểm tra xem kết quả biên dịch một chương trình trên máy mới, sử dụng trình biên dịch đã được biên dịch, có giống với kết quả biên dịch chương trình trên hệ thống Lisp gốc không. Truy tìm nguồn gốc của các sự khác biệt thật thú vị nhưng thường gây thất vọng, vì các kết quả cực kỳ nhạy cảm với các chi tiết nhỏ nhặt.} Hoặc ta có thể biên dịch một trong các trình thông dịch của @ref{4.1} để tạo ra một trình thông dịch chạy trên máy mới.
+
+@quotation
+@strong{@anchor{Exercise 5.45}Bài tập 5.45:} Bằng cách so sánh các phép toán ngăn xếp được sử dụng bởi mã được biên dịch với các phép toán ngăn xếp được sử dụng bởi trình định giá cho cùng tính toán, ta có thể xác định mức độ trình biên dịch tối ưu hóa việc sử dụng ngăn xếp, cả về tốc độ (giảm tổng số phép toán ngăn xếp) và không gian (giảm độ sâu ngăn xếp tối đa). So sánh việc sử dụng ngăn xếp được tối ưu hóa này với hiệu suất của một máy chuyên dụng cho cùng tính toán cho thấy một phần chất lượng của trình biên dịch.
+
+@enumerate a
+
+@item
+@ref{Exercise 5.27} đã yêu cầu bạn xác định, như một hàm của @math{n}, số lần đẩy và độ sâu ngăn xếp tối đa cần thiết bởi trình định giá để tính @math{{n!}} bằng cách sử dụng thủ tục giai thừa đệ quy đã cho ở trên. @ref{Exercise 5.14} đã yêu cầu bạn thực hiện các phép đo tương tự cho máy giai thừa chuyên dụng được hiển thị trong @ref{Figure 5.11}. Bây giờ hãy thực hiện cùng phân tích bằng cách sử dụng thủ tục @code{factorial} được biên dịch.
+
+Lấy tỷ lệ số lần đẩy trong phiên bản được biên dịch với số lần đẩy trong phiên bản được thông dịch, và làm tương tự cho độ sâu ngăn xếp tối đa. Vì số phép toán và độ sâu ngăn xếp được sử dụng để tính @math{{n!}} là tuyến tính trong @math{n}, các tỷ lệ này phải tiến tới các hằng số khi @math{n} trở nên lớn. Các hằng số này là gì? Tương tự, tìm các tỷ lệ về việc sử dụng ngăn xếp trong máy chuyên dụng với việc sử dụng trong phiên bản được thông dịch.
+
+So sánh các tỷ lệ cho mã chuyên dụng so với mã được thông dịch với các tỷ lệ cho mã được biên dịch so với mã được thông dịch. Bạn nên thấy rằng máy chuyên dụng làm tốt hơn nhiều so với mã được biên dịch, vì mã bộ điều khiển được viết thủ công phải tốt hơn nhiều so với những gì được tạo ra bởi trình biên dịch đa dụng sơ bộ của ta.
+
+@item
+Bạn có thể đề xuất các cải tiến cho trình biên dịch giúp nó sinh ra mã gần hơn với hiệu suất phiên bản viết thủ công không?
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.46}Bài tập 5.46:} Thực hiện một phân tích như trong @ref{Exercise 5.45} để xác định hiệu quả của việc biên dịch thủ tục Fibonacci đệ quy cây
+
+@lisp
+(define (fib n)
+  (if (< n 2)
+      n
+      (+ (fib (- n 1)) (fib (- n 2)))))
+@end lisp
+
+@noindent
+so với hiệu quả của việc sử dụng máy Fibonacci chuyên dụng của @ref{Figure 5.12}. (Để đo hiệu suất được thông dịch, xem @ref{Exercise 5.29}.) Đối với Fibonacci, tài nguyên thời gian được sử dụng không tuyến tính trong @math{{n;}} do đó các tỷ lệ của các phép toán ngăn xếp sẽ không tiến tới một giá trị giới hạn độc lập với @math{n}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.47}Bài tập 5.47:} Phần này đã mô tả cách sửa đổi trình định giá điều khiển tường minh để mã được thông dịch có thể gọi các thủ tục được biên dịch. Hãy chỉ ra cách sửa đổi trình biên dịch để các thủ tục được biên dịch có thể gọi không chỉ các thủ tục nguyên thủy và các thủ tục được biên dịch, mà còn các thủ tục được thông dịch. Điều này yêu cầu sửa đổi @code{compile-procedure-call} để xử lý trường hợp các thủ tục hỗn hợp (được thông dịch). Hãy chắc chắn xử lý tất cả các kết hợp @code{target} và @code{linkage} giống như trong @code{compile-proc-appl}. Để thực hiện ứng dụng thủ tục thực sự, mã cần nhảy tới điểm nhập @code{compound-apply} của trình định giá. Nhãn này không thể được tham chiếu trực tiếp trong mã đối tượng (vì trình lắp ráp yêu cầu rằng tất cả các nhãn được tham chiếu bởi mã mà nó đang lắp ráp phải được định nghĩa ở đó), vì vậy ta sẽ thêm một thanh ghi gọi là @code{compapp} vào máy trình định giá để giữ điểm nhập này, và thêm một lệnh để khởi tạo nó:
+
+@lisp
+  (assign compapp (label compound-apply))
+  @r{;; rẽ nhánh nếu @code{flag} được đặt:}
+  (branch (label external-entry))
+read-eval-print-loop @r{…}
+@end lisp
+
+Để kiểm tra mã của bạn, hãy bắt đầu bằng cách định nghĩa một thủ tục @code{f} gọi một thủ tục @code{g}. Sử dụng @code{compile-and-go} để biên dịch định nghĩa của @code{f} và khởi động trình định giá. Bây giờ, gõ vào trình định giá, hãy định nghĩa @code{g} và thử gọi @code{f}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.48}Bài tập 5.48:} Giao tiếp @code{compile-and-go} được hiện thực hóa trong phần này khá bất tiện, vì trình biên dịch chỉ có thể được gọi một lần (khi máy trình định giá được khởi động). Bổ sung giao tiếp trình biên dịch-trình thông dịch bằng cách cung cấp một nguyên thủy @code{compile-and-run} có thể được gọi từ trong trình định giá điều khiển tường minh như sau:
+
+@lisp
+@i{;;; EC-Eval input:}
+(compile-and-run
+ '(define (factorial n)
+    (if (= n 1)
+        1
+        (* (factorial (- n 1)) n))))
+
+@i{;;; EC-Eval value:}
+@i{ok}
+
+@i{;;; EC-Eval input:}
+(factorial 5)
+
+@i{;;; EC-Eval value:}
+@i{120}
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.49}Bài tập 5.49:} Như một lựa chọn thay thế cho việc sử dụng vòng lặp đọc-định giá-in của trình định giá điều khiển tường minh, hãy thiết kế một máy thanh ghi thực hiện một vòng lặp đọc-biên dịch-thực thi-in. Tức là, máy phải chạy một vòng lặp đọc một biểu thức, biên dịch nó, lắp ráp và thực thi mã kết quả, và in kết quả. Điều này dễ dàng chạy trong thiết lập mô phỏng của ta, vì ta có thể sắp xếp để gọi các thủ tục @code{compile} và @code{assemble} như là các ``phép toán máy thanh ghi.''
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.50}Bài tập 5.50:} Sử dụng trình biên dịch để biên dịch trình định giá siêu tròn của @ref{4.1} và chạy chương trình này bằng cách sử dụng trình mô phỏng máy thanh ghi. (Để biên dịch nhiều hơn một định nghĩa cùng một lúc, bạn có thể đóng gói các định nghĩa trong một @code{begin}.) Trình thông dịch kết quả sẽ chạy rất chậm vì nhiều cấp độ thông dịch, nhưng làm cho tất cả các chi tiết hoạt động là một bài tập mang tính chỉ dẫn.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.51}Bài tập 5.51:} Phát triển một hiện thực hóa sơ bộ của Scheme bằng C (hay một ngôn ngữ cấp thấp khác mà bạn chọn) bằng cách dịch trình định giá điều khiển tường minh của @ref{5.4} sang C. Để chạy mã này bạn cũng sẽ cần cung cấp các thủ tục phân bổ bộ nhớ thích hợp và các hỗ trợ thời gian chạy khác.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.52}Bài tập 5.52:} Như một đối trọng với @ref{Exercise 5.51}, sửa đổi trình biên dịch để nó biên dịch các thủ tục Scheme thành các chuỗi các lệnh C. Biên dịch trình định giá siêu tròn của @ref{4.1} để tạo ra một trình thông dịch Scheme được viết bằng C.
+@end quotation
+

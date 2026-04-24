@@ -1,0 +1,94 @@
+@node	5.5.6, 5.5.7, 5.5.5, 5.5
+@subsection Địa Chỉ từ Vựng
+
+Một trong những tối ưu hóa phổ biến nhất được thực hiện bởi các trình biên dịch là tối ưu hóa việc tra cứu biến. Trình biên dịch của ta, như ta đã hiện thực hóa cho đến nay, sinh ra mã sử dụng phép toán @code{lookup-variable-value} của máy trình định giá. Phép toán này tìm kiếm một biến bằng cách so sánh nó với từng biến hiện đang được ràng buộc, làm việc từng khung một ra ngoài qua môi trường thời gian chạy. Việc tìm kiếm này có thể tốn kém nếu các khung lồng sâu hoặc nếu có nhiều biến. Ví dụ, hãy xem xét vấn đề tra cứu giá trị của @code{x} trong khi định giá biểu thức @code{(* x y z)} trong một ứng dụng của thủ tục được trả về bởi
+
+@lisp
+(let ((x 3) (y 4))
+  (lambda (a b c d e)
+    (let ((y (* a b x))
+          (z (+ c d x)))
+      (* x y z))))
+@end lisp
+
+@noindent
+Vì một biểu thức @code{let} chỉ là đường cú pháp cho một tổ hợp @code{lambda}, biểu thức này tương đương với
+
+@lisp
+((lambda (x y)
+   (lambda (a b c d e)
+     ((lambda (y z) (* x y z))
+      (* a b x)
+      (+ c d x))))
+ 3
+ 4)
+@end lisp
+
+@noindent
+Mỗi lần @code{lookup-variable-value} tìm kiếm @code{x}, nó phải xác định rằng ký hiệu @code{x} không phải @code{eq?} với @code{y} hay @code{z} (trong khung đầu tiên), cũng không phải với @code{a}, @code{b}, @code{c}, @code{d}, hay @code{e} (trong khung thứ hai). Ta sẽ giả sử, tạm thời, rằng các chương trình của ta không sử dụng @code{define}---rằng các biến chỉ được ràng buộc với @code{lambda}. Vì ngôn ngữ của ta là có phạm vi từ vựng, môi trường thời gian chạy cho bất kỳ biểu thức nào sẽ có một cấu trúc song song với cấu trúc từ vựng của chương trình mà biểu thức xuất hiện trong đó.@footnote{Điều này không đúng nếu ta cho phép các định nghĩa nội bộ, trừ khi ta quét chúng ra. Xem @ref{Exercise 5.43}.} Do đó, trình biên dịch có thể biết, khi nó phân tích biểu thức ở trên, rằng mỗi lần thủ tục được áp dụng, biến @code{x} trong @code{(* x y z)} sẽ được tìm thấy hai khung ra từ khung hiện tại và sẽ là biến đầu tiên trong khung đó.
+
+Ta có thể khai thác thực tế này bằng cách phát minh ra một loại phép toán tra cứu biến mới, @code{lexical-address-lookup}, lấy hai đối số là một môi trường và một @newterm{địa chỉ từ vựng} gồm hai số: một @newterm{số khung}, chỉ định bao nhiêu khung cần vượt qua, và một @newterm{số dịch chuyển}, chỉ định bao nhiêu biến cần vượt qua trong khung đó. @code{Lexical-address-lookup} sẽ tạo ra giá trị của biến được lưu trữ tại địa chỉ từ vựng đó so với môi trường hiện tại. Nếu ta thêm phép toán @code{lexical-address-lookup} vào máy của ta, ta có thể làm cho trình biên dịch sinh ra mã tham chiếu biến bằng cách sử dụng phép toán này, thay vì @code{lookup-variable-value}. Tương tự, mã được biên dịch của ta có thể sử dụng một phép toán @code{lexical-address-set!} mới thay cho @code{set-variable-value!}.
+
+Để sinh ra mã như vậy, trình biên dịch phải có khả năng xác định địa chỉ từ vựng của một biến mà nó sắp biên dịch một tham chiếu đến. Địa chỉ từ vựng của một biến trong một chương trình phụ thuộc vào vị trí trong mã. Ví dụ, trong chương trình sau, địa chỉ của @code{x} trong biểu thức @code{⟨}@var{e1}@code{⟩} là (2, 0)---hai khung ra và là biến đầu tiên trong khung. Tại điểm đó @code{y} ở địa chỉ (0, 0) và @code{c} ở địa chỉ (1, 2). Trong biểu thức @code{⟨}@var{e2}@code{⟩}, @code{x} ở (1, 0), @code{y} ở (1, 1), và @code{c} ở (0, 2).
+
+@lisp
+((lambda (x y)
+   (lambda (a b c d e)
+     ((lambda (y z) ⟨@var{e1}⟩)
+      ⟨@var{e2}⟩
+      (+ c d x))))
+ 3
+ 4)
+@end lisp
+
+@noindent
+Một cách để trình biên dịch tạo ra mã sử dụng địa chỉ từ vựng là duy trì một cấu trúc dữ liệu gọi là @newterm{môi trường thời gian biên dịch}. Nó theo dõi biến nào sẽ ở vị trí nào trong khung nào trong môi trường thời gian chạy khi một phép toán truy cập biến cụ thể được thực thi. Môi trường thời gian biên dịch là một danh sách các khung, mỗi khung chứa một danh sách các biến. (Tất nhiên sẽ không có giá trị nào được ràng buộc với các biến, vì các giá trị không được tính toán tại thời gian biên dịch.) Môi trường thời gian biên dịch trở thành một đối số bổ sung cho @code{compile} và được truyền cho mỗi bộ sinh mã. Lời gọi cấp cao nhất tới @code{compile} sử dụng một môi trường thời gian biên dịch rỗng. Khi một thân @code{lambda} được biên dịch, @code{compile-lambda-body} mở rộng môi trường thời gian biên dịch bằng một khung chứa các tham số của thủ tục, sao cho chuỗi tạo nên thân được biên dịch với môi trường được mở rộng đó. Tại mỗi điểm trong quá trình biên dịch, @code{compile-variable} và @code{compile-assignment} sử dụng môi trường thời gian biên dịch để sinh ra các địa chỉ từ vựng phù hợp.
+
+@ref{Exercise 5.39} đến @ref{Exercise 5.43} mô tả cách hoàn thiện phác thảo chiến lược địa chỉ từ vựng này để kết hợp tra cứu từ vựng vào trình biên dịch. @ref{Exercise 5.44} mô tả một cách sử dụng khác cho môi trường thời gian biên dịch.
+
+@quotation
+@strong{@anchor{Exercise 5.39}Bài tập 5.39:} Viết một thủ tục @code{lexical-address-lookup} hiện thực hóa phép toán tra cứu mới. Nó phải lấy hai đối số---một địa chỉ từ vựng và một môi trường thời gian chạy---và trả về giá trị của biến được lưu trữ tại địa chỉ từ vựng được chỉ định. @code{Lexical-address-lookup} phải báo hiệu lỗi nếu giá trị của biến là ký hiệu @code{*unassigned*}.@footnote{Đây là sửa đổi đối với tra cứu biến được yêu cầu nếu ta hiện thực hóa phương pháp quét để loại bỏ các định nghĩa nội bộ (@ref{Exercise 5.43}). Ta sẽ cần loại bỏ các định nghĩa này để địa chỉ từ vựng hoạt động.} Cũng viết một thủ tục @code{lexical-address-set!} hiện thực hóa phép toán thay đổi giá trị của biến tại một địa chỉ từ vựng được chỉ định.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.40}Bài tập 5.40:} Sửa đổi trình biên dịch để duy trì môi trường thời gian biên dịch như được mô tả ở trên. Tức là, thêm một đối số môi trường-thời-gian-biên-dịch vào @code{compile} và các bộ sinh mã khác nhau, và mở rộng nó trong @code{compile-lambda-body}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.41}Bài tập 5.41:} Viết một thủ tục @code{find-variable} lấy một biến và một môi trường thời gian biên dịch làm đối số và trả về địa chỉ từ vựng của biến so với môi trường đó. Ví dụ, trong đoạn chương trình được hiển thị ở trên, môi trường thời gian biên dịch trong quá trình biên dịch biểu thức @code{⟨}@var{e1}@code{⟩} là @code{((y z) (a b c d e) (x y))}. @code{Find-variable} phải tạo ra
+
+@lisp
+(find-variable
+ 'c '((y z) (a b c d e) (x y)))
+@i{(1 2)}
+
+(find-variable
+ 'x '((y z) (a b c d e) (x y)))
+@i{(2 0)}
+
+(find-variable
+ 'w '((y z) (a b c d e) (x y)))
+@i{not-found}
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.42}Bài tập 5.42:} Sử dụng @code{find-variable} từ @ref{Exercise 5.41}, viết lại @code{compile-variable} và @code{compile-assignment} để xuất ra các lệnh địa chỉ từ vựng. Trong các trường hợp mà @code{find-variable} trả về @code{not-found} (tức là khi biến không có trong môi trường thời gian biên dịch), bạn phải làm cho các bộ sinh mã sử dụng các phép toán trình định giá, như trước đây, để tìm kiếm ràng buộc. (Nơi duy nhất mà một biến không được tìm thấy tại thời gian biên dịch có thể là trong môi trường toàn cục, là một phần của môi trường thời gian chạy nhưng không phải là một phần của môi trường thời gian biên dịch.@footnote{Các địa chỉ từ vựng không thể được sử dụng để truy cập các biến trong môi trường toàn cục, vì các tên này có thể được định nghĩa và định nghĩa lại một cách tương tác bất cứ lúc nào. Với các định nghĩa nội bộ được quét ra, như trong @ref{Exercise 5.43}, các định nghĩa duy nhất mà trình biên dịch thấy là những định nghĩa ở cấp cao nhất, hoạt động trên môi trường toàn cục. Việc biên dịch một định nghĩa không khiến tên được định nghĩa được nhập vào môi trường thời gian biên dịch.} Do đó, nếu bạn muốn, bạn có thể làm cho các phép toán trình định giá nhìn trực tiếp vào môi trường toàn cục, có thể được lấy với phép toán @code{(op get-global-environment)}, thay vì làm cho chúng tìm kiếm toàn bộ môi trường thời gian chạy được tìm thấy trong @code{env}.) Kiểm tra trình biên dịch đã sửa đổi trên một số trường hợp đơn giản, chẳng hạn như tổ hợp @code{lambda} lồng nhau ở đầu phần này.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.43}Bài tập 5.43:} Ta đã lập luận trong @ref{4.1.6} rằng các định nghĩa nội bộ cho cấu trúc khối không nên được coi là @code{define} ``thực sự''. Thay vào đó, một thân thủ tục phải được thông dịch như thể các biến nội bộ được định nghĩa được cài đặt như các biến @code{lambda} thông thường được khởi tạo với các giá trị đúng của chúng bằng cách sử dụng @code{set!}. @ref{4.1.6} và @ref{Exercise 4.16} đã chỉ ra cách sửa đổi trình định giá siêu tròn để thực hiện điều này bằng cách quét ra các định nghĩa nội bộ. Sửa đổi trình biên dịch để thực hiện cùng phép biến đổi trước khi nó biên dịch một thân thủ tục.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.44}Bài tập 5.44:} Trong phần này ta đã tập trung vào việc sử dụng môi trường thời gian biên dịch để tạo ra các địa chỉ từ vựng. Nhưng có những cách sử dụng khác cho môi trường thời gian biên dịch. Ví dụ, trong @ref{Exercise 5.38} ta đã tăng hiệu quả của mã được biên dịch bằng cách mã hóa mở các thủ tục nguyên thủy. Hiện thực hóa của ta đã xử lý tên của các thủ tục được mã hóa mở như các từ khóa dành riêng. Nếu một chương trình đặt lại ràng buộc cho một tên như vậy, cơ chế được mô tả trong @ref{Exercise 5.38} vẫn sẽ mã hóa mở nó như một nguyên thủy, bỏ qua ràng buộc mới. Ví dụ, hãy xem xét thủ tục
+
+@lisp
+(lambda (+ * a b x y)
+  (+ (* a x) (* b y)))
+@end lisp
+
+@noindent
+tính toán một tổ hợp tuyến tính của @code{x} và @code{y}. Ta có thể gọi nó với các đối số @code{+matrix}, @code{*matrix}, và bốn ma trận, nhưng trình biên dịch mã hóa mở vẫn sẽ mã hóa mở @code{+} và @code{*} trong @code{(+ (* a x) (* b y))} như @code{+} và @code{*} nguyên thủy. Sửa đổi trình biên dịch mã hóa mở để tham khảo môi trường thời gian biên dịch nhằm biên dịch mã đúng cho các biểu thức liên quan đến tên của các thủ tục nguyên thủy. (Mã sẽ hoạt động đúng miễn là chương trình không @code{define} hoặc @code{set!} các tên này.)
+@end quotation
+

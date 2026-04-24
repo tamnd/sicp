@@ -1,0 +1,309 @@
+@node	5.5.3, 5.5.4, 5.5.2, 5.5
+@subsection Biên Dịch Các Tổ Hợp
+
+Bản chất của quá trình biên dịch là việc biên dịch các ứng dụng thủ tục. Mã cho một tổ hợp được biên dịch với một đích và liên kết đã cho có dạng
+
+@lisp
+⟨@emph{biên dịch toán tử,
+ đích @code{proc}, liên kết @code{next}}⟩
+⟨@emph{định giá các toán hạng và xây dựng
+ danh sách đối số trong @code{argl}}⟩
+⟨@emph{biên dịch lời gọi thủ tục
+ với đích đã cho và liên kết đã cho}⟩
+@end lisp
+
+@noindent
+Các thanh ghi @code{env}, @code{proc}, và @code{argl} có thể phải được lưu và khôi phục trong quá trình định giá toán tử và các toán hạng. Lưu ý rằng đây là nơi duy nhất trong trình biên dịch mà một đích khác @code{val} được chỉ định.
+
+Mã cần thiết được sinh ra bởi @code{compile-application}. Nó đệ quy biên dịch toán tử, để tạo ra mã đặt thủ tục cần được áp dụng vào @code{proc}, và biên dịch các toán hạng, để tạo ra mã định giá các toán hạng riêng lẻ của ứng dụng. Các chuỗi lệnh cho các toán hạng được kết hợp (bởi @code{construct-arglist}) với mã xây dựng danh sách đối số trong @code{argl}, và mã danh sách đối số kết quả được kết hợp với mã thủ tục và mã thực hiện lời gọi thủ tục (được tạo ra bởi @code{compile-procedure-call}). Khi nối các chuỗi mã, thanh ghi @code{env} phải được bảo toàn xung quanh việc định giá toán tử (vì định giá toán tử có thể sửa đổi @code{env}, sẽ cần thiết để định giá các toán hạng), và thanh ghi @code{proc} phải được bảo toàn xung quanh việc xây dựng danh sách đối số (vì định giá các toán hạng có thể sửa đổi @code{proc}, sẽ cần thiết cho ứng dụng thủ tục thực sự). @code{Continue} cũng phải được bảo toàn trong suốt, vì nó cần thiết cho liên kết trong lời gọi thủ tục.
+
+@lisp
+(define (compile-application
+         exp target linkage)
+  (let ((proc-code
+         (compile (operator exp) 'proc 'next))
+        (operand-codes
+         (map (lambda (operand)
+                (compile operand 'val 'next))
+              (operands exp))))
+    (preserving
+     '(env continue)
+     proc-code
+     (preserving
+      '(proc continue)
+      (construct-arglist operand-codes)
+      (compile-procedure-call
+       target
+       linkage)))))
+@end lisp
+
+@noindent
+Mã để xây dựng danh sách đối số sẽ định giá mỗi toán hạng vào @code{val} và sau đó @code{cons} giá trị đó vào danh sách đối số đang được tích lũy trong @code{argl}. Vì ta @code{cons} các đối số vào @code{argl} theo thứ tự, ta phải bắt đầu với đối số cuối cùng và kết thúc với đối số đầu tiên, để các đối số sẽ xuất hiện theo thứ tự từ đầu đến cuối trong danh sách kết quả. Thay vì lãng phí một lệnh bằng cách khởi tạo @code{argl} thành danh sách rỗng để thiết lập cho chuỗi định giá này, ta làm cho chuỗi mã đầu tiên xây dựng @code{argl} ban đầu. Dạng tổng quát của việc xây dựng danh sách đối số do đó như sau:
+
+@lisp
+⟨@emph{biên dịch toán hạng cuối cùng, nhắm tới @code{val}}⟩
+(assign argl (op list) (reg val))
+⟨@emph{biên dịch toán hạng tiếp theo, nhắm tới @code{val}}⟩
+(assign argl (op cons) (reg val) (reg argl))
+@r{…}
+⟨@emph{biên dịch toán hạng đầu tiên, nhắm tới @code{val}}⟩
+(assign argl (op cons) (reg val) (reg argl))
+@end lisp
+
+@noindent
+@code{Argl} phải được bảo toàn xung quanh mỗi lần định giá toán hạng ngoại trừ lần đầu tiên (để các đối số được tích lũy cho đến nay không bị mất), và @code{env} phải được bảo toàn xung quanh mỗi lần định giá toán hạng ngoại trừ lần cuối cùng (để sử dụng cho các lần định giá toán hạng tiếp theo).
+
+Việc biên dịch mã đối số này khá phức tạp, do việc xử lý đặc biệt của toán hạng đầu tiên được định giá và sự cần thiết phải bảo toàn @code{argl} và @code{env} ở các chỗ khác nhau. Thủ tục @code{construct-arglist} lấy mã định giá các toán hạng riêng lẻ làm đối số. Nếu không có toán hạng nào cả, nó chỉ đơn giản là phát ra lệnh
+
+@lisp
+(assign argl (const ()))
+@end lisp
+
+@noindent
+Ngược lại, @code{construct-arglist} tạo ra mã khởi tạo @code{argl} với đối số cuối cùng, và nối mã định giá các đối số còn lại và liên tiếp ghép chúng vào @code{argl}. Để xử lý các đối số từ cuối đến đầu, ta phải đảo ngược danh sách các chuỗi mã toán hạng từ thứ tự do @code{compile-application} cung cấp.
+
+@lisp
+(define (construct-arglist operand-codes)
+  (let ((operand-codes
+         (reverse operand-codes)))
+    (if (null? operand-codes)
+        (make-instruction-sequence
+         '()
+         '(argl)
+         '((assign argl (const ()))))
+        (let ((code-to-get-last-arg
+               (append-instruction-sequences
+                (car operand-codes)
+                (make-instruction-sequence
+                 '(val)
+                 '(argl)
+                 '((assign argl
+                           (op list)
+                           (reg val)))))))
+          (if (null? (cdr operand-codes))
+              code-to-get-last-arg
+              (preserving
+               '(env)
+               code-to-get-last-arg
+               (code-to-get-rest-args
+                (cdr operand-codes))))))))
+
+(define (code-to-get-rest-args operand-codes)
+  (let ((code-for-next-arg
+         (preserving
+          '(argl)
+          (car operand-codes)
+          (make-instruction-sequence
+           '(val argl)
+           '(argl)
+           '((assign argl
+                     (op cons)
+                     (reg val)
+                     (reg argl)))))))
+    (if (null? (cdr operand-codes))
+        code-for-next-arg
+        (preserving
+         '(env)
+         code-for-next-arg
+         (code-to-get-rest-args
+          (cdr operand-codes))))))
+@end lisp
+
+@subsubheading Áp dụng các thủ tục
+
+Sau khi định giá các phần tử của một tổ hợp, mã được biên dịch phải áp dụng thủ tục trong @code{proc} cho các đối số trong @code{argl}. Mã thực hiện về cơ bản cùng điều phân công như thủ tục @code{apply} trong trình định giá siêu tròn của @ref{4.1.1} hay điểm nhập @code{apply-dispatch} trong trình định giá điều khiển tường minh của @ref{5.4.1}. Nó kiểm tra xem thủ tục cần áp dụng là thủ tục nguyên thủy hay thủ tục được biên dịch. Đối với một thủ tục nguyên thủy, nó sử dụng @code{apply-primitive-procedure}; ta sẽ sớm thấy cách nó xử lý các thủ tục được biên dịch. Mã ứng dụng thủ tục có dạng sau:
+
+@lisp
+(test (op primitive-procedure?) (reg proc))
+ (branch (label primitive-branch))
+compiled-branch
+ ⟨@emph{mã để áp dụng thủ tục được biên dịch
+  với đích đã cho và liên kết phù hợp}⟩
+primitive-branch
+ (assign ⟨@var{target}⟩
+         (op apply-primitive-procedure)
+         (reg proc)
+         (reg argl))
+ ⟨@var{linkage}⟩
+after-call
+@end lisp
+
+@noindent
+Lưu ý rằng nhánh được biên dịch phải bỏ qua xung quanh nhánh nguyên thủy. Do đó, nếu liên kết cho lời gọi thủ tục ban đầu là @code{next}, nhánh hỗn hợp phải sử dụng một liên kết nhảy tới một nhãn được chèn vào sau nhánh nguyên thủy. (Điều này tương tự như liên kết được sử dụng cho nhánh đúng trong @code{compile-if}.)
+
+@lisp
+(define (compile-procedure-call
+         target linkage)
+  (let ((primitive-branch
+         (make-label 'primitive-branch))
+        (compiled-branch
+         (make-label 'compiled-branch))
+        (after-call
+         (make-label 'after-call)))
+    (let ((compiled-linkage
+           (if (eq? linkage 'next)
+               after-call
+               linkage)))
+      (append-instruction-sequences
+       (make-instruction-sequence
+        '(proc)
+        '()
+        `((test
+           (op primitive-procedure?)
+           (reg proc))
+          (branch
+           (label ,primitive-branch))))
+       (parallel-instruction-sequences
+        (append-instruction-sequences
+         compiled-branch
+         (compile-proc-appl
+          target
+          compiled-linkage))
+        (append-instruction-sequences
+         primitive-branch
+         (end-with-linkage
+          linkage
+          (make-instruction-sequence
+           '(proc argl)
+           (list target)
+           `((assign
+              ,target
+              (op apply-primitive-procedure)
+              (reg proc)
+              (reg argl)))))))
+       after-call))))
+@end lisp
+
+@noindent
+Các nhánh nguyên thủy và hỗn hợp, giống như các nhánh đúng và sai trong @code{compile-if}, được nối bằng cách sử dụng @code{parallel-instruction-sequences} thay vì @code{append-instruction-sequences} thông thường, vì chúng sẽ không được thực thi tuần tự.
+
+@subsubheading Áp dụng các thủ tục được biên dịch
+
+Mã xử lý ứng dụng thủ tục là phần tinh tế nhất của trình biên dịch, mặc dù các chuỗi lệnh mà nó sinh ra rất ngắn. Một thủ tục được biên dịch (như được xây dựng bởi @code{compile-lambda}) có một điểm nhập, là nhãn chỉ định nơi mã cho thủ tục bắt đầu. Mã tại điểm nhập này tính toán kết quả trong @code{val} và trả về bằng cách thực thi lệnh @code{(goto (reg continue))}. Do đó, ta có thể mong đợi mã cho một ứng dụng thủ tục được biên dịch (được sinh ra bởi @code{compile-proc-appl}) với một đích và liên kết đã cho trông như thế này nếu liên kết là một nhãn
+
+@lisp
+(assign continue
+        (label proc-return))
+ (assign val
+         (op compiled-procedure-entry)
+         (reg proc))
+ (goto (reg val))
+proc-return
+ (assign ⟨@var{target}⟩
+         (reg val))   @r{; được bao gồm nếu đích không phải @code{val}}
+ (goto (label ⟨@var{linkage}⟩))   @r{; mã liên kết}
+@end lisp
+
+@noindent
+hay như thế này nếu liên kết là @code{return}.
+
+@lisp
+(save continue)
+ (assign continue
+         (label proc-return))
+ (assign val
+         (op compiled-procedure-entry)
+         (reg proc))
+ (goto (reg val))
+proc-return
+ (assign ⟨@var{target}⟩
+         (reg val))   @r{; được bao gồm nếu đích không phải @code{val}}
+ (restore continue)
+ (goto (reg continue))   @r{; mã liên kết}
+@end lisp
+
+@noindent
+Mã này thiết lập @code{continue} để thủ tục sẽ trả về tới nhãn @code{proc-return} và nhảy tới điểm nhập của thủ tục. Mã tại @code{proc-return} chuyển kết quả của thủ tục từ @code{val} sang thanh ghi đích (nếu cần thiết) và sau đó nhảy tới vị trí được chỉ định bởi liên kết. (Liên kết luôn là @code{return} hay một nhãn, vì @code{compile-procedure-call} thay thế một liên kết @code{next} cho nhánh thủ tục hỗn hợp bằng một nhãn @code{after-call}.)
+
+Trên thực tế, nếu đích không phải @code{val}, đó chính xác là mã trình biên dịch của ta sẽ sinh ra.@footnote{Thực ra, ta báo hiệu lỗi khi đích không phải @code{val} và liên kết là @code{return}, vì nơi duy nhất ta yêu cầu liên kết @code{return} là trong biên dịch thủ tục, và quy ước của ta là các thủ tục trả về giá trị của chúng trong @code{val}.} Thông thường, tuy nhiên, đích là @code{val} (thời điểm duy nhất trình biên dịch chỉ định một thanh ghi khác là khi nhắm mục tiêu đến việc định giá toán tử sang @code{proc}), vì vậy kết quả thủ tục được đặt trực tiếp vào thanh ghi đích và không cần phải trả về một vị trí đặc biệt để sao chép nó. Thay vào đó, ta đơn giản hóa mã bằng cách thiết lập @code{continue} sao cho thủ tục sẽ ``trả về'' trực tiếp tới nơi được chỉ định bởi liên kết của người gọi:
+
+@lisp
+⟨@emph{thiết lập @code{continue} cho liên kết}⟩
+(assign val
+        (op compiled-procedure-entry)
+        (reg proc))
+(goto (reg val))
+@end lisp
+
+@noindent
+Nếu liên kết là một nhãn, ta thiết lập @code{continue} sao cho thủ tục sẽ trả về tới nhãn đó. (Tức là, @code{(goto (reg continue))} mà thủ tục kết thúc bằng trở nên tương đương với @code{(goto (label ⟨@var{linkage}⟩))} tại @code{proc-return} ở trên.)
+
+@lisp
+(assign continue
+        (label ⟨@var{linkage}⟩))
+(assign val
+        (op compiled-procedure-entry)
+        (reg proc))
+(goto (reg val))
+@end lisp
+
+@noindent
+Nếu liên kết là @code{return}, ta hoàn toàn không cần thiết lập @code{continue}: Nó đã giữ vị trí mong muốn. (Tức là, @code{(goto (reg continue))} mà thủ tục kết thúc bằng đi trực tiếp tới nơi mà @code{(goto (reg continue))} tại @code{proc-return} đã đi tới.)
+
+@lisp
+(assign val
+        (op compiled-procedure-entry)
+        (reg proc))
+(goto (reg val))
+@end lisp
+
+@noindent
+Với hiện thực hóa liên kết @code{return} này, trình biên dịch sinh ra mã đệ quy đuôi. Gọi một thủ tục như bước cuối cùng trong một thân thủ tục thực hiện một chuyển tiếp trực tiếp, không lưu bất kỳ thông tin nào trên ngăn xếp.
+
+Giả sử thay vào đó ta đã xử lý trường hợp lời gọi thủ tục với liên kết @code{return} và đích @code{val} như ở trên cho đích không phải @code{val}. Điều này sẽ phá hủy đệ quy đuôi. Hệ thống của ta vẫn sẽ đưa ra cùng giá trị cho bất kỳ biểu thức nào. Nhưng mỗi lần ta gọi một thủ tục, ta sẽ lưu @code{continue} và trả về sau lời gọi để hoàn tác lần lưu (vô ích) đó. Những lần lưu thêm này sẽ tích lũy trong một tổ các lời gọi thủ tục.@footnote{Làm cho một trình biên dịch sinh ra mã đệ quy đuôi có thể có vẻ như là một ý tưởng đơn giản. Nhưng hầu hết các trình biên dịch cho các ngôn ngữ thông thường, bao gồm C và Pascal, không làm điều này, và do đó các ngôn ngữ này không thể biểu diễn các quá trình lặp chỉ bằng lời gọi thủ tục. Khó khăn với đệ quy đuôi trong các ngôn ngữ này là các hiện thực hóa của chúng sử dụng ngăn xếp để lưu các đối số thủ tục và các biến cục bộ cũng như địa chỉ trả về. Các hiện thực hóa Scheme được mô tả trong cuốn sách này lưu các đối số và biến trong bộ nhớ để được thu gom rác. Lý do sử dụng ngăn xếp cho các biến và đối số là nó tránh sự cần thiết thu gom rác trong các ngôn ngữ không yêu cầu điều đó, và thường được tin là hiệu quả hơn. Các trình biên dịch Lisp tinh vi, trên thực tế, có thể sử dụng ngăn xếp cho các đối số mà không phá hủy đệ quy đuôi. (Xem @ref{Hanson 1990} để biết mô tả.) Cũng có một số tranh luận về việc phân bổ ngăn xếp có thực sự hiệu quả hơn thu gom rác hay không, nhưng các chi tiết dường như phụ thuộc vào những điểm tinh tế của kiến trúc máy tính. (Xem @ref{Appel 1987} và @ref{Miller and Rozas 1994} để biết các quan điểm đối lập về vấn đề này.)}
+
+@code{Compile-proc-appl} sinh ra mã ứng dụng thủ tục ở trên bằng cách xem xét bốn trường hợp, tùy thuộc vào việc đích cho lời gọi là @code{val} hay không và liên kết là @code{return} hay không. Lưu ý rằng các chuỗi lệnh được khai báo là sửa đổi tất cả các thanh ghi, vì thực thi thân thủ tục có thể thay đổi các thanh ghi theo các cách tùy ý.@footnote{Biến @code{all-regs} được ràng buộc với danh sách tên của tất cả các thanh ghi:
+
+@lisp
+(define all-regs '(env proc val argl continue))
+@end lisp
+}
+Cũng lưu ý rằng chuỗi mã cho trường hợp đích @code{val} và liên kết @code{return} được khai báo là cần @code{continue}: Mặc dù @code{continue} không được sử dụng tường minh trong chuỗi hai lệnh, ta phải đảm bảo rằng @code{continue} sẽ có giá trị đúng khi ta nhập thủ tục được biên dịch.
+
+@lisp
+(define (compile-proc-appl target linkage)
+  (cond ((and (eq? target 'val)
+              (not (eq? linkage 'return)))
+         (make-instruction-sequence
+          '(proc)
+          all-regs
+          `((assign continue (label ,linkage))
+            (assign
+             val
+             (op compiled-procedure-entry)
+             (reg proc))
+            (goto (reg val)))))
+        ((and (not (eq? target 'val))
+              (not (eq? linkage 'return)))
+         (let ((proc-return
+                (make-label 'proc-return)))
+           (make-instruction-sequence
+            '(proc)
+            all-regs
+            `((assign continue
+                      (label ,proc-return))
+              (assign
+               val
+               (op compiled-procedure-entry)
+               (reg proc))
+              (goto (reg val))
+              ,proc-return
+              (assign ,target (reg val))
+              (goto (label ,linkage))))))
+        ((and (eq? target 'val)
+              (eq? linkage 'return))
+         (make-instruction-sequence
+          '(proc continue)
+          all-regs
+          '((assign
+             val
+             (op compiled-procedure-entry)
+             (reg proc))
+            (goto (reg val)))))
+        ((and (not (eq? target 'val))
+              (eq? linkage 'return))
+         (error "return linkage,
+                 target not val: COMPILE"
+                target))))
+@end lisp
+

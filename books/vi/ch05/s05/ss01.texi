@@ -1,0 +1,226 @@
+@node	5.5.1, 5.5.2, 5.5, 5.5
+@subsection Cấu Trúc của Trình Biên Dịch
+
+Trong @ref{4.1.7} ta đã sửa đổi trình thông dịch siêu tròn ban đầu của mình để tách phân tích khỏi thực thi. Ta đã phân tích mỗi biểu thức để tạo ra một thủ tục thực thi nhận một môi trường làm đối số và thực hiện các phép toán cần thiết. Trong trình biên dịch của ta, ta sẽ thực hiện về cơ bản cùng một phân tích. Tuy nhiên, thay vì tạo ra các thủ tục thực thi, ta sẽ tạo ra các chuỗi các lệnh được chạy bởi máy thanh ghi của ta.
+
+Thủ tục @code{compile} là điều phối cấp cao nhất trong trình biên dịch. Nó tương ứng với thủ tục @code{eval} trong @ref{4.1.1}, thủ tục @code{analyze} trong @ref{4.1.7}, và điểm nhập @code{eval-dispatch} của trình định giá điều khiển tường minh trong @ref{5.4.1}. Trình biên dịch, như các trình thông dịch, sử dụng các thủ tục cú pháp biểu thức được định nghĩa trong @ref{4.1.2}.@footnote{Lưu ý, tuy nhiên, rằng trình biên dịch của ta là một chương trình Scheme, và các thủ tục cú pháp mà nó sử dụng để thao tác biểu thức là các thủ tục Scheme thực sự được sử dụng với trình định giá siêu tròn. Đối với trình định giá điều khiển tường minh, ngược lại, ta đã giả sử rằng các phép toán cú pháp tương đương có sẵn như là các phép toán cho máy thanh ghi. (Tất nhiên, khi ta mô phỏng máy thanh ghi trong Scheme, ta đã sử dụng các thủ tục Scheme thực sự trong mô phỏng máy thanh ghi của ta.)} @code{Compile} thực hiện phân tích trường hợp về loại cú pháp của biểu thức cần biên dịch. Đối với mỗi loại biểu thức, nó điều phối đến một @newterm{bộ tạo mã} chuyên biệt:
+
+@lisp
+(define (compile exp target linkage)
+  (cond ((self-evaluating? exp)
+         (compile-self-evaluating
+          exp target linkage))
+        ((quoted? exp)
+         (compile-quoted exp target linkage))
+        ((variable? exp)
+         (compile-variable
+          exp target linkage))
+        ((assignment? exp)
+         (compile-assignment
+          exp target linkage))
+        ((definition? exp)
+         (compile-definition
+          exp target linkage))
+        ((if? exp)
+         (compile-if exp target linkage))
+        ((lambda? exp)
+         (compile-lambda exp target linkage))
+        ((begin? exp)
+         (compile-sequence
+          (begin-actions exp) target linkage))
+        ((cond? exp)
+         (compile
+          (cond->if exp) target linkage))
+        ((application? exp)
+         (compile-application
+          exp target linkage))
+        (else
+         (error "Unknown expression type:
+                 COMPILE"
+                exp))))
+@end lisp
+
+@subsubheading Đích và liên kết
+
+@code{Compile} và các bộ tạo mã mà nó gọi nhận hai đối số ngoài biểu thức cần biên dịch. Có một @newterm{đích}, chỉ định thanh ghi mà mã biên dịch sẽ trả về giá trị của biểu thức. Còn có một @newterm{bộ mô tả liên kết}, mô tả cách mã kết quả từ việc biên dịch biểu thức nên tiến hành khi nó đã hoàn thành việc thực thi. Bộ mô tả liên kết có thể yêu cầu mã thực hiện một trong ba điều sau:
+
+@itemize @bullet
+
+@item
+tiếp tục tại lệnh tiếp theo theo chuỗi (điều này được chỉ định bởi bộ mô tả liên kết @code{next}),
+
+@item
+trả về từ thủ tục đang được biên dịch (điều này được chỉ định bởi bộ mô tả liên kết @code{return}), hoặc
+
+@item
+nhảy đến một điểm nhập được đặt tên (điều này được chỉ định bằng cách sử dụng nhãn được chỉ định làm bộ mô tả liên kết).
+
+@end itemize
+
+@noindent
+Ví dụ, biên dịch biểu thức @code{5} (là tự định giá) với đích là thanh ghi @code{val} và liên kết @code{next} nên tạo ra lệnh
+
+@lisp
+(assign val (const 5))
+@end lisp
+
+@noindent
+Biên dịch cùng biểu thức với liên kết @code{return} nên tạo ra các lệnh
+
+@lisp
+(assign val (const 5))
+(goto (reg continue))
+@end lisp
+
+@noindent
+Trong trường hợp đầu tiên, việc thực thi sẽ tiếp tục với lệnh tiếp theo trong chuỗi. Trong trường hợp thứ hai, ta sẽ trả về từ một lời gọi thủ tục. Trong cả hai trường hợp, giá trị của biểu thức sẽ được đặt vào thanh ghi đích @code{val}.
+
+@subsubheading Các chuỗi lệnh và việc sử dụng ngăn xếp
+
+Mỗi bộ tạo mã trả về một @newterm{chuỗi lệnh} chứa mã đối tượng mà nó đã tạo ra cho biểu thức. Tạo mã cho một biểu thức phức hợp được thực hiện bằng cách kết hợp đầu ra từ các bộ tạo mã đơn giản hơn cho các biểu thức thành phần, giống như định giá một biểu thức phức hợp được thực hiện bằng cách định giá các biểu thức thành phần.
+
+Phương pháp đơn giản nhất để kết hợp các chuỗi lệnh là một thủ tục gọi là @code{append-instruction-sequences}. Nó nhận làm đối số bất kỳ số chuỗi lệnh nào cần được thực thi tuần tự; nó nối chúng lại và trả về chuỗi kết hợp. Tức là, nếu @math{{⟨\kern0.1em seq_1⟩}} và @math{{⟨\kern0.1em seq_2⟩}} là các chuỗi lệnh, thì định giá
+
+@lisp
+(append-instruction-sequences ⟨@var{seq₁}⟩ ⟨@var{seq₂}⟩)
+@end lisp
+
+@noindent
+tạo ra chuỗi
+
+@lisp
+⟨@var{seq₁}⟩
+⟨@var{seq₂}⟩
+@end lisp
+
+@noindent
+Bất cứ khi nào các thanh ghi có thể cần được lưu, các bộ tạo mã của trình biên dịch sử dụng @code{preserving}, là một phương pháp tinh tế hơn để kết hợp các chuỗi lệnh. @code{Preserving} nhận ba đối số: một tập hợp các thanh ghi và hai chuỗi lệnh cần được thực thi tuần tự. Nó nối các chuỗi theo cách sao cho nội dung của mỗi thanh ghi trong tập hợp được bảo toàn qua việc thực thi chuỗi đầu tiên, nếu điều này cần thiết cho việc thực thi chuỗi thứ hai. Tức là, nếu chuỗi đầu tiên sửa đổi thanh ghi và chuỗi thứ hai thực sự cần nội dung gốc của thanh ghi, thì @code{preserving} bọc một @code{save} và một @code{restore} của thanh ghi xung quanh chuỗi đầu tiên trước khi nối các chuỗi. Nếu không, @code{preserving} đơn giản trả về các chuỗi lệnh đã nối. Do đó, ví dụ,
+@code{(preserving (list ⟨@var{reg₁}⟩ ⟨@var{reg₂}⟩) ⟨@var{seg₁}⟩ ⟨@var{seg₂}⟩)}
+tạo ra một trong bốn chuỗi lệnh sau đây, tùy thuộc vào cách @math{{⟨\kern0.1em seq_1⟩}} và @math{{⟨\kern0.1em seq_2⟩}} sử dụng @math{{⟨\kern0.1em reg_1⟩}} và @math{{⟨\kern0.1em reg_2⟩}}:
+@ifinfo
+
+@smallexample
+<seq_1> | (save <reg_1>)    | (save <reg_2>)    | (save <reg_2>)
+<seq_2> | <seq_1>           | <seq_1>           | (save <reg_1>)
+        | (restore <reg_1>) | (restore <reg_2>) | <seq_1>
+        | <seq_2>           | <seq_2>           | (restore <reg_1>)
+        |                   |                   | (restore <reg_2>)
+        |                   |                   | <seq_2>
+@end smallexample
+
+@end ifinfo
+@tex
+\[ % :83:
+
+\begin{array}{l|l|l|l}
+⟨\kern0.1em{seq_1}⟩                     &
+\text{(save}                            &
+\text{(save}                            &
+\text{(save} \kern1ex ⟨\kern0.1em{reg_2}⟩\text{)}    \\
+
+⟨\kern0.1em{seq_2}⟩  		        &
+\kern1ex ⟨\kern0.1em{reg_1}⟩\text{)}    &
+\kern1ex ⟨\kern0.1em{reg_2}⟩\text{)}    &
+\text{(save} \kern1ex ⟨\kern0.1em{reg_1}⟩\text{)}    \\
+
+                                        &
+⟨\kern0.1em{seq_1}⟩                     &
+⟨\kern0.1em{seq_1}⟩                     &
+⟨\kern0.1em{seq_1}⟩                                  \\
+
+                                        &
+\text{(restore}                         &
+\text{(restore}                         &
+\text{(restore} \kern1ex ⟨\kern0.1em{reg_1}⟩\text{)} \\
+
+                                        &
+\kern1ex ⟨\kern0.1em{reg_1}⟩\text{)}    &
+\kern1ex ⟨\kern0.1em{reg_2}⟩\text{)}    &
+\text{(restore} \kern1ex ⟨\kern0.1em{reg_2}⟩\text{)} \\
+
+                                        &
+⟨\kern0.1em{seq_2}⟩                     &
+⟨\kern0.1em{seq_2}⟩                     &
+⟨\kern0.1em{seq_2}⟩
+\end{array}
+\]
+@end tex
+
+@noindent
+Bằng cách sử dụng @code{preserving} để kết hợp các chuỗi lệnh, trình biên dịch tránh các phép toán ngăn xếp không cần thiết. Điều này cũng cô lập các chi tiết về việc có hay không tạo ra các lệnh @code{save} và @code{restore} trong thủ tục @code{preserving}, tách chúng khỏi các mối quan tâm phát sinh khi viết từng bộ tạo mã riêng lẻ. Trên thực tế không có lệnh @code{save} hay @code{restore} nào được tạo ra một cách tường minh bởi các bộ tạo mã.
+
+Về nguyên tắc, ta có thể biểu diễn một chuỗi lệnh đơn giản là một danh sách các lệnh. @code{Append-instruction-sequences} sau đó có thể kết hợp các chuỗi lệnh bằng cách thực hiện một lệnh @code{append} danh sách thông thường. Tuy nhiên, @code{preserving} khi đó sẽ là một phép toán phức tạp, vì nó sẽ phải phân tích mỗi chuỗi lệnh để xác định cách chuỗi sử dụng các thanh ghi của nó. @code{Preserving} sẽ không hiệu quả cũng như phức tạp, vì nó sẽ phải phân tích mỗi đối số chuỗi lệnh của nó, ngay cả khi các chuỗi này có thể đã được xây dựng bằng các lời gọi @code{preserving}, trong trường hợp đó các phần của chúng đã được phân tích rồi. Để tránh phân tích lặp đi lặp lại như vậy, ta sẽ liên kết với mỗi chuỗi lệnh một số thông tin về việc sử dụng thanh ghi của nó. Khi ta xây dựng một chuỗi lệnh cơ bản, ta sẽ cung cấp thông tin này một cách tường minh, và các thủ tục kết hợp các chuỗi lệnh sẽ suy ra thông tin sử dụng thanh ghi cho chuỗi kết hợp từ thông tin liên quan đến các chuỗi thành phần.
+
+Một chuỗi lệnh sẽ chứa ba mảnh thông tin:
+
+@itemize @bullet
+
+@item
+tập hợp các thanh ghi phải được khởi tạo trước khi các lệnh trong chuỗi được thực thi (các thanh ghi này được gọi là @newterm{cần} bởi chuỗi),
+
+@item
+tập hợp các thanh ghi có giá trị được sửa đổi bởi các lệnh trong chuỗi, và
+
+@item
+các lệnh thực sự (còn được gọi là @newterm{câu lệnh}) trong chuỗi.
+
+@end itemize
+
+@noindent
+Ta sẽ biểu diễn một chuỗi lệnh như một danh sách ba phần của nó. Hàm khởi tạo cho các chuỗi lệnh như vậy là
+
+@lisp
+(define (make-instruction-sequence
+         needs modifies statements)
+  (list needs modifies statements))
+@end lisp
+
+@noindent
+Ví dụ, chuỗi hai lệnh tra cứu giá trị của biến @code{x} trong môi trường hiện tại, gán kết quả cho @code{val}, và sau đó trả về, yêu cầu các thanh ghi @code{env} và @code{continue} đã được khởi tạo, và sửa đổi thanh ghi @code{val}. Do đó chuỗi này sẽ được xây dựng như
+
+@lisp
+(make-instruction-sequence
+ '(env continue)
+ '(val)
+ '((assign val
+           (op lookup-variable-value)
+           (const x)
+           (reg env))
+   (goto (reg continue))))
+@end lisp
+
+@noindent
+Đôi khi ta cần xây dựng một chuỗi lệnh không có câu lệnh nào:
+
+@lisp
+(define (empty-instruction-sequence)
+  (make-instruction-sequence '() '() '()))
+@end lisp
+
+@noindent
+Các thủ tục để kết hợp các chuỗi lệnh được thể hiện trong @ref{5.5.4}.
+
+@quotation
+@strong{@anchor{Exercise 5.31}Bài tập 5.31:} Trong việc định giá một ứng dụng thủ tục, trình định giá điều khiển tường minh luôn lưu và khôi phục thanh ghi @code{env} xung quanh việc định giá toán tử, lưu và khôi phục @code{env} xung quanh việc định giá mỗi toán hạng (ngoại trừ cái cuối cùng), lưu và khôi phục @code{argl} xung quanh việc định giá mỗi toán hạng, và lưu và khôi phục @code{proc} xung quanh việc định giá chuỗi toán hạng. Đối với mỗi tổ hợp sau đây, hãy nói những phép toán @code{save} và @code{restore} nào trong số này là thừa và do đó có thể được loại bỏ bởi cơ chế @code{preserving} của trình biên dịch:
+
+@lisp
+(f 'x 'y)
+((f) 'x 'y)
+(f (g 'x) y)
+(f (g 'x) 'y)
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.32}Bài tập 5.32:} Sử dụng cơ chế @code{preserving}, trình biên dịch sẽ tránh lưu và khôi phục @code{env} xung quanh việc định giá toán tử của một tổ hợp trong trường hợp toán tử là một ký hiệu. Ta cũng có thể xây dựng các tối ưu hóa như vậy vào trình định giá. Thật vậy, trình định giá điều khiển tường minh của @ref{5.4} đã thực hiện một tối ưu hóa tương tự, bằng cách xử lý các tổ hợp không có toán hạng như một trường hợp đặc biệt.
+
+@enumerate a
+
+@item
+Mở rộng trình định giá điều khiển tường minh để nhận ra như một lớp riêng biệt của biểu thức các tổ hợp có toán tử là một ký hiệu, và tận dụng thực tế này khi định giá các biểu thức như vậy.
+
+@item
+Alyssa P. Hacker gợi ý rằng bằng cách mở rộng trình định giá để nhận ra ngày càng nhiều trường hợp đặc biệt, ta có thể kết hợp tất cả các tối ưu hóa của trình biên dịch, và điều này sẽ loại bỏ hoàn toàn lợi thế của biên dịch. Bạn nghĩ gì về ý tưởng này?
+
+@end enumerate
+@end quotation

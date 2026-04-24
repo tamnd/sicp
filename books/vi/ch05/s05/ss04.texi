@@ -1,0 +1,135 @@
+@node	5.5.4, 5.5.5, 5.5.3, 5.5
+@subsection Kết Hợp Các Chuỗi Lệnh
+
+Phần này mô tả các chi tiết về cách các chuỗi lệnh được biểu diễn và kết hợp. Nhớ lại từ @ref{5.5.1} rằng một chuỗi lệnh được biểu diễn như là một danh sách các thanh ghi được cần, các thanh ghi được sửa đổi, và các lệnh thực sự. Ta cũng sẽ xem xét một nhãn (ký hiệu) là một trường hợp suy biến của một chuỗi lệnh, không cần hay sửa đổi bất kỳ thanh ghi nào. Vì vậy để xác định các thanh ghi được cần và sửa đổi bởi các chuỗi lệnh ta sử dụng các bộ chọn
+
+@lisp
+(define (registers-needed s)
+  (if (symbol? s) '() (car s)))
+(define (registers-modified s)
+  (if (symbol? s) '() (cadr s)))
+(define (statements s)
+  (if (symbol? s) (list s) (caddr s)))
+@end lisp
+
+@noindent
+và để xác định xem một chuỗi nhất định có cần hay sửa đổi một thanh ghi nhất định không ta sử dụng các vị từ
+
+@lisp
+(define (needs-register? seq reg)
+  (memq reg (registers-needed seq)))
+(define (modifies-register? seq reg)
+  (memq reg (registers-modified seq)))
+@end lisp
+
+@noindent
+Dựa trên các vị từ và bộ chọn này, ta có thể hiện thực hóa các bộ kết hợp chuỗi lệnh khác nhau được sử dụng trong suốt trình biên dịch.
+
+Bộ kết hợp cơ bản là @code{append-instruction-sequences}. Nó lấy một số đối số tùy ý là các chuỗi lệnh sẽ được thực thi tuần tự và trả về một chuỗi lệnh có các câu lệnh là các câu lệnh của tất cả các chuỗi được nối lại với nhau. Điểm tinh tế là xác định các thanh ghi được cần và sửa đổi bởi chuỗi kết quả. Nó sửa đổi những thanh ghi được sửa đổi bởi bất kỳ chuỗi nào; nó cần những thanh ghi phải được khởi tạo trước khi chuỗi đầu tiên có thể chạy (các thanh ghi được cần bởi chuỗi đầu tiên), cùng với những thanh ghi được cần bởi bất kỳ chuỗi nào khác không được khởi tạo (sửa đổi) bởi các chuỗi đứng trước nó.
+
+Các chuỗi được nối hai cái một lần bởi @code{append-2-sequences}. Nó lấy hai chuỗi lệnh @code{seq1} và @code{seq2} và trả về chuỗi lệnh có các câu lệnh là các câu lệnh của @code{seq1} theo sau là các câu lệnh của @code{seq2}, có các thanh ghi được sửa đổi là những thanh ghi được sửa đổi bởi @code{seq1} hay @code{seq2}, và có các thanh ghi được cần là các thanh ghi được cần bởi @code{seq1} cùng với những thanh ghi được cần bởi @code{seq2} không được sửa đổi bởi @code{seq1}. (Về mặt các phép toán tập hợp, tập hợp mới của các thanh ghi được cần là hợp của tập hợp các thanh ghi được cần bởi @code{seq1} với hiệu của các thanh ghi được cần bởi @code{seq2} và các thanh ghi được sửa đổi bởi @code{seq1}.) Do đó, @code{append-instruction-sequences} được hiện thực hóa như sau:
+
+@lisp
+(define (append-instruction-sequences . seqs)
+  (define (append-2-sequences seq1 seq2)
+    (make-instruction-sequence
+     (list-union
+      (registers-needed seq1)
+      (list-difference
+       (registers-needed seq2)
+       (registers-modified seq1)))
+     (list-union
+      (registers-modified seq1)
+      (registers-modified seq2))
+     (append (statements seq1)
+             (statements seq2))))
+  (define (append-seq-list seqs)
+    (if (null? seqs)
+        (empty-instruction-sequence)
+        (append-2-sequences
+         (car seqs)
+         (append-seq-list (cdr seqs)))))
+  (append-seq-list seqs))
+@end lisp
+
+@noindent
+Thủ tục này sử dụng một số phép toán đơn giản để thao tác các tập hợp được biểu diễn như danh sách, tương tự như biểu diễn tập hợp (không có thứ tự) được mô tả trong @ref{2.3.3}:
+
+@lisp
+(define (list-union s1 s2)
+  (cond ((null? s1) s2)
+        ((memq (car s1) s2)
+         (list-union (cdr s1) s2))
+        (else
+         (cons (car s1)
+               (list-union (cdr s1) s2)))))
+
+(define (list-difference s1 s2)
+  (cond ((null? s1) '())
+        ((memq (car s1) s2)
+         (list-difference (cdr s1) s2))
+        (else
+         (cons (car s1)
+               (list-difference (cdr s1)
+                                s2)))))
+@end lisp
+
+@noindent
+@code{Preserving}, bộ kết hợp chuỗi lệnh lớn thứ hai, lấy một danh sách các thanh ghi @code{regs} và hai chuỗi lệnh @code{seq1} và @code{seq2} sẽ được thực thi tuần tự. Nó trả về một chuỗi lệnh có các câu lệnh là các câu lệnh của @code{seq1} theo sau là các câu lệnh của @code{seq2}, với các lệnh @code{save} và @code{restore} phù hợp xung quanh @code{seq1} để bảo vệ các thanh ghi trong @code{regs} được sửa đổi bởi @code{seq1} nhưng cần bởi @code{seq2}. Để thực hiện điều này, @code{preserving} trước tiên tạo ra một chuỗi có các lệnh @code{save} được yêu cầu theo sau là các câu lệnh của @code{seq1} theo sau là các lệnh @code{restore} được yêu cầu. Chuỗi này cần các thanh ghi đang được lưu và khôi phục ngoài các thanh ghi được cần bởi @code{seq1}, và sửa đổi các thanh ghi được sửa đổi bởi @code{seq1} ngoại trừ những cái đang được lưu và khôi phục. Chuỗi được bổ sung này và @code{seq2} sau đó được nối theo cách thông thường. Thủ tục sau đây hiện thực hóa chiến lược này một cách đệ quy, đi xuống danh sách các thanh ghi cần được bảo toàn:@footnote{Lưu ý rằng @code{preserving} gọi @code{append} với ba đối số. Mặc dù định nghĩa của @code{append} được hiển thị trong cuốn sách này chỉ chấp nhận hai đối số, Scheme chuẩn cung cấp một thủ tục @code{append} lấy một số đối số tùy ý.}
+
+@lisp
+(define (preserving regs seq1 seq2)
+  (if (null? regs)
+      (append-instruction-sequences seq1 seq2)
+      (let ((first-reg (car regs)))
+        (if (and
+             (needs-register? seq2 first-reg)
+             (modifies-register? seq1
+                                 first-reg))
+            (preserving
+             (cdr regs)
+             (make-instruction-sequence
+              (list-union
+               (list first-reg)
+               (registers-needed seq1))
+              (list-difference
+               (registers-modified seq1)
+               (list first-reg))
+              (append `((save ,first-reg))
+                      (statements seq1)
+                      `((restore ,first-reg))))
+             seq2)
+            (preserving
+             (cdr regs)
+             seq1
+             seq2)))))
+@end lisp
+
+@noindent
+Một bộ kết hợp chuỗi khác, @code{tack-on-instruction-sequence}, được sử dụng bởi @code{compile-lambda} để nối thân thủ tục vào một chuỗi khác. Vì thân thủ tục không ``nằm trong dòng'' để được thực thi như một phần của chuỗi kết hợp, việc sử dụng thanh ghi của nó không có tác động đến việc sử dụng thanh ghi của chuỗi trong đó nó được nhúng vào. Do đó ta bỏ qua các tập hợp thanh ghi được cần và sửa đổi của thân thủ tục khi ta gắn nó vào chuỗi kia.
+
+@lisp
+(define (tack-on-instruction-sequence
+         seq body-seq)
+  (make-instruction-sequence
+   (registers-needed seq)
+   (registers-modified seq)
+   (append (statements seq)
+           (statements body-seq))))
+@end lisp
+
+@noindent
+@code{Compile-if} và @code{compile-procedure-call} sử dụng một bộ kết hợp đặc biệt gọi là @code{parallel-instruction-sequences} để nối hai nhánh lựa chọn thay thế theo sau một phép kiểm tra. Hai nhánh sẽ không bao giờ được thực thi tuần tự; đối với bất kỳ lần định giá cụ thể nào của phép kiểm tra, sẽ nhập vào một nhánh hay nhánh kia. Do điều này, các thanh ghi được cần bởi nhánh thứ hai vẫn được cần bởi chuỗi kết hợp, ngay cả khi chúng được sửa đổi bởi nhánh thứ nhất.
+
+@lisp
+(define (parallel-instruction-sequences
+         seq1 seq2)
+  (make-instruction-sequence
+   (list-union (registers-needed seq1)
+               (registers-needed seq2))
+   (list-union (registers-modified seq1)
+               (registers-modified seq2))
+   (append (statements seq1)
+           (statements seq2))))
+@end lisp
+

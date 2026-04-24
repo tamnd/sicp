@@ -1,0 +1,452 @@
+@node	5.5.5, 5.5.6, 5.5.4, 5.5
+@subsection Ví Dụ về Mã Biên Dịch
+
+Bây giờ ta đã thấy tất cả các yếu tố của trình biên dịch, hãy kiểm tra một ví dụ về mã được biên dịch để xem mọi thứ khớp với nhau như thế nào. Ta sẽ biên dịch định nghĩa của một thủ tục @code{factorial} đệ quy bằng cách gọi @code{compile}:
+
+@lisp
+(compile
+ '(define (factorial n)
+    (if (= n 1)
+        1
+        (* (factorial (- n 1)) n)))
+ 'val
+ 'next)
+@end lisp
+
+@noindent
+Ta đã chỉ định rằng giá trị của biểu thức @code{define} phải được đặt vào thanh ghi @code{val}. Ta không quan tâm mã được biên dịch làm gì sau khi thực thi @code{define}, vì vậy lựa chọn của ta về @code{next} làm bộ mô tả liên kết là tùy ý.
+
+@code{Compile} xác định rằng biểu thức là một định nghĩa, vì vậy nó gọi @code{compile-definition} để biên dịch mã tính toán giá trị cần gán (nhắm tới @code{val}), theo sau là mã để cài đặt định nghĩa, theo sau là mã để đặt giá trị của @code{define} (là ký hiệu @code{ok}) vào thanh ghi đích, và cuối cùng là mã liên kết. @code{Env} được bảo toàn xung quanh tính toán giá trị, vì nó cần thiết để cài đặt định nghĩa. Vì liên kết là @code{next}, không có mã liên kết trong trường hợp này. Khung của mã được biên dịch do đó là
+
+@lisp
+⟨@emph{lưu @code{env} nếu được sửa đổi bởi mã tính giá trị}⟩
+  ⟨@emph{biên dịch giá trị định nghĩa,
+   đích @code{val}, liên kết @code{next}}⟩
+  ⟨@emph{khôi phục @code{env} nếu đã lưu ở trên}⟩
+  (perform (op define-variable!)
+           (const factorial)
+           (reg val)
+           (reg env))
+  (assign val (const ok))
+@end lisp
+
+@noindent
+Biểu thức sẽ được biên dịch để tạo ra giá trị cho biến @code{factorial} là một biểu thức @code{lambda} có giá trị là thủ tục tính giai thừa. @code{Compile} xử lý điều này bằng cách gọi @code{compile-lambda}, biên dịch thân thủ tục, gắn nhãn nó là một điểm nhập mới, và sinh ra lệnh sẽ kết hợp thân thủ tục tại điểm nhập mới với môi trường thời gian chạy và gán kết quả cho @code{val}. Chuỗi sau đó bỏ qua xung quanh mã thủ tục được biên dịch, được chèn vào ở điểm này. Bản thân mã thủ tục bắt đầu bằng cách mở rộng môi trường định nghĩa của thủ tục bằng một khung ràng buộc tham số hình thức @code{n} với đối số thủ tục. Sau đó đến thân thủ tục thực sự. Vì mã này cho giá trị của biến không sửa đổi thanh ghi @code{env}, các lệnh @code{save} và @code{restore} tùy chọn được hiển thị ở trên không được sinh ra. (Mã thủ tục tại @code{entry2} không được thực thi tại thời điểm này, vì vậy việc sử dụng @code{env} của nó là không liên quan.) Do đó, khung cho mã được biên dịch trở thành
+
+@lisp
+  (assign val (op make-compiled-procedure)
+              (label entry2)
+              (reg env))
+  (goto (label after-lambda1))
+entry2
+  (assign env (op compiled-procedure-env)
+              (reg proc))
+  (assign env (op extend-environment)
+              (const (n))
+              (reg argl)
+              (reg env))
+  ⟨@emph{biên dịch thân thủ tục}⟩
+after-lambda1
+  (perform (op define-variable!)
+           (const factorial)
+           (reg val) (reg env))
+  (assign val (const ok))
+@end lisp
+
+@noindent
+Thân thủ tục luôn được biên dịch (bởi @code{compile-lambda-body}) như một chuỗi với đích @code{val} và liên kết @code{return}. Chuỗi trong trường hợp này bao gồm một biểu thức @code{if} duy nhất:
+
+@lisp
+(if (= n 1)
+    1
+    (* (factorial (- n 1)) n))
+@end lisp
+
+@noindent
+@code{Compile-if} sinh ra mã đầu tiên tính toán vị từ (nhắm tới @code{val}), sau đó kiểm tra kết quả và rẽ nhánh xung quanh nhánh đúng nếu vị từ là sai. @code{Env} và @code{continue} được bảo toàn xung quanh mã vị từ, vì chúng có thể cần thiết cho phần còn lại của biểu thức @code{if}. Vì biểu thức @code{if} là biểu thức cuối cùng (và duy nhất) trong chuỗi tạo nên thân thủ tục, đích của nó là @code{val} và liên kết của nó là @code{return}, vì vậy cả hai nhánh đúng và sai đều được biên dịch với đích @code{val} và liên kết @code{return}. (Tức là, giá trị của biểu thức điều kiện, là giá trị được tính bởi một trong các nhánh của nó, là giá trị của thủ tục.)
+
+@lisp
+⟨@emph{lưu @code{continue}, @code{env} nếu được sửa đổi bởi
+ vị từ và cần bởi các nhánh}⟩
+  ⟨@emph{biên dịch vị từ,
+   đích @code{val}, liên kết @code{next}}⟩
+  ⟨@emph{khôi phục @code{continue}, @code{env} nếu đã lưu ở trên}⟩
+  (test (op false?) (reg val))
+  (branch (label false-branch4))
+true-branch5
+  ⟨@emph{biên dịch nhánh đúng,
+   đích @code{val}, liên kết @code{return}}⟩
+false-branch4
+  ⟨@emph{biên dịch nhánh sai,
+   đích @code{val}, liên kết @code{return}}⟩
+after-if3
+@end lisp
+
+@noindent
+Vị từ @code{(= n 1)} là một lời gọi thủ tục. Nó tra cứu toán tử (ký hiệu @code{=}) và đặt giá trị này vào @code{proc}. Sau đó nó lắp ráp các đối số @code{1} và giá trị của @code{n} vào @code{argl}. Sau đó nó kiểm tra xem @code{proc} có chứa thủ tục nguyên thủy hay thủ tục hỗn hợp không, và điều phân công tới nhánh nguyên thủy hay nhánh hỗn hợp cho phù hợp. Cả hai nhánh tiếp tục tại nhãn @code{after-call}. Các yêu cầu bảo toàn các thanh ghi xung quanh việc định giá toán tử và toán hạng không dẫn đến việc lưu bất kỳ thanh ghi nào, vì trong trường hợp này các lần định giá đó không sửa đổi các thanh ghi liên quan.
+
+@lisp
+  (assign proc (op lookup-variable-value)
+               (const =)
+               (reg env))
+  (assign val (const 1))
+  (assign argl (op list) (reg val))
+  (assign val (op lookup-variable-value)
+              (const n)
+              (reg env))
+  (assign argl (op cons) (reg val) (reg argl))
+  (test (op primitive-procedure?) (reg proc))
+  (branch (label primitive-branch17))
+compiled-branch16
+  (assign continue (label after-call15))
+  (assign val (op compiled-procedure-entry)
+              (reg proc))
+  (goto (reg val))
+primitive-branch17
+  (assign val (op apply-primitive-procedure)
+              (reg proc)
+              (reg argl))
+after-call15
+@end lisp
+
+@noindent
+Nhánh đúng, là hằng số 1, được biên dịch (với đích @code{val} và liên kết @code{return}) thành
+
+@lisp
+(assign val (const 1))
+(goto (reg continue))
+@end lisp
+
+@noindent
+Mã cho nhánh sai là một lời gọi thủ tục khác, trong đó thủ tục là giá trị của ký hiệu @code{*}, và các đối số là @code{n} và kết quả của một lời gọi thủ tục khác (một lời gọi tới @code{factorial}). Mỗi lời gọi này thiết lập @code{proc} và @code{argl} và các nhánh nguyên thủy và hỗn hợp riêng của mình. @ref{Figure 5.17} hiển thị kết quả biên dịch hoàn chỉnh của định nghĩa thủ tục @code{factorial}. Lưu ý rằng các lệnh @code{save} và @code{restore} của @code{continue} và @code{env} có thể có xung quanh vị từ, được hiển thị ở trên, thực sự được sinh ra, vì các thanh ghi này được sửa đổi bởi lời gọi thủ tục trong vị từ và cần thiết cho lời gọi thủ tục và liên kết @code{return} trong các nhánh.
+
+@quotation
+@strong{@anchor{Figure 5.17}Figure 5.17:} @math{\downarrow} Kết quả biên dịch định nghĩa thủ tục @code{factorial}.
+
+@lisp
+@r{;; xây dựng thủ tục và bỏ qua mã}
+@r{;; cho thân thủ tục}
+  (assign val
+          (op make-compiled-procedure)
+          (label entry2)
+          (reg env))
+  (goto (label after-lambda1))
+entry2     @r{; các lời gọi tới @code{factorial} sẽ nhập ở đây}
+  (assign env
+          (op compiled-procedure-env)
+          (reg proc))
+  (assign env
+          (op extend-environment)
+          (const (n))
+          (reg argl)
+          (reg env))
+@r{;; bắt đầu thân thủ tục thực sự}
+  (save continue)
+  (save env)
+@r{;; tính @code{(= n 1)}}
+  (assign proc
+          (op lookup-variable-value)
+          (const =)
+          (reg env))
+  (assign val (const 1))
+  (assign argl (op list) (reg val))
+  (assign val
+          (op lookup-variable-value)
+          (const n)
+          (reg env))
+  (assign argl (op cons) (reg val) (reg argl))
+  (test (op primitive-procedure?) (reg proc))
+  (branch (label primitive-branch17))
+compiled-branch16
+  (assign continue (label after-call15))
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+primitive-branch17
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+after-call15   @r{; @code{val} bây giờ chứa kết quả của @code{(= n 1)}}
+  (restore env)
+  (restore continue)
+  (test (op false?) (reg val))
+  (branch (label false-branch4))
+true-branch5  @r{; trả về 1}
+  (assign val (const 1))
+  (goto (reg continue))
+
+false-branch4
+@r{;; tính và trả về @code{(* (factorial (- n 1)) n)}}
+  (assign proc
+          (op lookup-variable-value)
+          (const *)
+          (reg env))
+  (save continue)
+  (save proc)   @r{; lưu thủ tục @code{*}}
+  (assign val
+          (op lookup-variable-value)
+          (const n)
+          (reg env))
+  (assign argl (op list) (reg val))
+  (save argl)   @r{; lưu danh sách đối số một phần cho @code{*}}
+@r{;; tính @code{(factorial (- n 1))},}
+@r{;; đây là đối số kia cho @code{*}}
+  (assign proc
+          (op lookup-variable-value)
+          (const factorial)
+          (reg env))
+  (save proc)  @r{; lưu thủ tục @code{factorial}}
+@r{;; tính @code{(- n 1)}, đây là đối số cho @code{factorial}}
+  (assign proc
+          (op lookup-variable-value)
+          (const -)
+          (reg env))
+  (assign val (const 1))
+  (assign argl (op list) (reg val))
+  (assign val
+          (op lookup-variable-value)
+          (const n)
+          (reg env))
+  (assign argl (op cons) (reg val) (reg argl))
+  (test (op primitive-procedure?) (reg proc))
+  (branch (label primitive-branch8))
+compiled-branch7
+  (assign continue (label after-call6))
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+primitive-branch8
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+
+after-call6   @r{; @code{val} bây giờ chứa kết quả của @code{(- n 1)}}
+  (assign argl (op list) (reg val))
+  (restore proc) @r{; khôi phục @code{factorial}}
+@r{;; áp dụng @code{factorial}}
+  (test (op primitive-procedure?) (reg proc))
+  (branch (label primitive-branch11))
+compiled-branch10
+  (assign continue (label after-call9))
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+primitive-branch11
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+after-call9      @r{; @code{val} bây giờ chứa kết quả}
+                 @r{; của @code{(factorial (- n 1))}}
+  (restore argl) @r{; khôi phục danh sách đối số một phần cho @code{*}}
+  (assign argl (op cons) (reg val) (reg argl))
+  (restore proc) @r{; khôi phục @code{*}}
+  (restore continue)
+@r{;; áp dụng @code{*} và trả về giá trị của nó}
+  (test (op primitive-procedure?) (reg proc))
+  (branch (label primitive-branch14))
+compiled-branch13
+@r{;; lưu ý rằng một thủ tục hỗn hợp ở đây}
+@r{;; được gọi theo cách đệ quy đuôi}
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+primitive-branch14
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+  (goto (reg continue))
+after-call12
+after-if3
+after-lambda1
+@r{;; gán thủ tục cho biến @code{factorial}}
+  (perform (op define-variable!)
+           (const factorial)
+           (reg val)
+           (reg env))
+  (assign val (const ok))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.33}Bài tập 5.33:} Xem xét định nghĩa sau về một thủ tục giai thừa, hơi khác với định nghĩa ở trên:
+
+@lisp
+(define (factorial-alt n)
+  (if (= n 1)
+      1
+      (* n (factorial-alt (- n 1)))))
+@end lisp
+
+Biên dịch thủ tục này và so sánh mã kết quả với mã được tạo ra cho @code{factorial}. Giải thích bất kỳ sự khác biệt nào bạn tìm thấy. Chương trình nào thực thi hiệu quả hơn chương trình kia không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.34}Bài tập 5.34:} Biên dịch thủ tục giai thừa lặp
+
+@lisp
+(define (factorial n)
+  (define (iter product counter)
+    (if (> counter n)
+        product
+        (iter (* counter product)
+              (+ counter 1))))
+  (iter 1 1))
+@end lisp
+
+Chú thích mã kết quả, hiển thị sự khác biệt thiết yếu giữa mã cho các phiên bản lặp và đệ quy của @code{factorial} làm cho một quá trình tích lũy không gian ngăn xếp và quá trình kia chạy trong không gian ngăn xếp hằng số.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.35}Bài tập 5.35:} Biểu thức nào được biên dịch để tạo ra mã hiển thị trong @ref{Figure 5.18}?
+@end quotation
+
+@quotation
+@strong{@anchor{Figure 5.18}Figure 5.18:} @math{\downarrow} Ví dụ về đầu ra của trình biên dịch. Xem @ref{Exercise 5.35}.
+
+@lisp
+(assign val (op make-compiled-procedure)
+            (label entry16)
+            (reg env))
+  (goto (label after-lambda15))
+entry16
+  (assign env (op compiled-procedure-env)
+              (reg proc))
+  (assign env (op extend-environment)
+              (const (x))
+              (reg argl)
+              (reg env))
+  (assign proc (op lookup-variable-value)
+               (const +)
+               (reg env))
+  (save continue) (save proc) (save env)
+  (assign proc (op lookup-variable-value)
+               (const g)
+               (reg env))
+  (save proc)
+  (assign proc (op lookup-variable-value)
+               (const +)
+               (reg env))
+  (assign val (const 2))
+  (assign argl (op list) (reg val))
+  (assign val (op lookup-variable-value)
+              (const x)
+              (reg env))
+  (assign argl (op cons)
+               (reg val)
+               (reg argl))
+  (test (op primitive-procedure?)
+        (reg proc))
+  (branch (label primitive-branch19))
+compiled-branch18
+  (assign continue (label after-call17))
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+primitive-branch19
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+after-call17
+  (assign argl (op list) (reg val))
+  (restore proc)
+  (test (op primitive-procedure?)
+        (reg proc))
+  (branch (label primitive-branch22))
+compiled-branch21
+  (assign continue (label after-call20))
+  (assign val
+          (op compiled-procedure-entry)
+          (reg proc))
+  (goto (reg val))
+primitive-branch22
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+after-call20
+  (assign argl (op list) (reg val))
+  (restore env)
+  (assign val
+          (op lookup-variable-value)
+          (const x)
+          (reg env))
+  (assign argl
+          (op cons)
+          (reg val)
+          (reg argl))
+  (restore proc)
+  (restore continue)
+  (test (op primitive-procedure?)
+        (reg proc))
+  (branch (label primitive-branch25))
+compiled-branch24
+  (assign val (op compiled-procedure-entry)
+              (reg proc))
+  (goto (reg val))
+primitive-branch25
+  (assign val
+          (op apply-primitive-procedure)
+          (reg proc)
+          (reg argl))
+  (goto (reg continue))
+after-call23
+after-lambda15
+  (perform (op define-variable!)
+           (const f)
+           (reg val)
+           (reg env))
+  (assign val (const ok))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.36}Bài tập 5.36:} Trình biên dịch của ta tạo ra thứ tự định giá nào cho các toán hạng của một tổ hợp? Nó có phải là từ trái sang phải, từ phải sang trái, hay một thứ tự khác không? Thứ tự này được xác định ở đâu trong trình biên dịch? Sửa đổi trình biên dịch để nó tạo ra một thứ tự định giá khác. (Xem thảo luận về thứ tự định giá cho trình định giá điều khiển tường minh trong @ref{5.4.1}.) Việc thay đổi thứ tự định giá toán hạng ảnh hưởng như thế nào đến hiệu quả của mã xây dựng danh sách đối số?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.37}Bài tập 5.37:} Một cách để hiểu cơ chế @code{preserving} của trình biên dịch để tối ưu hóa việc sử dụng ngăn xếp là xem các phép toán bổ sung nào sẽ được sinh ra nếu ta không sử dụng ý tưởng này. Sửa đổi @code{preserving} để nó luôn sinh ra các phép toán @code{save} và @code{restore}. Biên dịch một số biểu thức đơn giản và xác định các phép toán ngăn xếp không cần thiết được sinh ra. So sánh mã đó với mã được sinh ra khi cơ chế @code{preserving} còn nguyên vẹn.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.38}Bài tập 5.38:} Trình biên dịch của ta rất thông minh trong việc tránh các phép toán ngăn xếp không cần thiết, nhưng nó hoàn toàn không thông minh khi biên dịch các lời gọi tới các thủ tục nguyên thủy của ngôn ngữ dưới dạng các phép toán nguyên thủy do máy cung cấp. Ví dụ, hãy xem xét lượng mã được biên dịch để tính @code{(+ a 1)}: Mã thiết lập một danh sách đối số trong @code{argl}, đặt thủ tục cộng nguyên thủy (mà nó tìm thấy bằng cách tra cứu ký hiệu @code{+} trong môi trường) vào @code{proc}, và kiểm tra xem thủ tục là nguyên thủy hay hỗn hợp. Trình biên dịch luôn sinh ra mã để thực hiện phép kiểm tra, cũng như mã cho các nhánh nguyên thủy và hỗn hợp (chỉ có một trong số đó sẽ được thực thi). Ta chưa hiển thị phần của bộ điều khiển hiện thực hóa các nguyên thủy, nhưng ta giả định rằng các lệnh này sử dụng các phép toán số học nguyên thủy trong các đường dữ liệu của máy. Hãy xem xét lượng mã ít hơn sẽ được sinh ra nếu trình biên dịch có thể @newterm{mã hóa mở} các nguyên thủy---tức là, nếu nó có thể sinh ra mã để trực tiếp sử dụng các phép toán máy nguyên thủy này. Biểu thức @code{(+ a 1)} có thể được biên dịch thành đơn giản như@footnote{Ta đã sử dụng cùng ký hiệu @code{+} ở đây để biểu thị cả thủ tục ngôn ngữ nguồn và phép toán máy. Nói chung sẽ không có sự tương ứng một-một giữa các nguyên thủy của ngôn ngữ nguồn và các nguyên thủy của máy.}
+
+@lisp
+(assign val (op lookup-variable-value)
+            (const a)
+            (reg env))
+(assign val (op +)
+            (reg val)
+            (const 1))
+@end lisp
+
+Trong bài tập này ta sẽ mở rộng trình biên dịch để hỗ trợ mã hóa mở các nguyên thủy được chọn. Mã chuyên dụng sẽ được sinh ra cho các lời gọi tới các thủ tục nguyên thủy này thay vì mã ứng dụng thủ tục chung. Để hỗ trợ điều này, ta sẽ bổ sung thêm máy với các thanh ghi đối số đặc biệt @code{arg1} và @code{arg2}. Các phép toán số học nguyên thủy của máy sẽ lấy đầu vào từ @code{arg1} và @code{arg2}. Kết quả có thể được đặt vào @code{val}, @code{arg1}, hay @code{arg2}.
+
+Trình biên dịch phải có khả năng nhận ra ứng dụng của một nguyên thủy được mã hóa mở trong chương trình nguồn. Ta sẽ bổ sung thêm điều phân công trong thủ tục @code{compile} để nhận ra tên của các nguyên thủy này ngoài các từ khóa dành riêng (các dạng đặc biệt) mà nó hiện tại nhận ra.@footnote{Biến các nguyên thủy thành các từ khóa dành riêng nói chung là ý tưởng tồi, vì khi đó người dùng không thể ràng buộc lại các tên này với các thủ tục khác. Hơn nữa, nếu ta thêm các từ khóa dành riêng vào một trình biên dịch đang được sử dụng, các chương trình hiện có định nghĩa các thủ tục với các tên này sẽ ngừng hoạt động. Xem @ref{Exercise 5.44} để biết các ý tưởng về cách tránh vấn đề này.} Đối với mỗi dạng đặc biệt trình biên dịch của ta có một bộ sinh mã. Trong bài tập này ta sẽ xây dựng một họ các bộ sinh mã cho các nguyên thủy được mã hóa mở.
+
+@enumerate a
+
+@item
+Các nguyên thủy được mã hóa mở, không giống như các dạng đặc biệt, đều cần các toán hạng của chúng được định giá. Viết một bộ sinh mã @code{spread-arguments} để sử dụng bởi tất cả các bộ sinh mã mã hóa mở. @code{Spread-arguments} phải lấy một danh sách toán hạng và biên dịch các toán hạng đã cho nhắm tới các thanh ghi đối số liên tiếp. Lưu ý rằng một toán hạng có thể chứa một lời gọi tới một nguyên thủy được mã hóa mở, vì vậy các thanh ghi đối số sẽ phải được bảo toàn trong quá trình định giá toán hạng.
+
+@item
+Đối với mỗi thủ tục nguyên thủy @code{=}, @code{*}, @code{-}, và @code{+}, viết một bộ sinh mã lấy một tổ hợp với toán tử đó, cùng với một đích và một bộ mô tả liên kết, và tạo ra mã để phân phối các đối số vào các thanh ghi và sau đó thực hiện phép toán nhắm tới đích đã cho với liên kết đã cho. Bạn chỉ cần xử lý các biểu thức với hai toán hạng. Làm cho @code{compile} điều phân công tới các bộ sinh mã này.
+
+@item
+Thử trình biên dịch mới của bạn trên ví dụ @code{factorial}. So sánh mã kết quả với kết quả được tạo ra mà không có mã hóa mở.
+
+@item
+Mở rộng các bộ sinh mã của bạn cho @code{+} và @code{*} để chúng có thể xử lý các biểu thức với số lượng toán hạng tùy ý. Một biểu thức với nhiều hơn hai toán hạng sẽ phải được biên dịch thành một chuỗi các phép toán, mỗi phép toán chỉ có hai đầu vào.
+
+@end enumerate
+@end quotation
+

@@ -1,0 +1,330 @@
+@node	5.5.2, 5.5.3, 5.5.1, 5.5
+@subsection Biên Dịch Các Biểu Thức
+
+Trong phần này và phần tiếp theo ta hiện thực hóa các bộ sinh mã mà thủ tục @code{compile} điều phân công tới.
+
+@subsubheading Biên dịch mã liên kết
+
+Nói chung, đầu ra của mỗi bộ sinh mã sẽ kết thúc bằng các lệnh---được sinh ra bởi thủ tục @code{compile-linkage}---hiện thực hóa liên kết được yêu cầu. Nếu liên kết là @code{return} thì ta phải sinh ra lệnh @code{(goto (reg continue))}. Điều này cần thanh ghi @code{continue} và không sửa đổi bất kỳ thanh ghi nào. Nếu liên kết là @code{next}, thì ta không cần bao gồm bất kỳ lệnh bổ sung nào. Ngược lại, liên kết là một nhãn, và ta sinh ra một @code{goto} tới nhãn đó, một lệnh không cần hay sửa đổi bất kỳ thanh ghi nào.@footnote{Thủ tục này sử dụng một tính năng của Lisp gọi là @newterm{backquote} (hoặc @newterm{quasiquote}) rất tiện dụng để xây dựng danh sách. Đặt trước một danh sách bằng ký hiệu backquote gần giống như trích dẫn nó, ngoại trừ bất cứ thứ gì trong danh sách được đánh dấu bằng dấu phẩy thì sẽ được định giá.
+
+Ví dụ, nếu giá trị của @code{linkage} là ký hiệu @code{branch25}, thì biểu thức
+
+@lisp
+`((goto (label ,linkage)))
+@end lisp
+
+định giá thành danh sách
+
+@lisp
+((goto (label branch25)))
+@end lisp
+
+Tương tự, nếu giá trị của @code{x} là danh sách @code{(a b c)}, thì
+
+@lisp
+`(1 2 ,(car x))
+@end lisp
+
+định giá thành danh sách
+
+@lisp
+(1 2 a)
+@end lisp
+}
+
+@lisp
+(define (compile-linkage linkage)
+  (cond ((eq? linkage 'return)
+         (make-instruction-sequence
+          '(continue)
+          '()
+          '((goto (reg continue)))))
+        ((eq? linkage 'next)
+         (empty-instruction-sequence))
+        (else
+         (make-instruction-sequence '() '()
+          `((goto (label ,linkage)))))))
+@end lisp
+
+@noindent
+Mã liên kết được nối vào một chuỗi lệnh bằng cách @code{preserving} (bảo toàn) thanh ghi @code{continue}, vì một liên kết @code{return} sẽ cần thanh ghi @code{continue}: Nếu chuỗi lệnh đã cho sửa đổi @code{continue} và mã liên kết cần nó, @code{continue} sẽ được lưu và khôi phục.
+
+@lisp
+(define (end-with-linkage
+         linkage instruction-sequence)
+  (preserving '(continue)
+   instruction-sequence
+   (compile-linkage linkage)))
+@end lisp
+
+@subsubheading Biên dịch các biểu thức đơn giản
+
+Các bộ sinh mã cho các biểu thức tự định giá, trích dẫn, và biến xây dựng các chuỗi lệnh gán giá trị cần thiết vào thanh ghi đích và sau đó tiến hành như được chỉ định bởi bộ mô tả liên kết.
+
+@lisp
+(define (compile-self-evaluating
+         exp target linkage)
+  (end-with-linkage
+   linkage (make-instruction-sequence
+            '()
+            (list target)
+            `((assign ,target (const ,exp))))))
+
+(define (compile-quoted exp target linkage)
+  (end-with-linkage
+   linkage
+   (make-instruction-sequence
+    '()
+    (list target)
+    `((assign
+       ,target
+       (const ,(text-of-quotation exp)))))))
+
+(define (compile-variable
+         exp target linkage)
+  (end-with-linkage
+   linkage
+   (make-instruction-sequence
+    '(env)
+    (list target)
+    `((assign ,target
+              (op lookup-variable-value)
+              (const ,exp)
+              (reg env))))))
+@end lisp
+
+@noindent
+Tất cả các lệnh gán này sửa đổi thanh ghi đích, và lệnh tra cứu biến cần thanh ghi @code{env}.
+
+Các gán giá trị và định nghĩa được xử lý giống như trong trình thông dịch. Ta đệ quy sinh mã tính toán giá trị cần gán cho biến, và nối vào đó một chuỗi hai lệnh thực sự thiết lập hay định nghĩa biến và gán giá trị của toàn bộ biểu thức (ký hiệu @code{ok}) vào thanh ghi đích. Việc biên dịch đệ quy có đích @code{val} và liên kết @code{next} sao cho mã sẽ đặt kết quả vào @code{val} và tiếp tục với mã được nối vào sau nó. Việc nối được thực hiện bằng cách bảo toàn @code{env}, vì môi trường cần thiết để thiết lập hay định nghĩa biến và mã cho giá trị biến có thể là kết quả biên dịch của một biểu thức phức tạp có thể sửa đổi các thanh ghi theo các cách tùy ý.
+
+@lisp
+(define (compile-assignment
+         exp target linkage)
+  (let ((var (assignment-variable exp))
+        (get-value-code
+         (compile (assignment-value exp)
+                  'val
+                  'next)))
+    (end-with-linkage
+     linkage
+     (preserving
+      '(env)
+      get-value-code
+      (make-instruction-sequence
+       '(env val)
+       (list target)
+       `((perform (op set-variable-value!)
+                  (const ,var)
+                  (reg val)
+                  (reg env))
+         (assign ,target (const ok))))))))
+
+(define (compile-definition
+         exp target linkage)
+  (let ((var (definition-variable exp))
+        (get-value-code
+         (compile (definition-value exp)
+                  'val
+                  'next)))
+    (end-with-linkage
+     linkage
+     (preserving
+      '(env)
+      get-value-code
+      (make-instruction-sequence
+       '(env val)
+       (list target)
+       `((perform (op define-variable!)
+                  (const ,var)
+                  (reg val)
+                  (reg env))
+         (assign ,target (const ok))))))))
+@end lisp
+
+@noindent
+Chuỗi hai lệnh được nối vào yêu cầu @code{env} và @code{val} và sửa đổi đích. Lưu ý rằng mặc dù ta bảo toàn @code{env} cho chuỗi này, ta không bảo toàn @code{val}, vì @code{get-value-code} được thiết kế để đặt tường minh kết quả của nó vào @code{val} để chuỗi này sử dụng. (Trên thực tế, nếu ta bảo toàn @code{val}, ta sẽ có một lỗi, vì điều này sẽ khiến nội dung trước đó của @code{val} bị khôi phục ngay sau khi @code{get-value-code} chạy xong.)
+
+@subsubheading Biên dịch các biểu thức điều kiện
+
+Mã cho một biểu thức @code{if} được biên dịch với một đích và liên kết đã cho có dạng
+
+@lisp
+⟨@emph{biên dịch vị từ,
+ đích @code{val}, liên kết @code{next}}⟩
+ (test (op false?) (reg val))
+ (branch (label false-branch))
+true-branch
+ ⟨@emph{biên dịch hệ quả với đích đã cho
+  và liên kết đã cho hoặc @code{after-if}}⟩
+false-branch
+ ⟨@emph{biên dịch lựa chọn thay thế
+  với đích đã cho và liên kết đã cho}⟩
+after-if
+@end lisp
+
+@noindent
+Để sinh ra mã này, ta biên dịch vị từ, hệ quả và lựa chọn thay thế, và kết hợp mã kết quả với các lệnh kiểm tra kết quả vị từ và với các nhãn mới được sinh ra để đánh dấu các nhánh đúng và sai và phần cuối của biểu thức điều kiện.@footnote{Ta không thể chỉ sử dụng các nhãn @code{true-branch}, @code{false-branch}, và @code{after-if} như ở trên, vì có thể có nhiều hơn một @code{if} trong chương trình. Trình biên dịch sử dụng thủ tục @code{make-label} để sinh ra các nhãn. @code{Make-label} lấy một ký hiệu làm đối số và trả về một ký hiệu mới bắt đầu bằng ký hiệu đã cho. Ví dụ, các lời gọi kế tiếp tới @code{(make-label 'a)} sẽ trả về @code{a1}, @code{a2}, và như vậy. @code{Make-label} có thể được hiện thực hóa tương tự như việc sinh ra các tên biến duy nhất trong ngôn ngữ truy vấn, như sau:
+
+@lisp
+(define label-counter 0)
+
+(define (new-label-number)
+  (set! label-counter (+ 1 label-counter))
+  label-counter)
+
+(define (make-label name)
+  (string->symbol
+   (string-append
+    (symbol->string name)
+    (number->string (new-label-number)))))
+@end lisp
+} Trong cách sắp xếp mã này, ta phải rẽ nhánh qua nhánh đúng nếu kiểm tra là sai. Sự phức tạp nhỏ duy nhất là trong cách xử lý liên kết cho nhánh đúng. Nếu liên kết cho biểu thức điều kiện là @code{return} hay một nhãn, thì nhánh đúng và sai sẽ đều sử dụng cùng liên kết này. Nếu liên kết là @code{next}, nhánh đúng kết thúc bằng một lần nhảy xung quanh mã cho nhánh sai tới nhãn ở cuối biểu thức điều kiện.
+
+@lisp
+(define (compile-if exp target linkage)
+  (let ((t-branch (make-label 'true-branch))
+        (f-branch (make-label 'false-branch))
+        (after-if (make-label 'after-if)))
+    (let ((consequent-linkage
+           (if (eq? linkage 'next)
+               after-if
+               linkage)))
+      (let ((p-code
+             (compile (if-predicate exp)
+                      'val
+                      'next))
+            (c-code
+             (compile (if-consequent exp)
+                      target
+                      consequent-linkage))
+            (a-code
+             (compile (if-alternative exp)
+                      target
+                      linkage)))
+        (preserving
+         '(env continue)
+         p-code
+         (append-instruction-sequences
+          (make-instruction-sequence
+           '(val)
+           '()
+           `((test (op false?) (reg val))
+             (branch (label ,f-branch))))
+          (parallel-instruction-sequences
+           (append-instruction-sequences
+            t-branch c-code)
+           (append-instruction-sequences
+            f-branch a-code))
+          after-if))))))
+@end lisp
+
+@noindent
+@code{Env} được bảo toàn xung quanh mã vị từ vì nó có thể được cần bởi các nhánh đúng và sai, và @code{continue} được bảo toàn vì nó có thể được cần bởi mã liên kết trong các nhánh đó. Mã cho các nhánh đúng và sai (không được thực thi tuần tự) được nối bằng cách sử dụng một bộ kết hợp đặc biệt @code{parallel-instruction-sequences} được mô tả trong @ref{5.5.4}.
+
+Lưu ý rằng @code{cond} là một biểu thức dẫn xuất, vì vậy tất cả những gì trình biên dịch cần làm để xử lý nó là áp dụng bộ biến đổi @code{cond->if} (từ @ref{4.1.2}) và biên dịch biểu thức @code{if} kết quả.
+
+@subsubheading Biên dịch các chuỗi
+
+Việc biên dịch các chuỗi (từ các thân thủ tục hay các biểu thức @code{begin} tường minh) song song với việc định giá chúng. Mỗi biểu thức của chuỗi được biên dịch---biểu thức cuối cùng với liên kết được chỉ định cho chuỗi, và các biểu thức khác với liên kết @code{next} (để thực thi phần còn lại của chuỗi). Các chuỗi lệnh cho các biểu thức riêng lẻ được nối để tạo thành một chuỗi lệnh duy nhất, sao cho @code{env} (cần thiết cho phần còn lại của chuỗi) và @code{continue} (có thể cần thiết cho liên kết ở cuối chuỗi) được bảo toàn.
+
+@lisp
+(define (compile-sequence seq target linkage)
+  (if (last-exp? seq)
+      (compile (first-exp seq) target linkage)
+      (preserving '(env continue)
+       (compile (first-exp seq) target 'next)
+       (compile-sequence (rest-exps seq)
+                         target
+                         linkage))))
+@end lisp
+
+@subsubheading Biên dịch các biểu thức @code{lambda}
+
+Các biểu thức @code{lambda} xây dựng các thủ tục. Mã đối tượng cho một biểu thức @code{lambda} phải có dạng
+
+@lisp
+⟨@emph{xây dựng đối tượng thủ tục
+ và gán nó vào thanh ghi đích}⟩
+⟨@var{linkage}⟩
+@end lisp
+
+@noindent
+Khi ta biên dịch biểu thức @code{lambda}, ta cũng sinh ra mã cho thân thủ tục. Mặc dù thân sẽ không được thực thi tại thời điểm xây dựng thủ tục, nhưng sẽ thuận tiện khi chèn nó vào mã đối tượng ngay sau mã cho @code{lambda}. Nếu liên kết cho biểu thức @code{lambda} là một nhãn hay @code{return}, điều này ổn. Nhưng nếu liên kết là @code{next}, ta sẽ cần bỏ qua xung quanh mã cho thân thủ tục bằng cách sử dụng một liên kết nhảy tới một nhãn được chèn vào sau thân. Mã đối tượng do đó có dạng
+
+@lisp
+⟨@emph{xây dựng đối tượng thủ tục
+ và gán nó vào thanh ghi đích}⟩
+ ⟨@emph{mã cho liên kết đã cho}⟩ @emph{hoặc}
+  @code{(goto (label after-lambda))}
+ ⟨@emph{biên dịch thân thủ tục}⟩
+after-lambda
+@end lisp
+
+@noindent
+@code{Compile-lambda} sinh ra mã cho việc xây dựng đối tượng thủ tục theo sau là mã cho thân thủ tục. Đối tượng thủ tục sẽ được xây dựng tại thời gian chạy bằng cách kết hợp môi trường hiện tại (môi trường tại điểm định nghĩa) với điểm nhập tới thân thủ tục được biên dịch (một nhãn mới được sinh ra).@footnote{@anchor{Footnote 323} Ta cần các phép toán máy để hiện thực hóa một cấu trúc dữ liệu để biểu diễn các thủ tục được biên dịch, tương tự như cấu trúc cho các thủ tục hỗn hợp được mô tả trong @ref{4.1.3}:
+
+@lisp
+(define (make-compiled-procedure entry env)
+  (list 'compiled-procedure entry env))
+(define (compiled-procedure? proc)
+  (tagged-list? proc 'compiled-procedure))
+(define (compiled-procedure-entry c-proc)
+  (cadr c-proc))
+(define (compiled-procedure-env c-proc)
+  (caddr c-proc))
+@end lisp
+}
+
+@lisp
+(define (compile-lambda exp target linkage)
+  (let ((proc-entry
+         (make-label 'entry))
+        (after-lambda
+         (make-label 'after-lambda)))
+    (let ((lambda-linkage
+           (if (eq? linkage 'next)
+               after-lambda
+               linkage)))
+      (append-instruction-sequences
+       (tack-on-instruction-sequence
+        (end-with-linkage
+         lambda-linkage
+         (make-instruction-sequence
+          '(env)
+          (list target)
+          `((assign
+             ,target
+             (op make-compiled-procedure)
+             (label ,proc-entry)
+             (reg env)))))
+        (compile-lambda-body exp proc-entry))
+       after-lambda))))
+@end lisp
+
+@noindent
+@code{Compile-lambda} sử dụng bộ kết hợp đặc biệt @code{tack-on-instruction-sequence} thay vì @code{append-instruction-sequences} (@ref{5.5.4}) để nối thân thủ tục vào mã biểu thức @code{lambda}, vì thân không phải là một phần của chuỗi các lệnh sẽ được thực thi khi chuỗi kết hợp được khởi nhập; thay vào đó, nó ở trong chuỗi chỉ vì đó là một nơi thuận tiện để đặt nó.
+
+@code{Compile-lambda-body} xây dựng mã cho thân của thủ tục. Mã này bắt đầu với một nhãn cho điểm nhập. Tiếp theo là các lệnh sẽ khiến môi trường định giá thời gian chạy chuyển sang môi trường đúng để định giá thân thủ tục---cụ thể là, môi trường định nghĩa của thủ tục, được mở rộng để bao gồm các ràng buộc của các tham số hình thức với các đối số mà thủ tục được gọi với. Sau đây là mã cho chuỗi các biểu thức tạo nên thân thủ tục. Chuỗi được biên dịch với liên kết @code{return} và đích @code{val} sao cho nó sẽ kết thúc bằng cách trả về từ thủ tục với kết quả thủ tục trong @code{val}.
+
+@lisp
+(define (compile-lambda-body exp proc-entry)
+  (let ((formals (lambda-parameters exp)))
+    (append-instruction-sequences
+     (make-instruction-sequence
+      '(env proc argl)
+      '(env)
+      `(,proc-entry
+        (assign env
+                (op compiled-procedure-env)
+                (reg proc))
+        (assign env
+                (op extend-environment)
+                (const ,formals)
+                (reg argl)
+                (reg env))))
+     (compile-sequence (lambda-body exp)
+                       'val
+                       'return))))
+@end lisp
+
