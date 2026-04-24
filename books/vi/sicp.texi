@@ -1,0 +1,354 @@
+\input texinfo
+@comment  To crop page margins:
+@comment  @input marginless
+@comment
+@comment             **********************************************************
+@setfilename         vi
+@settitle            Cấu Trúc và Diễn Giải Chương Trình Máy Tính, Tái Bản Lần 2
+@comment             Unofficial Texinfo Format
+@comment
+@set utfversion      2.andresraba6.6
+@set utfversiondate  September 16, 2015
+@comment
+@comment             This file is licensed under a Creative Commons
+@comment             Attribution-ShareAlike 4.0 International License
+@comment             http://creativecommons.org/licenses/by-sa/4.0/
+@comment
+@comment             Vietnamese translation by tamnd (tamnd87@gmail.com).
+@comment
+@comment             **********************************************************
+
+@documentencoding UTF-8
+
+@dircategory The Algorithmic Language Scheme
+@direntry
+* SICP: (sicp). Cấu Trúc và Diễn Giải Chương Trình Máy Tính
+@end direntry
+
+@macro newterm{term}
+@cindex \term\
+@dfn{\term\}
+@end macro
+
+@setshortcontentsaftertitlepage
+
+@titlepage
+
+@titlefont{Cấu Trúc và Diễn Giải@* Chương Trình Máy Tính}
+
+@subtitle @abbr{Tái Bản Lần 2}@* Unofficial Texinfo Format @value{utfversion}
+
+@author Harold Abelson và Gerald Jay Sussman với Julie Sussman, lời tựa của Alan J. Perlis
+
+@page
+@vskip 0pt plus 1filll
+@noindent
+@copyright{}1996 by The Massachusetts Institute of Technology
+
+@noindent
+@image{fig/icons/cc, 6mm,,,.std.svg}
+@image{fig/icons/by, 6mm,,,.std.svg}
+@image{fig/icons/sa, 6mm,,,.std.svg}
+
+@noindent
+Tác phẩm này được cấp phép theo Creative Commons Attribution-ShareAlike 4.0
+International License (@url{http://creativecommons.org/licenses/by-sa/4.0/, @abbr{CC BY-SA 4.0}}).
+Dựa trên tác phẩm tại @url{http://mitpress.mit.edu/sicp/, mitpress.mit.edu}.
+
+@noindent
+The @abbr{MIT} Press@*
+Cambridge, Massachusetts@*
+London, England
+
+@noindent
+McGraw-Hill Book Company@*
+New York, St. Louis, San Francisco,@*
+Montreal, Toronto
+
+@noindent
+Cuốn sách này là một trong số các văn bản được viết bởi giảng viên Khoa Kỹ thuật Điện
+và Khoa học Máy tính tại Viện Công nghệ Massachusetts. Nó được biên tập và xuất bản bởi
+The @abbr{MIT} Press theo một thỏa thuận sản xuất-phân phối chung với McGraw-Hill Book Company.
+
+@noindent
+Unofficial Texinfo Format @url{http://sicpebook.wordpress.com, @value{utfversion}} (@value{utfversiondate}),
+based on @url{http://www.neilvandyke.org/sicp-texi/, 2.neilvandyke4} (January 10, 2007).
+
+@end titlepage
+
+@shortcontents
+
+@contents
+
+@headings off
+
+@finalout
+
+@node Top, UTF, (dir), (dir)
+
+@ifinfo
+
+@heading Cấu Trúc và Diễn Giải Chương Trình Máy Tính
+
+@noindent
+Tái Bản Lần 2@*
+của Harold Abelson và Gerald Jay Sussman, với Julie Sussman@*
+lời tựa của Alan J. Perlis@*
+@copyright{} 1996 Massachusetts Institute of Technology
+
+@noindent
+Unofficial Texinfo Format version @value{utfversion} (@value{utfversiondate})
+
+@end ifinfo
+
+@menu
+* UTF::              Unofficial Texinfo Format
+* Dedication::       Lời Đề Tặng
+* Foreword::         Lời Tựa
+* Preface::          Lời Nói Đầu Tái Bản Lần 2
+* Preface 1e::       Lời Nói Đầu Tái Bản Lần 1
+* Acknowledgments::  Lời Cảm Ơn
+* Chapter 1::        Xây Dựng Sự Trừu Tượng với Các Thủ Tục
+* Chapter 2::        Xây Dựng Sự Trừu Tượng với Dữ Liệu
+* Chapter 3::        Tính Mô-đun, Đối Tượng và Trạng Thái
+* Chapter 4::        Sự Trừu Tượng Siêu Ngôn Ngữ
+* Chapter 5::        Tính Toán với Các Máy Thanh Ghi
+* References::       Tài Liệu Tham Khảo
+* Exercises::        Danh Sách Bài Tập
+* Figures::          Danh Sách Hình
+* Term Index::       Chỉ Mục Thuật Ngữ
+* Colophon::         Lời Cuối
+
+@detailmenu
+ --- Danh Sách Chi Tiết ---
+
+Lập Trình trong Lisp
+
+* 1.1::              Các Yếu Tố của Lập Trình
+* 1.2::              Các Thủ Tục và Các Quá Trình Chúng Tạo Ra
+* 1.3::              Xây Dựng Sự Trừu Tượng với Các Thủ Tục Bậc Cao
+
+Các Yếu Tố của Lập Trình
+
+* 1.1.1::            Các Biểu Thức
+* 1.1.2::            Đặt Tên và Môi Trường
+* 1.1.3::            Định Giá Các Tổ Hợp
+* 1.1.4::            Các Thủ Tục Hỗn Hợp
+* 1.1.5::            Mô Hình Thay Thế cho Ứng Dụng Thủ Tục
+* 1.1.6::            Các Biểu Thức Điều Kiện và Các Vị Từ
+* 1.1.7::            Ví Dụ: Căn Bậc Hai theo Phương Pháp Newton
+* 1.1.8::            Các Thủ Tục như Các Hộp Đen
+
+Các Thủ Tục và Các Quá Trình Chúng Tạo Ra
+
+* 1.2.1::            Đệ Quy Tuyến Tính và Lặp
+* 1.2.2::            Đệ Quy Cây
+* 1.2.3::            Các Bậc Tăng Trưởng
+* 1.2.4::            Lũy Thừa
+* 1.2.5::            Ước Số Chung Lớn Nhất
+* 1.2.6::            Ví Dụ: Kiểm Tra Tính Nguyên Tố
+
+Xây Dựng Sự Trừu Tượng với Các Thủ Tục Bậc Cao
+
+* 1.3.1::            Các Thủ Tục như Đối Số
+* 1.3.2::            Xây Dựng Thủ Tục Dùng @code{Lambda}
+* 1.3.3::            Các Thủ Tục như Các Phương Pháp Chung
+* 1.3.4::            Các Thủ Tục như Giá Trị Trả Về
+
+Xây Dựng Sự Trừu Tượng với Dữ Liệu
+
+* 2.1::              Giới Thiệu về Trừu Tượng Dữ Liệu
+* 2.2::              Dữ Liệu Phân Cấp và Tính Chất Đóng
+* 2.3::              Dữ Liệu Ký Hiệu
+* 2.4::              Nhiều Biểu Diễn cho Dữ Liệu Trừu Tượng
+* 2.5::              Các Hệ Thống với Các Phép Toán Chung
+
+Giới Thiệu về Trừu Tượng Dữ Liệu
+
+* 2.1.1::            Ví Dụ: Các Phép Toán Số Học cho Số Hữu Tỉ
+* 2.1.2::            Các Rào Cản Trừu Tượng
+* 2.1.3::            Dữ Liệu Là Gì?
+* 2.1.4::            Bài Tập Mở Rộng: Số Học Khoảng
+
+Dữ Liệu Phân Cấp và Tính Chất Đóng
+
+* 2.2.1::            Biểu Diễn Các Dãy
+* 2.2.2::            Các Cấu Trúc Phân Cấp
+* 2.2.3::            Các Dãy như Các Giao Diện Quy Ước
+* 2.2.4::            Ví Dụ: Ngôn Ngữ Hình Ảnh
+
+Dữ Liệu Ký Hiệu
+
+* 2.3.1::            Trích Dẫn
+* 2.3.2::            Ví Dụ: Đạo Hàm Ký Hiệu
+* 2.3.3::            Ví Dụ: Biểu Diễn Tập Hợp
+* 2.3.4::            Ví Dụ: Cây Mã Hóa Huffman
+
+Nhiều Biểu Diễn cho Dữ Liệu Trừu Tượng
+
+* 2.4.1::            Các Biểu Diễn cho Số Phức
+* 2.4.2::            Dữ Liệu Được Gắn Thẻ
+* 2.4.3::            Lập Trình Định Hướng Dữ Liệu và Tính Cộng Thêm
+
+Các Hệ Thống với Các Phép Toán Chung
+
+* 2.5.1::            Các Phép Toán Số Học Chung
+* 2.5.2::            Kết Hợp Dữ Liệu của Các Kiểu Khác Nhau
+* 2.5.3::            Ví Dụ: Đại Số Ký Hiệu
+
+Tính Mô-đun, Đối Tượng và Trạng Thái
+
+* 3.1::              Gán Giá Trị và Trạng Thái Cục Bộ
+* 3.2::              Mô Hình Môi Trường của Sự Định Giá
+* 3.3::              Mô Hình Hóa với Dữ Liệu Có Thể Biến Đổi
+* 3.4::              Tính Đồng Thời: Thời Gian Là Điều Thiết Yếu
+* 3.5::              Các Luồng
+
+Gán Giá Trị và Trạng Thái Cục Bộ
+
+* 3.1.1::            Các Biến Trạng Thái Cục Bộ
+* 3.1.2::            Lợi Ích của Việc Giới Thiệu Gán Giá Trị
+* 3.1.3::            Chi Phí của Việc Giới Thiệu Gán Giá Trị
+
+Mô Hình Môi Trường của Sự Định Giá
+
+* 3.2.1::            Các Quy Tắc Định Giá
+* 3.2.2::            Áp Dụng Các Thủ Tục Đơn Giản
+* 3.2.3::            Các Khung như Kho Lưu Trữ của Trạng Thái Cục Bộ
+* 3.2.4::            Các Định Nghĩa Nội Bộ
+
+Mô Hình Hóa với Dữ Liệu Có Thể Biến Đổi
+
+* 3.3.1::            Cấu Trúc Danh Sách Có Thể Biến Đổi
+* 3.3.2::            Biểu Diễn Hàng Đợi
+* 3.3.3::            Biểu Diễn Bảng
+* 3.3.4::            Trình Mô Phỏng Mạch Số
+* 3.3.5::            Lan Truyền Các Ràng Buộc
+
+Tính Đồng Thời: Thời Gian Là Điều Thiết Yếu
+
+* 3.4.1::            Bản Chất của Thời Gian trong Các Hệ Thống Đồng Thời
+* 3.4.2::            Các Cơ Chế Kiểm Soát Tính Đồng Thời
+
+Các Luồng
+
+* 3.5.1::            Các Luồng Là Các Danh Sách Trì Hoãn
+* 3.5.2::            Các Luồng Vô Hạn
+* 3.5.3::            Khai Thác Mẫu Luồng
+* 3.5.4::            Các Luồng và Định Giá Trì Hoãn
+* 3.5.5::            Tính Mô-đun của Các Chương Trình Hàm và Đối Tượng
+
+Sự Trừu Tượng Siêu Ngôn Ngữ
+
+* 4.1::              Trình Định Giá Siêu Tròn
+* 4.2::              Các Biến Thể trên Scheme -- Định Giá Lười Biếng
+* 4.3::              Các Biến Thể trên Scheme -- Tính Toán Không Xác Định
+* 4.4::              Lập Trình Logic
+
+Trình Định Giá Siêu Tròn
+
+* 4.1.1::            Lõi của Trình Định Giá
+* 4.1.2::            Biểu Diễn Các Biểu Thức
+* 4.1.3::            Các Cấu Trúc Dữ Liệu Trình Định Giá
+* 4.1.4::            Chạy Trình Định Giá như Một Chương Trình
+* 4.1.5::            Dữ Liệu như Các Chương Trình
+* 4.1.6::            Các Định Nghĩa Nội Bộ
+* 4.1.7::            Tách Biệt Phân Tích Cú Pháp với Thực Thi
+
+Các Biến Thể trên Scheme -- Định Giá Lười Biếng
+
+* 4.2.1::            Thứ Tự Bình Thường và Thứ Tự Áp Dụng
+* 4.2.2::            Trình Thông Dịch với Định Giá Lười Biếng
+* 4.2.3::            Các Luồng như Các Danh Sách Lười Biếng
+
+Các Biến Thể trên Scheme -- Tính Toán Không Xác Định
+
+* 4.3.1::            Amb và Tìm Kiếm
+* 4.3.2::            Ví Dụ về Các Chương Trình Không Xác Định
+* 4.3.3::            Hiện Thực Hóa Trình Định Giá @code{Amb}
+
+Lập Trình Logic
+
+* 4.4.1::            Truy Xuất Thông Tin Suy Diễn
+* 4.4.2::            Cách Hệ Thống Truy Vấn Hoạt Động
+* 4.4.3::            Lập Trình Logic Có Phải Là Logic Toán Học Không?
+* 4.4.4::            Hiện Thực Hóa Hệ Thống Truy Vấn
+
+Hiện Thực Hóa Hệ Thống Truy Vấn
+
+* 4.4.4.1::          Vòng Lặp Điều Khiển và Khởi Tạo
+* 4.4.4.2::          Trình Định Giá
+* 4.4.4.3::          Tìm Kiếm Các Khẳng Định theo Khớp Mẫu
+* 4.4.4.4::          Các Quy Tắc và Hợp Nhất
+* 4.4.4.5::          Duy Trì Cơ Sở Dữ Liệu
+* 4.4.4.6::          Các Phép Toán Luồng
+* 4.4.4.7::          Các Thủ Tục Cú Pháp Truy Vấn
+* 4.4.4.8::          Các Khung và Ràng Buộc
+
+Tính Toán với Các Máy Thanh Ghi
+
+* 5.1::              Thiết Kế Các Máy Thanh Ghi
+* 5.2::              Trình Mô Phỏng Máy Thanh Ghi
+* 5.3::              Phân Bổ Bộ Nhớ và Thu Gom Rác
+* 5.4::              Trình Định Giá Điều Khiển Tường Minh
+* 5.5::              Biên Dịch
+
+Thiết Kế Các Máy Thanh Ghi
+
+* 5.1.1::            Ngôn Ngữ Mô Tả Các Máy Thanh Ghi
+* 5.1.2::            Sự Trừu Tượng trong Thiết Kế Máy
+* 5.1.3::            Các Chương Con
+* 5.1.4::            Sử Dụng Ngăn Xếp để Hiện Thực Hóa Đệ Quy
+* 5.1.5::            Tóm Tắt Lệnh
+
+Trình Mô Phỏng Máy Thanh Ghi
+
+* 5.2.1::            Mô Hình Máy
+* 5.2.2::            Trình Lắp Ráp
+* 5.2.3::            Sinh Các Thủ Tục Thực Thi cho Các Lệnh
+* 5.2.4::            Giám Sát Hiệu Suất Máy
+
+Phân Bổ Bộ Nhớ và Thu Gom Rác
+
+* 5.3.1::            Bộ Nhớ Như Các Vectơ
+* 5.3.2::            Duy Trì Ảo Giác về Bộ Nhớ Vô Hạn
+
+Trình Định Giá Điều Khiển Tường Minh
+
+* 5.4.1::            Lõi của Trình Định Giá Điều Khiển Tường Minh
+* 5.4.2::            Định Giá Chuỗi và Đệ Quy Đuôi
+* 5.4.3::            Điều Kiện, Gán Giá Trị, và Định Nghĩa
+* 5.4.4::            Chạy Trình Định Giá
+
+Biên Dịch
+
+* 5.5.1::            Cấu Trúc của Trình Biên Dịch
+* 5.5.2::            Biên Dịch Các Biểu Thức
+* 5.5.3::            Biên Dịch Các Tổ Hợp
+* 5.5.4::            Kết Hợp Các Chuỗi Lệnh
+* 5.5.5::            Ví Dụ về Mã Biên Dịch
+* 5.5.6::            Địa Chỉ từ Vựng
+* 5.5.7::            Giao Tiếp Mã Biên Dịch với Trình Định Giá
+
+@end detailmenu
+@end menu
+
+
+@include front/utf.texi
+@include front/dedication.texi
+@include front/foreword.texi
+@include front/preface.texi
+@include front/preface-1e.texi
+@include front/acknowledgments.texi
+@include ch01/index.texi
+@include ch02/index.texi
+@include ch03/index.texi
+@include ch04/index.texi
+@include ch05/index.texi
+@include back/references.texi
+@include back/exercises.texi
+@include back/figures.texi
+@include back/term-index.texi
+@include back/colophon.texi
+
+@bye
