@@ -1,0 +1,175 @@
+@node	1.2.6, 1.3, 1.1, 1.2
+@subsection Ví Dụ: Kiểm Tra Tính Nguyên Tố
+
+Phần này mô tả hai phương pháp kiểm tra tính nguyên tố của một số nguyên @math{n}, một phương pháp có bậc tăng trưởng @math{{\Theta(\sqrt{n})}}, và một thuật toán ``xác suất'' có bậc tăng trưởng @math{{\Theta(\log n)}}.  Các bài tập ở cuối phần này gợi ý các dự án lập trình dựa trên các thuật toán này.
+
+@subsubheading Tìm kiếm ước số
+
+Từ thời cổ đại, các nhà toán học đã bị thu hút bởi các bài toán liên quan đến số nguyên tố, và nhiều người đã nghiên cứu bài toán xác định các cách để kiểm tra xem một số có phải là số nguyên tố không.  Một cách để kiểm tra xem một số có phải là số nguyên tố không là tìm các ước số của số đó.  Chương trình sau tìm ước số nguyên nhỏ nhất (lớn hơn 1) của một số @math{n} cho trước.  Nó thực hiện điều này theo cách đơn giản, bằng cách kiểm tra @math{n} có chia hết cho các số nguyên liên tiếp bắt đầu từ 2 hay không.
+
+@lisp
+(define (smallest-divisor n)
+  (find-divisor n 2))
+
+(define (find-divisor n test-divisor)
+  (cond ((> (square test-divisor) n)
+         n)
+        ((divides? test-divisor n)
+         test-divisor)
+        (else (find-divisor
+               n
+               (+ test-divisor 1)))))
+
+(define (divides? a b)
+  (= (remainder b a) 0))
+@end lisp
+
+@noindent
+Ta có thể kiểm tra xem một số có phải là số nguyên tố như sau: @math{n} là số nguyên tố khi và chỉ khi @math{n} chính là ước số nhỏ nhất của chính nó.
+
+@lisp
+(define (prime? n)
+  (= n (smallest-divisor n)))
+@end lisp
+
+@noindent
+Phép kiểm tra kết thúc của @code{find-divisor} dựa trên thực tế là nếu @math{n} không phải số nguyên tố thì nó phải có một ước số nhỏ hơn hoặc bằng @math{\sqrt{n}}.@footnote{Nếu @math{d} là ước số của @math{n}, thì @math{{n \,/\, d}} cũng vậy.  Nhưng @math{d} và @math{{n \,/\, d}} không thể đều lớn hơn @math{\sqrt{n}}.} Điều này có nghĩa là thuật toán chỉ cần kiểm tra các ước số từ 1 đến @math{\sqrt{n}}.  Do đó, số bước cần để xác định @math{n} là số nguyên tố sẽ có bậc tăng trưởng @math{{\Theta(\sqrt{n})}}.
+
+@subsubheading Kiểm tra Fermat
+
+Kiểm tra tính nguyên tố @math{{\Theta(\log n)}} dựa trên một kết quả từ lý thuyết số được gọi là Định lý nhỏ Fermat.@footnote{Pierre de Fermat (1601-1665) được coi là người sáng lập lý thuyết số hiện đại.  Ông đã thu được nhiều kết quả quan trọng trong lý thuyết số, nhưng thường chỉ thông báo kết quả mà không cung cấp chứng minh.  Định lý nhỏ Fermat được phát biểu trong một bức thư ông viết năm 1640.  Chứng minh đầu tiên được xuất bản là của Euler năm 1736 (và một chứng minh đồng nhất trước đó đã được tìm thấy trong các bản thảo chưa xuất bản của Leibniz).  Kết quả nổi tiếng nhất của Fermat---được gọi là Định lý cuối cùng Fermat---được ghi vào năm 1637 trong bản sao cuốn sách @cite{Arithmetic} của ông (của nhà toán học Hy Lạp thế kỷ thứ ba Diophantus) với nhận xét ``Tôi đã khám phá ra một chứng minh thực sự đáng kinh ngạc, nhưng lề trang quá nhỏ để chứa nó.''  Tìm chứng minh cho Định lý cuối cùng Fermat đã trở thành một trong những thách thức nổi tiếng nhất trong lý thuyết số.  Lời giải hoàn chỉnh cuối cùng được đưa ra năm 1995 bởi Andrew Wiles của Đại học Princeton.}
+
+@quotation
+@strong{Định lý nhỏ Fermat:} Nếu @math{n} là số nguyên tố và @math{a} là bất kỳ số nguyên dương nào nhỏ hơn @math{n}, thì @math{a} nâng lên lũy thừa thứ @math{n} đồng dư với @math{a} theo mô-đun @math{n}.
+@end quotation
+
+@noindent
+(Hai số được gọi là @newterm{đồng dư theo mô-đun} @math{n} nếu chúng đều có cùng số dư khi chia cho @math{n}.  Số dư của một số @math{a} khi chia cho @math{n} còn được gọi là @newterm{phần dư của} @math{a} @newterm{theo mô-đun} @math{n}, hay đơn giản là @math{a} @newterm{theo mô-đun} @math{n}.)
+
+Nếu @math{n} không phải số nguyên tố, thì, nói chung, hầu hết các số @math{{a < n}} sẽ không thỏa mãn quan hệ trên.  Điều này dẫn đến thuật toán kiểm tra tính nguyên tố sau: Cho một số @math{n}, chọn ngẫu nhiên một số @math{{a < n}} và tính phần dư của @math{a^n} theo mô-đun @math{n}.  Nếu kết quả không bằng @math{a}, thì @math{n} chắc chắn không phải số nguyên tố.  Nếu bằng @math{a}, thì có nhiều khả năng @math{n} là số nguyên tố.  Bây giờ chọn một số ngẫu nhiên @math{a} khác và kiểm tra theo cùng phương pháp.  Nếu nó cũng thỏa mãn phương trình, thì ta còn tự tin hơn rằng @math{n} là số nguyên tố.  Bằng cách thử ngày càng nhiều giá trị @math{a}, ta có thể tăng độ tự tin vào kết quả.  Thuật toán này được gọi là kiểm tra Fermat.
+
+Để triển khai kiểm tra Fermat, ta cần một thủ tục tính lũy thừa của một số theo mô-đun một số khác:
+
+@lisp
+(define (expmod base exp m)
+  (cond ((= exp 0) 1)
+        ((even? exp)
+         (remainder
+          (square (expmod base (/ exp 2) m))
+          m))
+        (else
+         (remainder
+          (* base (expmod base (- exp 1) m))
+          m))))
+@end lisp
+
+@noindent
+Thủ tục này rất giống với thủ tục @code{fast-expt} của @ref{1.2.4}.  Nó dùng bình phương liên tiếp, nên số bước tăng theo logarithm với số mũ.@footnote{Các bước rút gọn trong các trường hợp số mũ @math{e} lớn hơn 1 dựa trên thực tế rằng, với bất kỳ số nguyên @math{x}, @math{y} và @math{m}, ta có thể tìm phần dư của @math{x} nhân @math{y} theo mô-đun @math{m} bằng cách tính riêng phần dư của @math{x} theo mô-đun @math{m} và @math{y} theo mô-đun @math{m}, nhân chúng với nhau, rồi lấy phần dư của kết quả theo mô-đun @math{m}.  Chẳng hạn, trong trường hợp @math{e} chẵn, ta tính phần dư của @math{b^{e / 2}} theo mô-đun @math{m}, bình phương kết quả, rồi lấy phần dư theo mô-đun @math{m}.  Kỹ thuật này hữu ích vì nó có nghĩa là ta có thể thực hiện phép tính mà không bao giờ phải xử lý các số lớn hơn nhiều so với @math{m}.  (So sánh với @ref{Exercise 1.25}.)}
+
+Kiểm tra Fermat được thực hiện bằng cách chọn ngẫu nhiên một số @math{a} từ 1 đến @math{{n-1}} bao gồm và kiểm tra xem phần dư theo mô-đun @math{n} của lũy thừa thứ @math{n} của @math{a} có bằng @math{a} không.  Số ngẫu nhiên @math{a} được chọn bằng thủ tục @code{random}, mà ta giả định được cung cấp như một thứ nguyên thủy trong Scheme.  @code{Random} trả về một số nguyên không âm nhỏ hơn đầu vào nguyên của nó.  Do đó, để có được một số ngẫu nhiên từ 1 đến @math{{n-1}}, ta gọi @code{random} với đầu vào @math{{n-1}} và cộng 1 vào kết quả:
+
+@lisp
+(define (fermat-test n)
+  (define (try-it a)
+    (= (expmod a n n) a))
+  (try-it (+ 1 (random (- n 1)))))
+@end lisp
+
+@noindent
+Thủ tục sau chạy kiểm tra một số lần cho trước, được chỉ định bởi một tham số.  Giá trị của nó là đúng nếu kiểm tra thành công mỗi lần, và sai nếu không.
+
+@lisp
+(define (fast-prime? n times)
+  (cond ((= times 0) true)
+        ((fermat-test n)
+         (fast-prime? n (- times 1)))
+        (else false)))
+@end lisp
+
+@subsubheading Các phương pháp xác suất
+
+Kiểm tra Fermat khác về bản chất so với hầu hết các thuật toán quen thuộc, trong đó ta tính một câu trả lời được đảm bảo là đúng.  Ở đây, câu trả lời thu được chỉ có thể là đúng.  Chính xác hơn, nếu @math{n} không vượt qua kiểm tra Fermat, ta có thể chắc chắn rằng @math{n} không phải là số nguyên tố.  Nhưng thực tế là @math{n} vượt qua kiểm tra, trong khi là một dấu hiệu cực kỳ mạnh, vẫn chưa phải là sự đảm bảo rằng @math{n} là số nguyên tố.  Điều ta muốn nói là với bất kỳ số @math{n} nào, nếu ta thực hiện kiểm tra đủ nhiều lần và thấy rằng @math{n} luôn vượt qua kiểm tra, thì xác suất lỗi trong kiểm tra tính nguyên tố của ta có thể được làm nhỏ tùy ý.
+
+Thật không may, khẳng định này không hoàn toàn đúng.  Có tồn tại các số đánh lừa kiểm tra Fermat: các số @math{n} không phải số nguyên tố nhưng lại có tính chất là @math{a^n} đồng dư với @math{a} theo mô-đun @math{n} với mọi số nguyên @math{{a < n}}.  Những số như vậy cực kỳ hiếm, vì vậy kiểm tra Fermat khá đáng tin cậy trong thực tế.@footnote{@anchor{Footnote 47} Các số đánh lừa kiểm tra Fermat được gọi là @newterm{số Carmichael}, và ít được biết đến về chúng ngoài việc chúng cực kỳ hiếm.  Có 255 số Carmichael dưới 100.000.000.  Một số ít nhất là 561, 1105, 1729, 2465, 2821 và 6601.  Khi kiểm tra tính nguyên tố của các số rất lớn được chọn ngẫu nhiên, xác suất gặp phải một giá trị đánh lừa kiểm tra Fermat nhỏ hơn xác suất bức xạ vũ trụ gây ra lỗi trong máy tính khi thực hiện một thuật toán ``đúng''.  Xem xét một thuật toán là không đủ vì lý do thứ nhất nhưng không phải lý do thứ hai cho thấy sự khác biệt giữa toán học và kỹ thuật.}
+
+Có các biến thể của kiểm tra Fermat không thể bị đánh lừa.  Trong các kiểm tra này, cũng như với phương pháp Fermat, ta kiểm tra tính nguyên tố của một số nguyên @math{n} bằng cách chọn một số nguyên ngẫu nhiên @math{{a < n}} và kiểm tra một điều kiện phụ thuộc vào @math{n} và @math{a}.  (Xem @ref{Exercise 1.28} để biết ví dụ về kiểm tra như vậy.)  Mặt khác, ngược lại với kiểm tra Fermat, ta có thể chứng minh rằng, với bất kỳ @math{n} nào, điều kiện không thỏa mãn với hầu hết các số nguyên @math{{a < n}} trừ khi @math{n} là số nguyên tố.  Do đó, nếu @math{n} vượt qua kiểm tra với một lựa chọn ngẫu nhiên của @math{a}, thì cơ hội @math{n} là số nguyên tố tốt hơn 50%.  Nếu @math{n} vượt qua kiểm tra với hai lựa chọn ngẫu nhiên của @math{a}, cơ hội tốt hơn 3 trên 4.  Bằng cách chạy kiểm tra với ngày càng nhiều giá trị @math{a} được chọn ngẫu nhiên, ta có thể làm cho xác suất lỗi nhỏ tùy ý.
+
+Sự tồn tại của các kiểm tra mà ta có thể chứng minh cơ hội lỗi trở nên nhỏ tùy ý đã tạo ra sự quan tâm đến các thuật toán kiểu này, vốn được gọi là @newterm{thuật toán xác suất}.  Có rất nhiều hoạt động nghiên cứu trong lĩnh vực này, và các thuật toán xác suất đã được ứng dụng thành công vào nhiều lĩnh vực.@footnote{Một trong những ứng dụng nổi bật nhất của kiểm tra số nguyên tố xác suất là trong lĩnh vực mật mã học.  Mặc dù hiện không khả thi về mặt tính toán để phân tích nhân tử một số có 200 chữ số tùy ý, tính nguyên tố của số đó có thể được kiểm tra trong vài giây với kiểm tra Fermat.  Thực tế này tạo thành cơ sở của một kỹ thuật xây dựng ``mã không thể phá'' được gợi ý bởi @ref{Rivest et al. (1977)}.  @newterm{Thuật toán RSA} kết quả đã trở thành một kỹ thuật được sử dụng rộng rãi để tăng cường bảo mật thông tin liên lạc điện tử.  Vì điều này và các phát triển liên quan, việc nghiên cứu số nguyên tố, từng được coi là đỉnh cao của một chủ đề trong toán học ``thuần túy'' chỉ được nghiên cứu vì chính nó, hóa ra có các ứng dụng thực tế quan trọng trong mật mã học, chuyển khoản điện tử và truy xuất thông tin.}
+
+@quotation
+@strong{@anchor{Exercise 1.21}Bài tập 1.21:} Dùng thủ tục @code{smallest-divisor} để tìm ước số nhỏ nhất của mỗi số sau: 199, 1999, 19999.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.22}Bài tập 1.22:} Hầu hết các triển khai Lisp đều có một thứ nguyên thủy gọi là @code{runtime} trả về một số nguyên chỉ định lượng thời gian hệ thống đã chạy (đo, chẳng hạn, theo micro giây).  Thủ tục @code{timed-prime-test} sau, khi được gọi với một số nguyên @math{n}, in @math{n} và kiểm tra xem @math{n} có phải là số nguyên tố không.  Nếu @math{n} là số nguyên tố, thủ tục in ba dấu sao theo sau là lượng thời gian dùng để thực hiện kiểm tra.
+
+@lisp
+(define (timed-prime-test n)
+  (newline)
+  (display n)
+  (start-prime-test n (runtime)))
+@end lisp
+
+@lisp
+(define (start-prime-test n start-time)
+  (if (prime? n)
+      (report-prime (- (runtime)
+                       start-time))))
+@end lisp
+
+@lisp
+(define (report-prime elapsed-time)
+  (display " *** ")
+  (display elapsed-time))
+@end lisp
+
+Dùng thủ tục này, hãy viết một thủ tục @code{search-for-primes} kiểm tra tính nguyên tố của các số nguyên lẻ liên tiếp trong một phạm vi cho trước.  Dùng thủ tục của bạn để tìm ba số nguyên tố nhỏ nhất lớn hơn 1000; lớn hơn 10.000; lớn hơn 100.000; lớn hơn 1.000.000.  Lưu ý thời gian cần để kiểm tra mỗi số nguyên tố.  Vì thuật toán kiểm tra có bậc tăng trưởng @math{{\Theta(\sqrt{n})}}, bạn nên kỳ vọng rằng việc kiểm tra các số nguyên tố khoảng 10.000 nên mất khoảng @math{\sqrt{10}} lần so với kiểm tra các số nguyên tố khoảng 1000.  Dữ liệu thời gian của bạn có ủng hộ điều này không?  Dữ liệu cho 100.000 và 1.000.000 hỗ trợ dự đoán @math{{\Theta(\sqrt{n})}} tốt như thế nào?  Kết quả của bạn có tương thích với khái niệm rằng các chương trình trên máy của bạn chạy theo thời gian tỷ lệ thuận với số bước yêu cầu cho phép tính không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.23}Bài tập 1.23:} Thủ tục @code{smallest-divisor} được trình bày ở đầu phần này thực hiện nhiều kiểm tra không cần thiết: Sau khi kiểm tra xem số có chia hết cho 2 không, không cần kiểm tra xem có chia hết cho bất kỳ số chẵn nào lớn hơn không.  Điều này gợi ý rằng các giá trị dùng cho @code{test-divisor} không nên là 2, 3, 4, 5, 6, @dots{}, mà thay vào đó là 2, 3, 5, 7, 9, @dots{}.  Để thực hiện thay đổi này, hãy định nghĩa một thủ tục @code{next} trả về 3 nếu đầu vào bằng 2 và ngược lại trả về đầu vào cộng 2.  Sửa đổi thủ tục @code{smallest-divisor} để dùng @code{(next test-divisor)} thay vì @code{(+ test-divisor 1)}.  Với @code{timed-prime-test} tích hợp phiên bản sửa đổi của @code{smallest-divisor} này, hãy chạy kiểm tra cho mỗi trong 12 số nguyên tố tìm được trong @ref{Exercise 1.22}.  Vì sửa đổi này giảm một nửa số bước kiểm tra, bạn nên kỳ vọng nó chạy nhanh gấp đôi.  Kỳ vọng này có được xác nhận không?  Nếu không, tỷ lệ tốc độ quan sát được của hai thuật toán là bao nhiêu, và bạn giải thích thực tế là nó khác 2 như thế nào?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.24}Bài tập 1.24:} Sửa đổi thủ tục @code{timed-prime-test} của @ref{Exercise 1.22} để dùng @code{fast-prime?} (phương pháp Fermat), và kiểm tra mỗi trong 12 số nguyên tố bạn đã tìm trong bài tập đó.  Vì kiểm tra Fermat có tăng trưởng @math{{\Theta(\log n)}}, bạn kỳ vọng thời gian kiểm tra các số nguyên tố gần 1.000.000 sẽ như thế nào so với thời gian cần để kiểm tra các số nguyên tố gần 1000?  Dữ liệu của bạn có ủng hộ điều này không?  Bạn có thể giải thích bất kỳ sự không nhất quán nào bạn tìm thấy không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.25}Bài tập 1.25:} Alyssa P. Hacker phàn nàn rằng chúng ta đã thực hiện rất nhiều công việc thêm khi viết @code{expmod}.  Dù sao thì, cô ấy nói, vì chúng ta đã biết cách tính lũy thừa, chúng ta có thể đơn giản viết
+
+@lisp
+(define (expmod base exp m)
+  (remainder (fast-expt base exp) m))
+@end lisp
+
+Cô ấy có đúng không?  Thủ tục này có phục vụ tốt cho trình kiểm tra số nguyên tố nhanh của chúng ta không?  Giải thích.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.26}Bài tập 1.26:} Louis Reasoner gặp khó khăn lớn khi làm @ref{Exercise 1.24}.  Kiểm tra @code{fast-prime?} của anh ấy có vẻ chạy chậm hơn kiểm tra @code{prime?}.  Louis gọi bạn mình là Eva Lu Ator đến giúp.  Khi họ xem xét mã của Louis, họ phát hiện ra anh ấy đã viết lại thủ tục @code{expmod} để dùng phép nhân tường minh, thay vì gọi @code{square}:
+
+@lisp
+(define (expmod base exp m)
+  (cond ((= exp 0) 1)
+        ((even? exp)
+         (remainder
+          (* (expmod base (/ exp 2) m)
+             (expmod base (/ exp 2) m))
+          m))
+        (else
+         (remainder
+          (* base
+             (expmod base (- exp 1) m))
+          m))))
+@end lisp
+
+``Tôi không thấy điều đó có thể tạo ra sự khác biệt gì,'' Louis nói.  @w{``Tôi thấy.''}  Eva nói.  ``Bằng cách viết thủ tục như vậy, bạn đã biến quá trình @math{{\Theta(\log n)}} thành quá trình @math{{\Theta(n)}}.''  Giải thích.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.27}Bài tập 1.27:} Chứng minh rằng các số Carmichael được liệt kê trong @ref{Footnote 47} thực sự đánh lừa kiểm tra Fermat.  Nghĩa là, hãy viết một thủ tục nhận một số nguyên @math{n} và kiểm tra xem @math{a^n} có đồng dư với @math{a} theo mô-đun @math{n} với mọi @math{{a < n}} không, và thử thủ tục của bạn trên các số Carmichael đã cho.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.28}Bài tập 1.28:} Một biến thể của kiểm tra Fermat không thể bị đánh lừa được gọi là @newterm{kiểm tra Miller-Rabin} (@ref{Miller 1976}; @ref{Rabin 1980}).  Kiểm tra này bắt đầu từ một dạng thay thế của Định lý nhỏ Fermat, phát biểu rằng nếu @math{n} là số nguyên tố và @math{a} là bất kỳ số nguyên dương nào nhỏ hơn @math{n}, thì @math{a} nâng lên lũy thừa @math{{(n-1)}} đồng dư với 1 theo mô-đun @math{n}.  Để kiểm tra tính nguyên tố của một số @math{n} bằng kiểm tra Miller-Rabin, ta chọn một số ngẫu nhiên @math{{a < n}} và nâng @math{a} lên lũy thừa @math{{(n-1)}} theo mô-đun @math{n} bằng thủ tục @code{expmod}.  Tuy nhiên, mỗi khi ta thực hiện bước bình phương trong @code{expmod}, ta kiểm tra xem ta có tìm thấy ``căn bậc hai không tầm thường của 1 theo mô-đun @math{n}'' hay không, tức là một số không bằng 1 hay @math{{n-1}} mà bình phương bằng 1 theo mô-đun @math{n}.  Có thể chứng minh rằng nếu tồn tại căn bậc hai không tầm thường của 1 như vậy, thì @math{n} không phải số nguyên tố.  Cũng có thể chứng minh rằng nếu @math{n} là số nguyên lẻ không phải số nguyên tố, thì ít nhất một nửa số @math{{a < n}}, tính @math{a^{n-1}} theo cách này sẽ tìm ra một căn bậc hai không tầm thường của 1 theo mô-đun @math{n}.  (Đây là lý do tại sao kiểm tra Miller-Rabin không thể bị đánh lừa.)  Sửa đổi thủ tục @code{expmod} để phát tín hiệu nếu nó tìm thấy căn bậc hai không tầm thường của 1, và dùng điều này để triển khai kiểm tra Miller-Rabin với một thủ tục tương tự như @code{fermat-test}.  Kiểm tra thủ tục của bạn bằng cách kiểm tra các số nguyên tố và số nguyên hợp đã biết.  Gợi ý: Một cách thuận tiện để làm cho @code{expmod} phát tín hiệu là làm cho nó trả về 0.
+@end quotation

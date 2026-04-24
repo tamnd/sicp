@@ -1,0 +1,58 @@
+@node	1.2.3, 1.2.4, 1.2.2, 1.2
+@subsection Bậc Tăng Trưởng
+
+Các ví dụ trước minh họa rằng các quá trình có thể khác nhau đáng kể về tốc độ tiêu thụ tài nguyên tính toán.  Một cách thuận tiện để mô tả sự khác biệt này là dùng khái niệm @newterm{bậc tăng trưởng} để có được một ước lượng thô về tài nguyên cần thiết cho một quá trình khi đầu vào trở nên lớn hơn.
+
+Gọi @math{n} là tham số đo kích thước của bài toán, và @math{{R(n)}} là lượng tài nguyên mà quá trình cần cho bài toán có kích thước @math{n}.  Trong các ví dụ trước ta lấy @math{n} là số cần tính hàm, nhưng có các khả năng khác.  Chẳng hạn, nếu mục tiêu là tính gần đúng căn bậc hai của một số, ta có thể lấy @math{n} là số chữ số độ chính xác yêu cầu.  Với phép nhân ma trận ta có thể lấy @math{n} là số hàng của các ma trận.  Nói chung có một số tính chất của bài toán mà ta muốn phân tích một quá trình đã cho theo đó.  Tương tự, @math{{R(n)}} có thể đo số thanh ghi lưu trữ nội tại được dùng, số phép toán máy cơ bản được thực hiện, và cứ thế.  Với các máy tính chỉ thực hiện một số cố định phép toán tại một thời điểm, thời gian yêu cầu sẽ tỷ lệ thuận với số phép toán máy cơ bản được thực hiện.
+
+Ta nói @math{{R(n)}} có bậc tăng trưởng @math{{\Theta(f(n))}}, ký hiệu @math{{R(n)} = {\Theta(f(n))}} (đọc là ``theta của @math{{f(n)}}''), nếu tồn tại các hằng số dương @math{k_1} và @math{k_2} độc lập với @math{n} sao cho @math{{k_1 f(n)} \le {R(n)} \le {k_2 f(n)}} với mọi giá trị @math{n} đủ lớn.  (Nói cách khác, với @math{n} lớn, giá trị @math{{R(n)}} bị kẹp giữa @math{{k_1 f(n)}} và @math{{k_2 f(n)}}.)
+
+Chẳng hạn, với quá trình đệ quy tuyến tính để tính giai thừa được mô tả trong @ref{1.2.1}, số bước tăng tỷ lệ thuận với đầu vào @math{n}.  Như vậy, số bước cần cho quá trình này tăng theo @math{{\Theta(n)}}.  Ta cũng thấy rằng không gian yêu cầu tăng theo @math{{\Theta(n)}}.  Với giai thừa lặp, số bước vẫn là @math{{\Theta(n)}} nhưng không gian là @math{{\Theta(1)}}---tức là, hằng số.@footnote{Những nhận định này ẩn đi rất nhiều sự đơn giản hóa.  Chẳng hạn, nếu ta đếm các bước của quá trình như ``các phép toán máy'', ta đang giả định rằng số phép toán máy cần để thực hiện, chẳng hạn, một phép nhân là độc lập với kích thước của các số cần nhân, điều này sai nếu các số đủ lớn.  Nhận xét tương tự áp dụng cho các ước lượng không gian.  Giống như việc thiết kế và mô tả một quá trình, việc phân tích một quá trình có thể được thực hiện ở các mức trừu tượng khác nhau.} Phép tính Fibonacci đệ quy cây đòi hỏi @math{{\Theta(\varphi^n)}} bước và không gian @math{{\Theta(n)}}, trong đó @math{\varphi} là tỷ lệ vàng được mô tả trong @ref{1.2.2}.
+
+Bậc tăng trưởng chỉ cung cấp mô tả thô về hành vi của một quá trình.  Chẳng hạn, một quá trình đòi hỏi @math{n^2} bước và một quá trình đòi hỏi @math{{1000n^2}} bước và một quá trình đòi hỏi @math{{3n^2} + {10n} + 17} bước đều có bậc tăng trưởng @math{{\Theta(n^2)}}.  Mặt khác, bậc tăng trưởng cung cấp một chỉ dẫn hữu ích về cách ta có thể mong đợi hành vi của quá trình thay đổi khi ta thay đổi kích thước bài toán.  Với một quá trình @math{{\Theta(n)}} (tuyến tính), nhân đôi kích thước sẽ xấp xỉ nhân đôi lượng tài nguyên sử dụng.  Với một quá trình theo hàm mũ, mỗi lần tăng kích thước bài toán sẽ nhân mức sử dụng tài nguyên với một hệ số hằng.  Trong phần còn lại của @ref{1.2} ta sẽ xem xét hai thuật toán có bậc tăng trưởng là logarithm, sao cho nhân đôi kích thước bài toán chỉ tăng yêu cầu tài nguyên thêm một lượng hằng.
+
+@quotation
+@strong{@anchor{Exercise 1.14}Bài tập 1.14:} Vẽ cây minh họa quá trình được tạo ra bởi thủ tục @code{count-change} của @ref{1.2.2} khi đổi 11 xu.  Bậc tăng trưởng về không gian và số bước được sử dụng bởi quá trình này là gì khi số tiền cần đổi tăng lên?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.15}Bài tập 1.15:} Sin của một góc (được chỉ định theo radian) có thể được tính bằng cách dùng xấp xỉ @math{{\sin x  \approx x}} nếu @math{x} đủ nhỏ, và hệ thức lượng giác
+@ifinfo
+
+@example
+               x             x
+sin x = 3 sin --- - 4 sin^3 ---
+               3             3
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :12:
+
+{\sin x} \,=\, {3\sin \frac{x}{3}} \,-\, {4\sin^3 \frac{x}{3}}
+\]
+
+@end tex
+@noindent
+để giảm kích thước của đối số của sin.  (Với mục đích của bài tập này, một góc được coi là ``đủ nhỏ'' nếu giá trị tuyệt đối của nó không lớn hơn 0,1 radian.)  Các ý tưởng này được tích hợp vào các thủ tục sau:
+
+@lisp
+(define (cube x) (* x x x))
+(define (p x) (- (* 3 x) (* 4 (cube x))))
+(define (sine angle)
+   (if (not (> (abs angle) 0.1))
+       angle
+       (p (sine (/ angle 3.0)))))
+@end lisp
+
+@enumerate a
+
+@item
+Thủ tục @code{p} được áp dụng bao nhiêu lần khi @code{(sine 12.15)} được đánh giá?
+
+@item
+Bậc tăng trưởng về không gian và số bước (là hàm của @math{a}) được sử dụng bởi quá trình được tạo ra bởi thủ tục @code{sine} khi @code{(sine a)} được đánh giá là gì?
+
+@end enumerate
+@end quotation

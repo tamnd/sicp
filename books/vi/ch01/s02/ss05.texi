@@ -1,0 +1,48 @@
+@node	1.2.5, 1.2.6, 1.2.4, 1.2
+@subsection Ước Số Chung Lớn Nhất
+
+Ước số chung lớn nhất (@abbr{GCD}) của hai số nguyên @math{a} và @math{b} được định nghĩa là số nguyên lớn nhất chia hết cả @math{a} và @math{b} mà không dư.  Chẳng hạn, @abbr{GCD} của 16 và 28 là 4.  Trong @ref{Chapter 2}, khi ta xem xét cách triển khai số học phân số, ta sẽ cần có khả năng tính @abbr{GCD} để rút gọn phân số về dạng tối giản.  (Để rút gọn một phân số về dạng tối giản, ta phải chia cả tử và mẫu cho @abbr{GCD} của chúng.  Chẳng hạn, 16/28 rút gọn thành 4/7.)  Một cách tìm @abbr{GCD} của hai số nguyên là phân tích nhân tử và tìm nhân tử chung, nhưng có một thuật toán nổi tiếng hiệu quả hơn nhiều.
+
+Ý tưởng của thuật toán dựa trên nhận xét rằng, nếu @math{r} là phần dư khi @math{a} chia cho @math{b}, thì các ước số chung của @math{a} và @math{b} chính xác là các ước số chung của @math{b} và @math{r}.  Như vậy, ta có thể dùng phương trình
+
+@example
+GCD(a,b) = GCD(b,r)
+@end example
+
+@noindent
+để liên tiếp rút gọn bài toán tính @abbr{GCD} xuống bài toán tính @abbr{GCD} của các cặp số ngày càng nhỏ hơn.  Chẳng hạn,
+
+@example
+GCD(206,40) = GCD(40,6)
+            = GCD(6,4)
+            = GCD(4,2)
+            = GCD(2,0) = 2
+@end example
+
+@noindent
+rút gọn @abbr{GCD}(206, 40) xuống @abbr{GCD}(2, 0), là 2.  Có thể chứng minh rằng bắt đầu với bất kỳ hai số nguyên dương nào và thực hiện các phép rút gọn lặp đi lặp lại sẽ luôn tạo ra một cặp trong đó số thứ hai bằng 0.  Khi đó @abbr{GCD} là số kia trong cặp.  Phương pháp tính @abbr{GCD} này được gọi là @newterm{Thuật toán Euclid}.@footnote{Thuật toán Euclid có tên như vậy vì nó xuất hiện trong @cite{Elements} của Euclid (Quyển 7, khoảng năm 300 @abbr{B.C.}).  Theo @ref{Knuth (1973)}, nó có thể được coi là thuật toán không tầm thường cổ nhất được biết đến.  Phương pháp nhân Ai Cập cổ đại (@ref{Exercise 1.18}) chắc chắn còn cổ hơn, nhưng, như Knuth giải thích, thuật toán Euclid là thuật toán cổ nhất được biết đến với tư cách là một thuật toán tổng quát, thay vì là một tập hợp các ví dụ minh họa.}
+
+Dễ dàng biểu diễn Thuật toán Euclid thành một thủ tục:
+
+@lisp
+(define (gcd a b)
+  (if (= b 0)
+      a
+      (gcd b (remainder a b))))
+@end lisp
+
+@noindent
+Thủ tục này tạo ra một quá trình lặp, số bước của nó tăng theo logarithm của các số liên quan.
+
+Thực tế là số bước yêu cầu bởi Thuật toán Euclid có tăng trưởng logarithm có một mối quan hệ thú vị với các số Fibonacci:
+
+@quotation
+@strong{Định lý Lamé:} Nếu Thuật toán Euclid cần @math{k} bước để tính @abbr{GCD} của một cặp nào đó, thì số nhỏ hơn trong cặp phải lớn hơn hoặc bằng số Fibonacci thứ @math{k}.@footnote{Định lý này được chứng minh năm 1845 bởi Gabriel Lamé, một nhà toán học và kỹ sư người Pháp được biết đến chủ yếu vì những đóng góp của ông cho vật lý toán học.  Để chứng minh định lý, ta xét các cặp @math{{(a_k, b_k)}}, trong đó @math{{a_k \ge b_k}}, mà Thuật toán Euclid kết thúc sau @math{k} bước.  Chứng minh dựa trên khẳng định rằng, nếu @math{{(a_{k+1}, b_{k+1})} \to {(a_k, b_k)} \to {(a_{k-1}, b_{k-1})}} là ba cặp liên tiếp trong quá trình rút gọn, thì ta phải có @math{b_{k+1} \ge b_k + b_{k-1}}.  Để xác minh khẳng định, hãy xét rằng một bước rút gọn được định nghĩa bởi phép biến đổi @math{{a_{k-1} = b_k}}, @math{{b_{k-1} =}} phần dư của @math{a_k} chia cho @math{b_k}.  Phương trình thứ hai nghĩa là @math{a_k = {qb_k} + {b_{k-1}}} với số nguyên dương @math{q} nào đó.  Và vì @math{q} phải ít nhất là 1 nên @math{a_k = {qb_k} + b_{k-1} \ge b_k + b_{k-1}}.  Nhưng trong bước rút gọn trước đó ta có @math{b_{k+1} = a_k}.  Do đó, @math{b_{k+1} = a_k \ge b_k + b_{k-1}}.  Điều này xác minh khẳng định.  Bây giờ ta có thể chứng minh định lý bằng quy nạp theo @math{k}, số bước mà thuật toán cần để kết thúc.  Kết quả đúng với @math{{k = 1}}, vì điều này chỉ yêu cầu @math{b} ít nhất bằng @math{{\text{Fib}(1) = 1}}.  Bây giờ, giả sử kết quả đúng với mọi số nguyên nhỏ hơn hoặc bằng @math{k} và chứng minh kết quả với @math{{k + 1}}.  Gọi @math{{(a_{k+1}, b_{k+1})} \to {(a_k, b_k)} \to {(a_{k-1}, b_{k-1})}} là các cặp liên tiếp trong quá trình rút gọn.  Theo giả thiết quy nạp, ta có @math{b_{k-1} \ge {\text{Fib}(k - 1)}} và @math{b_k \ge {\text{Fib}(k)}}.  Do đó, áp dụng khẳng định vừa chứng minh cùng với định nghĩa của các số Fibonacci cho @math{b_{k+1} \ge b_k + b_{k-1} \ge {\text{Fib}(k)} + {\text{Fib}(k-1)} = {\text{Fib}(k+1)}}, hoàn thành chứng minh Định lý Lamé.}
+@end quotation
+
+@noindent
+Ta có thể dùng định lý này để ước lượng bậc tăng trưởng của Thuật toán Euclid.  Gọi @math{n} là số nhỏ hơn trong hai đầu vào của thủ tục.  Nếu quá trình thực hiện @math{k} bước, thì ta phải có @math{n \ge {\text{Fib}(k)} \approx {\varphi^k / \sqrt{5}}}.  Do đó số bước @math{k} tăng theo logarithm (theo cơ số @math{\varphi}) của @math{n}.  Vì vậy, bậc tăng trưởng là @math{{\Theta(\log n)}}.
+
+@quotation
+@strong{@anchor{Exercise 1.20}Bài tập 1.20:} Quá trình mà một thủ tục tạo ra phụ thuộc vào các quy tắc được sử dụng bởi trình thông dịch.  Ví dụ, hãy xét thủ tục @code{gcd} lặp ở trên.  Giả sử ta thông dịch thủ tục này bằng cách dùng đánh giá theo thứ tự bình thường, như đã thảo luận trong @ref{1.1.5}.  (Quy tắc đánh giá thứ tự bình thường cho @code{if} được mô tả trong @ref{Exercise 1.5}.)  Dùng phương pháp thay thế (cho thứ tự bình thường), minh họa quá trình được tạo ra khi đánh giá @code{(gcd 206 40)} và chỉ ra các phép toán @code{remainder} thực sự được thực hiện.  Thực sự có bao nhiêu phép toán @code{remainder} được thực hiện trong đánh giá thứ tự bình thường của @code{(gcd 206 40)}?  Còn trong đánh giá theo thứ tự ứng dụng?
+@end quotation

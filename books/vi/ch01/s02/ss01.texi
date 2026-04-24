@@ -1,0 +1,202 @@
+@node	1.2.1, 1.2.2, 1.2, 1.2
+@subsection Đệ Quy Tuyến Tính và Lặp
+
+Chúng ta bắt đầu bằng cách xét hàm giai thừa, được định nghĩa bởi
+@ifinfo
+
+@example
+n! = n * (n - 1) * (n - 2) ... 3 * 2 * 1
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :5:
+
+n! \,=\, {n \cdot (n - 1)} \cdot {(n - 2)} \cdots {3 \cdot 2 \cdot 1.}
+\]
+
+@end tex
+Có nhiều cách để tính giai thừa.  Một cách là sử dụng nhận xét rằng @math{{n!}} bằng @math{n} nhân với @math{{(n - 1)!}} với mọi số nguyên dương @math{n}:
+@ifinfo
+
+@example
+n! = n * [(n - 1) * (n - 2) ... 3 * 2 * 1] = n * (n - 1)!
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :6:
+
+n! \,=\, {n \cdot [(n - 1)} \cdot {(n - 2)} \cdots {3 \cdot 2 \cdot 1]} \,=\, {n \cdot (n - 1)!.}
+\]
+
+@end tex
+Như vậy, ta có thể tính @math{{n!}} bằng cách tính @math{{(n - 1)!}} rồi nhân kết quả với @math{n}.  Nếu ta thêm điều kiện rằng @math{1! = 1}, nhận xét này được dịch trực tiếp thành một thủ tục:
+
+@lisp
+(define (factorial n)
+  (if (= n 1)
+      1
+      (* n (factorial (- n 1)))))
+@end lisp
+
+@noindent
+Chúng ta có thể dùng mô hình thay thế ở @ref{1.1.5} để theo dõi thủ tục này tính 6!, như minh họa trong @ref{Figure 1.3}.
+
+@float
+@anchor{Figure 1.3}
+@ifinfo
+@quotation
+@strong{Hình 1.3:} Một quá trình đệ quy tuyến tính để tính 6!.
+
+@example
+(factorial 6)        ----------------
+(* 6 (factorial 5))                   \
+(* 6 (* 5 (factorial 4)))               \
+(* 6 (* 5 (* 4 (factorial 3))))           \
+(* 6 (* 5 (* 4 (* 3 (factorial 2)))))       \
+(* 6 (* 5 (* 4 (* 3 (* 2 (factorial 1))))))  |
+(* 6 (* 5 (* 4 (* 3 (* 2 1)))))             /
+(* 6 (* 5 (* 4 (* 3 2))))                 /
+(* 6 (* 5 (* 4 6)))                     /
+(* 6 (* 5 24))                        /
+(* 6 120)                           /
+720          <---------------------
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.3d,139mm,,,.std.svg}
+@caption{@strong{Hình 1.3:} Một quá trình đệ quy tuyến tính để tính 6!.}
+@end iftex
+@end float
+
+@noindent
+Bây giờ hãy nhìn việc tính giai thừa theo một góc nhìn khác.  Ta có thể mô tả một quy tắc để tính @math{{n!}} bằng cách chỉ định rằng trước tiên ta nhân 1 với 2, sau đó nhân kết quả với 3, rồi với 4, và cứ thế tiếp tục cho đến khi đạt đến @math{n}.  Một cách chính thức hơn, ta duy trì một tích lũy kế, cùng với một bộ đếm đếm từ 1 lên đến @math{n}.  Ta có thể mô tả phép tính bằng cách nói rằng bộ đếm và tích lũy kế thay đổi đồng thời từ bước này sang bước tiếp theo theo quy tắc
+
+@example
+product @math{\gets} counter * product
+counter @math{\gets} counter + 1
+@end example
+
+@noindent
+và quy định rằng @math{{n!}} là giá trị của tích lũy kế khi bộ đếm vượt quá @math{n}.
+
+Một lần nữa, ta có thể tái hiện mô tả này thành một thủ tục tính giai thừa:@footnote{Trong một chương trình thực, chúng ta sẽ dùng cấu trúc khối đã giới thiệu ở phần trước để ẩn định nghĩa của @code{fact-iter}:
+
+@lisp
+(define (factorial n)
+  (define (iter product counter)
+    (if (> counter n)
+        product
+        (iter (* counter product)
+              (+ counter 1))))
+  (iter 1 1))
+@end lisp
+
+Chúng ta đã tránh làm như vậy ở đây để giảm thiểu số lượng thứ cần nghĩ đến cùng một lúc.}
+
+@lisp
+(define (factorial n)
+  (fact-iter 1 1 n))
+
+(define (fact-iter product counter max-count)
+  (if (> counter max-count)
+      product
+      (fact-iter (* counter product)
+                 (+ counter 1)
+                 max-count)))
+@end lisp
+
+@noindent
+Như trước, ta có thể dùng mô hình thay thế để hình dung quá trình tính 6!, như minh họa trong @ref{Figure 1.4}.
+
+@float
+@anchor{Figure 1.4}
+@ifinfo
+@quotation
+@strong{Hình 1.4:} Một quá trình lặp tuyến tính để tính 6!.
+
+@example
+(factorial 6)   -----.
+(fact-iter   1 1 6)  |
+(fact-iter   1 2 6)  |
+(fact-iter   2 3 6)  |
+(fact-iter   6 4 6)  |
+(fact-iter  24 5 6)  |
+(fact-iter 120 6 6)  |
+(fact-iter 720 7 6)  V
+720
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.4d,,62mm,,.std.svg}
+@caption{@strong{Hình 1.4:} Một quá trình lặp tuyến tính để tính 6!.}
+@end iftex
+@end float
+
+@noindent
+Hãy so sánh hai quá trình.  Từ một góc nhìn, chúng có vẻ gần như không khác gì nhau cả.  Cả hai đều tính cùng một hàm toán học trên cùng một miền, và mỗi cái đòi hỏi số bước tỷ lệ thuận với @math{n} để tính @math{{n!}}.  Thật vậy, cả hai quá trình đều thực hiện cùng một dãy phép nhân, thu được cùng một dãy tích lũy kế trung gian.  Mặt khác, khi ta xem xét ``hình dạng'' của hai quá trình, ta thấy chúng phát triển khá khác nhau.
+
+Xét quá trình thứ nhất.  Mô hình thay thế cho thấy hình dạng mở rộng tiếp theo là co lại, được chỉ ra bởi mũi tên trong @ref{Figure 1.3}.  Sự mở rộng xảy ra khi quá trình xây dựng một chuỗi @newterm{các phép toán bị hoãn lại} (trong trường hợp này, một chuỗi các phép nhân).  Sự co lại xảy ra khi các phép toán thực sự được thực hiện.  Kiểu quá trình này, được đặc trưng bởi một chuỗi các phép toán bị hoãn lại, được gọi là @newterm{quá trình đệ quy}.  Để thực hiện quá trình này, trình thông dịch cần theo dõi các phép toán sẽ được thực hiện sau.  Trong việc tính @math{{n!}}, độ dài của chuỗi các phép nhân bị hoãn lại, và do đó lượng thông tin cần lưu để theo dõi nó, tăng tuyến tính theo @math{n} (tỷ lệ thuận với @math{n}), cũng giống như số bước.  Quá trình như vậy được gọi là @newterm{quá trình đệ quy tuyến tính}.
+
+Ngược lại, quá trình thứ hai không mở rộng rồi co lại.  Ở mỗi bước, tất cả những gì ta cần theo dõi, với mọi @math{n}, là các giá trị hiện tại của các biến @code{product}, @code{counter} và @code{max-count}.  Chúng ta gọi đây là @newterm{quá trình lặp}.  Nói chung, một quá trình lặp là quá trình mà trạng thái của nó có thể được tóm tắt bởi một số cố định các @newterm{biến trạng thái}, cùng với một quy tắc cố định mô tả cách các biến trạng thái nên được cập nhật khi quá trình chuyển từ trạng thái này sang trạng thái khác, và một phép kiểm tra kết thúc (tùy chọn) chỉ định các điều kiện để quá trình kết thúc.  Trong việc tính @math{{n!}}, số bước yêu cầu tăng tuyến tính theo @math{n}.  Quá trình như vậy được gọi là @newterm{quá trình lặp tuyến tính}.
+
+Sự tương phản giữa hai quá trình có thể thấy theo cách khác.  Trong trường hợp lặp, các biến của chương trình cung cấp mô tả đầy đủ về trạng thái của quá trình tại bất kỳ điểm nào.  Nếu ta dừng tính toán giữa chừng, tất cả những gì ta cần làm để tiếp tục là cung cấp cho trình thông dịch các giá trị của ba biến của chương trình.  Không phải như vậy với quá trình đệ quy.  Trong trường hợp đó có một số thông tin ``ẩn'' thêm, được duy trì bởi trình thông dịch và không chứa trong các biến của chương trình, chỉ ra ``quá trình đang ở đâu'' trong quá trình thương lượng chuỗi các phép toán bị hoãn lại.  Chuỗi càng dài, càng nhiều thông tin phải được duy trì.@footnote{Khi ta thảo luận về việc triển khai các thủ tục trên các máy thanh ghi ở @ref{Chapter 5}, ta sẽ thấy rằng bất kỳ quá trình lặp nào cũng có thể được thực hiện ``trong phần cứng'' như một máy có tập thanh ghi cố định và không có bộ nhớ phụ trợ.  Ngược lại, để thực hiện một quá trình đệ quy cần một máy sử dụng cấu trúc dữ liệu phụ trợ gọi là @newterm{ngăn xếp}.}
+
+Khi so sánh lặp và đệ quy, ta phải cẩn thận không nhầm lẫn khái niệm @newterm{quá trình} đệ quy với khái niệm @newterm{thủ tục} đệ quy.  Khi ta mô tả một thủ tục là đệ quy, ta đang đề cập đến sự thật về mặt cú pháp rằng định nghĩa thủ tục tham chiếu (trực tiếp hoặc gián tiếp) đến chính thủ tục đó.  Nhưng khi ta mô tả một quá trình là tuân theo mẫu, chẳng hạn, đệ quy tuyến tính, ta đang nói về cách quá trình phát triển, chứ không phải về cú pháp của cách viết thủ tục.  Có vẻ kỳ lạ khi ta gọi một thủ tục đệ quy như @code{fact-iter} là tạo ra một quá trình lặp.  Tuy nhiên, quá trình thực sự là lặp: trạng thái của nó được nắm bắt hoàn toàn bởi ba biến trạng thái, và một trình thông dịch chỉ cần theo dõi ba biến để thực thi quá trình.
+
+Một lý do khiến sự phân biệt giữa quá trình và thủ tục có thể gây nhầm lẫn là hầu hết các triển khai của các ngôn ngữ thông dụng (bao gồm Ada, Pascal và C) được thiết kế sao cho việc thông dịch bất kỳ thủ tục đệ quy nào đều tiêu thụ một lượng bộ nhớ tăng theo số lần gọi thủ tục, ngay cả khi quá trình được mô tả về nguyên tắc là lặp.  Do đó, các ngôn ngữ này chỉ có thể mô tả các quá trình lặp bằng cách dùng các cấu trúc vòng lặp mục đích đặc biệt như @code{do}, @code{repeat}, @code{until}, @code{for} và @code{while}.  Triển khai Scheme mà ta sẽ xem xét trong @ref{Chapter 5} không có nhược điểm này.  Nó sẽ thực thi một quá trình lặp trong không gian bộ nhớ cố định, ngay cả khi quá trình lặp được mô tả bởi một thủ tục đệ quy.  Một triển khai có tính chất này được gọi là @newterm{đệ quy đuôi}.  Với một triển khai đệ quy đuôi, phép lặp có thể được biểu diễn bằng cơ chế gọi thủ tục thông thường, nên các cấu trúc lặp đặc biệt chỉ hữu ích như là đường cú pháp.@footnote{Đệ quy đuôi từ lâu đã được biết đến như một thủ thuật tối ưu hóa của trình biên dịch.  Cơ sở ngữ nghĩa chặt chẽ cho đệ quy đuôi được cung cấp bởi Carl @ref{Hewitt (1977)}, người đã giải thích nó theo mô hình tính toán ``truyền thông điệp'' mà ta sẽ thảo luận trong @ref{Chapter 3}.  Lấy cảm hứng từ điều này, Gerald Jay Sussman và Guy Lewis Steele Jr. (xem @ref{Steele and Sussman 1975}) đã xây dựng một trình thông dịch đệ quy đuôi cho Scheme.  Steele sau đó đã chỉ ra rằng đệ quy đuôi là hệ quả của cách biên dịch các lời gọi thủ tục tự nhiên (@ref{Steele 1977}).  Tiêu chuẩn @abbr{IEEE} cho Scheme yêu cầu các triển khai Scheme phải là đệ quy đuôi.}
+
+@quotation
+@strong{@anchor{Exercise 1.9}Bài tập 1.9:} Mỗi thủ tục sau đây định nghĩa một phương pháp cộng hai số nguyên dương thông qua các thủ tục @code{inc}, tăng đối số của nó lên 1, và @code{dec}, giảm đối số của nó đi 1.
+
+@lisp
+(define (+ a b)
+  (if (= a 0)
+      b
+      (inc (+ (dec a) b))))
+
+(define (+ a b)
+  (if (= a 0)
+      b
+      (+ (dec a) (inc b))))
+@end lisp
+
+Dùng mô hình thay thế để minh họa quá trình được tạo ra bởi mỗi thủ tục khi đánh giá @code{(+ 4 5)}.  Các quá trình đó là lặp hay đệ quy?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.10}Bài tập 1.10:} Thủ tục sau tính một hàm toán học gọi là hàm Ackermann.
+
+@lisp
+(define (A x y)
+  (cond ((= y 0) 0)
+        ((= x 0) (* 2 y))
+        ((= y 1) 2)
+        (else (A (- x 1)
+                 (A x (- y 1))))))
+@end lisp
+
+Giá trị của các biểu thức sau là gì?
+
+@lisp
+(A 1 10)
+(A 2 4)
+(A 3 3)
+@end lisp
+
+Hãy xét các thủ tục sau, trong đó @code{A} là thủ tục được định nghĩa ở trên:
+
+@lisp
+(define (f n) (A 0 n))
+(define (g n) (A 1 n))
+(define (h n) (A 2 n))
+(define (k n) (* 5 n n))
+@end lisp
+
+Hãy đưa ra các định nghĩa toán học súc tích cho các hàm được tính bởi các thủ tục @code{f}, @code{g} và @code{h} với các giá trị số nguyên dương của @math{n}.  Ví dụ, @code{(k n)} tính @math{{5n^2}}.
+@end quotation

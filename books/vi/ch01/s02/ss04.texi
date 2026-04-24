@@ -1,0 +1,181 @@
+@node	1.2.4, 1.2.5, 1.2.3, 1.2
+@subsection Lũy Thừa
+
+Hãy xét bài toán tính lũy thừa của một số cho trước.  Ta muốn một thủ tục nhận đối số là cơ số @math{b} và số mũ nguyên dương @math{n} rồi tính @math{b^n}.  Một cách để làm điều này là thông qua định nghĩa đệ quy
+@ifinfo
+
+@example
+b^n = b * b^(n - 1)
+b^0 = 1
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :13:
+
+\begin{array}{l}
+  b^n \,=\, b\cdot b^{n-1}, \\
+  b^0 \,=\, 1,
+\end{array}
+\]
+
+@end tex
+dịch trực tiếp thành thủ tục
+
+@lisp
+(define (expt b n)
+  (if (= n 0)
+      1
+      (* b (expt b (- n 1)))))
+@end lisp
+
+@noindent
+Đây là một quá trình đệ quy tuyến tính, đòi hỏi @math{{\Theta(n)}} bước và @math{{\Theta(n)}} không gian.  Cũng như với giai thừa, ta có thể dễ dàng xây dựng một phép lặp tuyến tính tương đương:
+
+@lisp
+(define (expt b n)
+  (expt-iter b n 1))
+
+(define (expt-iter b counter product)
+  (if (= counter 0)
+      product
+      (expt-iter b
+                 (- counter 1)
+                 (* b product))))
+@end lisp
+
+@noindent
+Phiên bản này đòi hỏi @math{{\Theta(n)}} bước và @math{{\Theta(1)}} không gian.
+
+Ta có thể tính lũy thừa với ít bước hơn bằng cách dùng bình phương liên tiếp.  Chẳng hạn, thay vì tính @math{b^8} là
+@ifinfo
+
+@example
+b * (b * (b * (b * (b * (b * (b * b))))))
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :14:
+
+{b\cdot (b\cdot (b}\cdot {(b\cdot (b\cdot (b}\cdot {(b\cdot b)))))),}
+\]
+
+@end tex
+ta có thể tính nó bằng ba phép nhân:
+@ifinfo
+
+@example
+b^2 = b * b
+b^4 = b^2 * b^2
+b^8 = b^4 * b^4
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :15:
+
+\begin{array}{l}
+  b^2 \,=\, b\cdot b, \\
+  b^4 \,=\, b^2\cdot b^2, \\
+  b^8 \,=\, b^4\cdot b^4.
+\end{array}
+\]
+
+@end tex
+Phương pháp này hoạt động tốt cho các số mũ là lũy thừa của 2.  Ta cũng có thể tận dụng bình phương liên tiếp khi tính lũy thừa nói chung nếu ta dùng quy tắc
+@ifinfo
+
+@example
+b^n = (b^(n/2))^2    if n is even
+b^n = b * b^(n - 1)  if n is odd
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :16:
+
+\begin{array}{ll}
+  b^n \,=\, (b^{n / 2})^2   & \text{if} \; n \; \text{is even}, \\
+  b^n \,=\, b\cdot b^{n-1}  & \text{if} \; n \; \text{is odd}.
+\end{array}
+\]
+
+@end tex
+Ta có thể biểu diễn phương pháp này thành một thủ tục:
+
+@lisp
+(define (fast-expt b n)
+  (cond ((= n 0)
+         1)
+        ((even? n)
+         (square (fast-expt b (/ n 2))))
+        (else
+         (* b (fast-expt b (- n 1))))))
+@end lisp
+
+@noindent
+trong đó vị từ kiểm tra xem một số nguyên có chẵn không được định nghĩa theo thủ tục nguyên thủy @code{remainder} bởi
+
+@lisp
+(define (even? n)
+  (= (remainder n 2) 0))
+@end lisp
+
+@noindent
+Quá trình được phát triển bởi @code{fast-expt} tăng trưởng theo logarithm của @math{n} cả về không gian lẫn số bước.  Để thấy điều này, hãy quan sát rằng tính @math{b^{2n}} bằng @code{fast-expt} chỉ đòi hỏi thêm một phép nhân so với tính @math{b^n}.  Do đó, kích thước của số mũ mà ta có thể tính gần như tăng gấp đôi với mỗi phép nhân mới được phép.  Như vậy, số phép nhân cần cho số mũ @math{n} tăng xấp xỉ nhanh bằng logarithm của @math{n} theo cơ số 2.  Quá trình có tăng trưởng @math{{\Theta(\log n)}}.@footnote{Chính xác hơn, số phép nhân cần bằng 1 ít hơn logarithm cơ số 2 của @math{n} cộng với số chữ số 1 trong biểu diễn nhị phân của @math{n}.  Tổng này luôn nhỏ hơn hai lần logarithm cơ số 2 của @math{n}.  Các hằng số tùy ý @math{k_1} và @math{k_2} trong định nghĩa ký hiệu bậc hàm ngụ rằng, với một quá trình logarithm, cơ số để lấy logarithm không quan trọng, vì vậy tất cả các quá trình như vậy được mô tả là @math{{\Theta(\log n)}}.}
+
+Sự khác biệt giữa tăng trưởng @math{{\Theta(\log n)}} và tăng trưởng @math{{\Theta(n)}} trở nên nổi bật khi @math{n} trở nên lớn.  Chẳng hạn, @code{fast-expt} với @math{n} = 1000 chỉ đòi hỏi 14 phép nhân.@footnote{Bạn có thể tự hỏi tại sao ai đó lại muốn nâng số lên lũy thừa 1000.  Xem @ref{1.2.6}.} Ta cũng có thể dùng ý tưởng bình phương liên tiếp để nghĩ ra một thuật toán lặp tính lũy thừa với số bước theo logarithm (xem @ref{Exercise 1.16}), mặc dù, như thường thấy với các thuật toán lặp, cách viết không trực tiếp như thuật toán đệ quy.@footnote{Thuật toán lặp này có từ thời cổ đại.  Nó xuất hiện trong @cite{Chandah-sutra} của @'Ach@'arya Pingala, được viết trước 200 @abbr{B.C.}  Xem @ref{Knuth 1981}, phần 4.6.3, để có thảo luận và phân tích đầy đủ về phương pháp này và các phương pháp lũy thừa khác.}
+
+@quotation
+@strong{@anchor{Exercise 1.16}Bài tập 1.16:} Thiết kế một thủ tục phát triển một quá trình lũy thừa lặp dùng bình phương liên tiếp và sử dụng số bước theo logarithm, giống như @code{fast-expt}.  (Gợi ý: Dùng nhận xét rằng @math{{(b^{n / 2})^2} = {(b^2)^{n / 2}}}, giữ, cùng với số mũ @math{n} và cơ số @math{b}, thêm một biến trạng thái @math{a}, và định nghĩa phép biến đổi trạng thái sao cho tích @math{{ab^n}} không thay đổi từ trạng thái này sang trạng thái khác.  Ở đầu quá trình @math{a} được lấy bằng 1, và câu trả lời được cho bởi giá trị của @math{a} ở cuối quá trình.  Nói chung, kỹ thuật định nghĩa một @newterm{đại lượng bất biến} không thay đổi từ trạng thái này sang trạng thái khác là một cách mạnh mẽ để suy nghĩ về thiết kế các thuật toán lặp.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.17}Bài tập 1.17:} Các thuật toán lũy thừa trong phần này dựa trên việc thực hiện lũy thừa bằng cách nhân lặp đi lặp lại.  Tương tự, ta có thể thực hiện phép nhân nguyên bằng cách cộng lặp đi lặp lại.  Thủ tục nhân sau (trong đó giả định ngôn ngữ của ta chỉ có thể cộng, không nhân) tương tự như thủ tục @code{expt}:
+
+@lisp
+(define (* a b)
+  (if (= b 0)
+      0
+      (+ a (* a (- b 1)))))
+@end lisp
+
+Thuật toán này thực hiện số bước tuyến tính theo @code{b}.  Bây giờ giả sử ta thêm vào, cùng với phép cộng, các phép toán @code{double}, nhân đôi một số nguyên, và @code{halve}, chia (một số nguyên chẵn) cho 2.  Dùng chúng, thiết kế một thủ tục nhân tương tự như @code{fast-expt} sử dụng số bước theo logarithm.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.18}Bài tập 1.18:} Dùng kết quả của @ref{Exercise 1.16} và @ref{Exercise 1.17}, hãy nghĩ ra một thủ tục tạo ra một quá trình lặp để nhân hai số nguyên bằng cách cộng, nhân đôi và chia đôi, sử dụng số bước theo logarithm.@footnote{Thuật toán này, đôi khi được gọi là phương pháp nhân ``của người nông dân Nga'', có từ thời cổ đại.  Các ví dụ sử dụng nó được tìm thấy trong Cuộn giấy cói Rhind, một trong hai tài liệu toán học cổ nhất hiện còn tồn tại, được viết khoảng năm 1700 @abbr{B.C.} (và được sao chép từ một tài liệu còn cổ hơn) bởi một người ghi chép Ai Cập tên là A'h-mose.}
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.19}Bài tập 1.19:} Có một thuật toán thông minh để tính các số Fibonacci với số bước theo logarithm.  Hãy nhớ lại phép biến đổi của các biến trạng thái @math{a} và @math{b} trong quá trình @code{fib-iter} của @ref{1.2.2}: @math{a \gets a + b} và @math{b \gets a}.  Gọi phép biến đổi này là @math{T}, và quan sát rằng áp dụng @math{T} liên tiếp @math{n} lần, bắt đầu với 1 và 0, tạo ra cặp @math{{\text{Fib}(n+1)}} và @math{{\text{Fib}(n)}}.  Nói cách khác, các số Fibonacci được tạo ra bằng cách áp dụng @math{T^n}, lũy thừa thứ @math{n} của phép biến đổi @math{T}, bắt đầu với cặp (1, 0).  Bây giờ hãy xét @math{T} là trường hợp đặc biệt của @math{{p=0}} và @math{{q=1}} trong một họ phép biến đổi @math{T_{pq}}, trong đó @math{T_{pq}} biến đổi cặp @math{{(a, b)}} theo @math{a \gets {bq} + {aq} + {ap}} và @math{b \gets {bp} + {aq}}.  Chứng minh rằng nếu ta áp dụng phép biến đổi @math{T_{pq}} hai lần, hiệu quả tương đương với dùng một phép biến đổi @math{T_{p'q'}} cùng dạng, và tính @math{p'\!} và @math{q'\!} theo @math{p} và @math{q}.  Điều này cho ta một cách tường minh để bình phương các phép biến đổi này, từ đó ta có thể tính @math{T^n} bằng bình phương liên tiếp, như trong thủ tục @code{fast-expt}.  Ghép tất cả lại để hoàn thiện thủ tục sau, chạy trong số bước theo logarithm:@footnote{Bài tập này được gợi ý cho chúng tôi bởi Joe Stoy, dựa trên một ví dụ trong @ref{Kaldewaij 1990}.}
+
+@lisp
+(define (fib n)
+  (fib-iter 1 0 0 1 n))
+
+(define (fib-iter a b p q count)
+  (cond ((= count 0)
+         b)
+        ((even? count)
+         (fib-iter a
+                   b
+                   ⟨??⟩  ;tính @var{p'}
+                   ⟨??⟩  ;tính @var{q'}
+                   (/ count 2)))
+        (else
+         (fib-iter (+ (* b q)
+                      (* a q)
+                      (* a p))
+                   (+ (* b p)
+                      (* a q))
+                   p
+                   q
+                   (- count 1)))))
+@end lisp
+@end quotation

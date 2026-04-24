@@ -1,0 +1,26 @@
+@node	1.2, 1.3, 1.1, Chapter 1
+@section Các Thủ Tục và Các Quá Trình Mà Chúng Tạo Ra
+
+Chúng ta đã xem xét các yếu tố của lập trình: chúng ta đã sử dụng các phép toán số học nguyên thủy, kết hợp các phép toán đó, và trừu tượng hóa các phép toán phức hợp bằng cách định nghĩa chúng thành các thủ tục phức hợp.  Nhưng như vậy vẫn chưa đủ để nói rằng chúng ta biết cách lập trình.  Tình huống của chúng ta giống như người đã học được các quy tắc di chuyển các quân cờ nhưng lại không biết gì về các thế khai cuộc, chiến thuật hay chiến lược thông thường.  Giống như kỳ thủ mới vào nghề, chúng ta chưa biết các mẫu sử dụng phổ biến trong lĩnh vực này.  Chúng ta thiếu kiến thức về những nước đi nào đáng thực hiện (những thủ tục nào đáng định nghĩa).  Chúng ta thiếu kinh nghiệm để dự đoán hậu quả của một nước đi (thực thi một thủ tục).
+
+Khả năng hình dung hậu quả của các hành động đang được xem xét là điều then chốt để trở thành một lập trình viên lành nghề, cũng như trong bất kỳ hoạt động sáng tạo tổng hợp nào khác.  Chẳng hạn, để trở thành một nhiếp ảnh gia chuyên nghiệp, người ta phải học cách nhìn vào một cảnh và biết mỗi vùng sẽ hiện ra tối hay sáng như thế nào trên bản in ứng với từng lựa chọn về thời gian phơi sáng và điều kiện rửa ảnh.  Chỉ khi đó người ta mới có thể lý luận ngược lại, lên kế hoạch về cách bố cục, ánh sáng, phơi sáng và rửa ảnh để đạt được hiệu ứng mong muốn.  Lập trình cũng tương tự như vậy: chúng ta lên kế hoạch cho chuỗi hành động mà một quá trình sẽ thực hiện, và chúng ta điều khiển quá trình đó bằng một chương trình.  Để trở thành chuyên gia, chúng ta phải học cách hình dung các quá trình được tạo ra bởi các kiểu thủ tục khác nhau.  Chỉ sau khi phát triển kỹ năng đó chúng ta mới có thể học cách xây dựng một cách đáng tin cậy những chương trình thể hiện hành vi mong muốn.
+
+Một thủ tục là một khuôn mẫu cho @newterm{sự phát triển cục bộ} của một quá trình tính toán.  Nó chỉ định cách mỗi giai đoạn của quá trình được xây dựng trên giai đoạn trước.  Chúng ta muốn có thể đưa ra những nhận định về hành vi tổng thể, hay @newterm{toàn cục}, của một quá trình mà sự phát triển cục bộ của nó đã được xác định bởi một thủ tục.  Điều này rất khó thực hiện trong trường hợp tổng quát, nhưng ít nhất chúng ta có thể cố gắng mô tả một số mẫu điển hình về sự phát triển của quá trình.
+
+Trong phần này chúng ta sẽ xem xét một số ``hình dạng'' phổ biến của các quá trình được tạo ra bởi các thủ tục đơn giản.  Chúng ta cũng sẽ khảo sát tốc độ mà các quá trình này tiêu thụ các tài nguyên tính toán quan trọng là thời gian và không gian.  Các thủ tục chúng ta xem xét rất đơn giản.  Vai trò của chúng giống như vai trò của các mẫu thử nghiệm trong nhiếp ảnh: là những nguyên mẫu được đơn giản hóa quá mức, thay vì là các ví dụ thực tế thực sự.
+
+@menu
+* 1.2.1::            Đệ Quy Tuyến Tính và Lặp
+* 1.2.2::            Đệ Quy Cây
+* 1.2.3::            Bậc Tăng Trưởng
+* 1.2.4::            Lũy Thừa
+* 1.2.5::            Ước Số Chung Lớn Nhất
+* 1.2.6::            Ví Dụ: Kiểm Tra Tính Nguyên Tố
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi
+@include ss05.texi
+@include ss06.texi

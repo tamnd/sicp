@@ -1,0 +1,251 @@
+@node	1.2.2, 1.2.3, 1.2.1, 1.2
+@subsection Đệ Quy Cây
+
+Một mẫu tính toán phổ biến khác được gọi là @newterm{đệ quy cây}.  Để có ví dụ, hãy xét việc tính dãy số Fibonacci, trong đó mỗi số là tổng của hai số đứng trước:
+
+@center 0, 1, 1, 2, 3, 5, 8, 13, 21, @dots{}.
+
+@noindent
+Nói chung, các số Fibonacci có thể được định nghĩa bởi quy tắc
+@ifinfo
+
+@example
+         /
+         |  0                        if n = 0
+Fib(n) = <  1                        if n = 1
+         |  Fib(n - 1) + Fib(n - 2)  otherwise
+         \
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :7:
+
+\text{Fib}(n) \; = \;
+  \left\{
+    \begin{array}{ll}
+      0 & \;\text{if} \;\; n = 0, \\
+      1 & \;\text{if} \;\; n = 1, \\
+      \text{Fib}(n-1) + \text{Fib}(n-2) & \;\text{otherwise}.
+    \end{array}
+  \right.
+\]
+
+@end tex
+Ta có thể dịch ngay định nghĩa này thành một thủ tục đệ quy để tính các số Fibonacci:
+
+@lisp
+(define (fib n)
+  (cond ((= n 0) 0)
+        ((= n 1) 1)
+        (else (+ (fib (- n 1))
+                 (fib (- n 2))))))
+@end lisp
+
+@noindent
+Hãy xét mẫu của phép tính này.  Để tính @code{(fib 5)}, ta tính @code{(fib 4)} và @code{(fib 3)}.  Để tính @code{(fib 4)}, ta tính @code{(fib 3)} và @code{(fib 2)}.  Nói chung, quá trình phát triển trông giống như một cây, như minh họa trong @ref{Figure 1.5}.  Lưu ý rằng các nhánh tách ra thành hai ở mỗi cấp (trừ ở đáy); điều này phản ánh thực tế là thủ tục @code{fib} tự gọi lại hai lần mỗi khi nó được gọi.
+
+@float
+@anchor{Figure 1.5}
+@ifinfo
+@strong{Hình 1.5:} Quá trình đệ quy cây được tạo ra khi tính @code{(fib 5)}.
+
+@example
+
+                   ..<............ fib5   <..........
+                ...     ___________/  \___________   .
+             ...       /       . .....            \    .
+           ..       fib4     .        . . . .     fib3  .
+         ..     ____/. \____  ..             .  __/  \__  .
+       ..      /  . .  ..   \    .        ..   /  . .   \   .
+     ..     fib3 .       .  fib2 .        . fib2 .   .  fib1 .
+   ..      / . \  .     .   /  \  .      .  /  \ ...  .  |  .
+ ..       / . . \   .  .   /  . \   .  .   / .  \   .  . 1 .
+.      fib2 . . fib1.  .fib1 .  fib0 . .fib1. . fib0 .  .  .
+.      /  \  . . |  .  . |  .  . |   . . |   . . |   .   .>
+V     /  . \   . 1  .  . 1  .  . 0  .  . 1  .  . 0  ..
+.  fib1 .. fib0..  .   .   .   .   .   V   .   ..  .
+.   |  .  . |  . .>     .>.     . .    ..>.      .>
+.   1 .   . 0  .
+ .   .     .  .
+  .>.       ..
+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.5d,147mm,,,.std.svg}
+@caption{@strong{Hình 1.5:} Quá trình đệ quy cây được tạo ra khi tính @code{(fib 5)}.}
+@end iftex
+@end float
+
+@noindent
+Thủ tục này hữu ích như một nguyên mẫu điển hình của đệ quy cây, nhưng đây là một cách khủng khiếp để tính các số Fibonacci vì nó thực hiện quá nhiều phép tính dư thừa.  Lưu ý trong @ref{Figure 1.5} rằng toàn bộ phép tính @code{(fib 3)}---gần một nửa công việc---bị lặp lại.  Thật ra không khó để chỉ ra rằng số lần thủ tục tính @code{(fib 1)} hay @code{(fib 0)} (số lá trong cây nói trên, nói chung) là chính xác @math{{\text{Fib}(n+1)}}.  Để thấy điều này tệ đến mức nào, có thể chỉ ra rằng giá trị của @math{{\text{Fib}(n)}} tăng theo hàm mũ với @math{n}.  Chính xác hơn (xem @ref{Exercise 1.13}), @math{{\text{Fib}(n)}} là số nguyên gần nhất với @math{{\varphi^n / \sqrt{5}}}, trong đó
+@ifinfo
+
+@example
+[phi] = (1 + [sqrt]5)/2 ~= 1.6180
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :8:
+
+\varphi \,=\, \frac{1 + \sqrt{5}}{2} \,\approx\, 1.6180
+\]
+
+@end tex
+@noindent
+là @newterm{tỷ lệ vàng}, thỏa mãn phương trình
+@ifinfo
+
+@example
+[phi]^2 = [phi] + 1
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :9:
+
+\varphi^2 \,=\, {\varphi + 1.}
+\]
+
+@end tex
+Như vậy, quá trình sử dụng số bước tăng theo hàm mũ với đầu vào.  Mặt khác, không gian yêu cầu chỉ tăng tuyến tính với đầu vào, vì ta chỉ cần theo dõi các nút nào ở trên ta trong cây tại bất kỳ điểm nào trong phép tính.  Nói chung, số bước yêu cầu bởi một quá trình đệ quy cây sẽ tỷ lệ thuận với số nút trong cây, trong khi không gian yêu cầu sẽ tỷ lệ thuận với độ sâu tối đa của cây.
+
+Ta cũng có thể xây dựng một quá trình lặp để tính các số Fibonacci.  Ý tưởng là dùng một cặp số nguyên @math{a} và @math{b}, được khởi tạo bằng @math{{\text{Fib(1) = 1}}} và @math{{\text{Fib(0) = 0}}}, và liên tục áp dụng các phép biến đổi đồng thời
+
+@ifinfo
+
+@example
+a <- a + b
+b <- a
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :10:
+
+\begin{array}{l}
+  a \;\leftarrow\; a + b, \\
+  b \;\leftarrow\; a.
+\end{array}
+\]
+
+@end tex
+@noindent
+Không khó để chỉ ra rằng, sau khi áp dụng phép biến đổi này @math{n} lần, @math{a} và @math{b} sẽ bằng, tương ứng, @math{{\text{Fib}(n+1)}} và @math{{\text{Fib}(n)}}.  Như vậy, ta có thể tính các số Fibonacci theo cách lặp bằng thủ tục
+
+@lisp
+(define (fib n)
+  (fib-iter 1 0 n))
+
+(define (fib-iter a b count)
+  (if (= count 0)
+      b
+      (fib-iter (+ a b) a (- count 1))))
+@end lisp
+
+@noindent
+Phương pháp thứ hai để tính @math{{\text{Fib}(n)}} này là một phép lặp tuyến tính.  Sự chênh lệch về số bước yêu cầu bởi hai phương pháp---một tuyến tính theo @math{n}, một tăng nhanh như chính @math{{\text{Fib}(n)}}---là rất lớn, ngay cả với các đầu vào nhỏ.
+
+Không nên kết luận từ đây rằng các quá trình đệ quy cây là vô dụng.  Khi ta xem xét các quá trình hoạt động trên dữ liệu có cấu trúc phân cấp thay vì số, ta sẽ thấy rằng đệ quy cây là một công cụ tự nhiên và mạnh mẽ.@footnote{Một ví dụ về điều này đã được gợi ý trong @ref{1.1.3}. Bản thân trình thông dịch đánh giá các biểu thức bằng cách dùng một quá trình đệ quy cây.} Nhưng ngay cả trong các phép toán số học, các quá trình đệ quy cây có thể hữu ích trong việc giúp ta hiểu và thiết kế các chương trình.  Chẳng hạn, mặc dù thủ tục @code{fib} đầu tiên kém hiệu quả hơn nhiều so với thủ tục thứ hai, nó trực tiếp hơn, gần như chỉ là một bản dịch sang Lisp của định nghĩa dãy Fibonacci.  Để xây dựng thuật toán lặp đòi hỏi nhận ra rằng phép tính có thể được tái hiện thành một phép lặp với ba biến trạng thái.
+
+@subsubheading Ví dụ: Đếm cách trả tiền lẻ
+
+Chỉ cần chút khéo léo là có thể nghĩ ra thuật toán Fibonacci lặp.  Ngược lại, hãy xét bài toán sau: Có bao nhiêu cách khác nhau để đổi 1 đô la, với các tờ nửa đô, 25 xu, 10 xu, 5 xu và 1 xu?  Tổng quát hơn, liệu ta có thể viết một thủ tục để tính số cách đổi bất kỳ số tiền nào đã cho không?
+
+Bài toán này có một lời giải đơn giản dưới dạng thủ tục đệ quy.  Giả sử ta nghĩ các loại xu có sẵn được sắp xếp theo một thứ tự nào đó.  Khi đó quan hệ sau đây thành lập:
+
+Số cách đổi số tiền @math{a} bằng @math{n} loại xu bằng
+
+@itemize @bullet
+
+@item
+số cách đổi số tiền @math{a} dùng tất cả trừ loại xu đầu tiên, cộng với
+
+@item
+số cách đổi số tiền @math{{a - d}} bằng tất cả @math{n} loại xu, trong đó @math{d} là mệnh giá của loại xu đầu tiên.
+
+@end itemize
+
+@noindent
+Để thấy tại sao điều này đúng, hãy quan sát rằng các cách đổi tiền có thể được chia thành hai nhóm: những cách không dùng bất kỳ đồng xu loại đầu tiên nào, và những cách có dùng.  Do đó, tổng số cách đổi tiền cho một số tiền nào đó bằng số cách đổi tiền cho số tiền đó không dùng bất kỳ đồng xu loại đầu tiên nào, cộng với số cách đổi tiền giả định rằng ta có dùng đồng xu loại đầu tiên.  Nhưng con số sau bằng số cách đổi tiền cho số tiền còn lại sau khi dùng một đồng xu loại đầu tiên.
+
+Như vậy, ta có thể đệ quy rút gọn bài toán đổi một số tiền cho trước xuống bài toán đổi các số tiền nhỏ hơn bằng ít loại xu hơn.  Hãy xem xét kỹ quy tắc rút gọn này, và tự thuyết phục rằng ta có thể dùng nó để mô tả một thuật toán nếu ta chỉ định các trường hợp suy biến sau:@footnote{Ví dụ, hãy thực hiện chi tiết cách quy tắc rút gọn áp dụng cho bài toán đổi 10 xu bằng 1 xu và 5 xu.}
+
+@itemize @bullet
+
+@item
+Nếu @math{a} đúng bằng 0, ta nên đếm đó là 1 cách để đổi tiền.
+
+@item
+Nếu @math{a} nhỏ hơn 0, ta nên đếm đó là 0 cách để đổi tiền.
+
+@item
+Nếu @math{n} bằng 0, ta nên đếm đó là 0 cách để đổi tiền.
+
+@end itemize
+
+@noindent
+Ta có thể dễ dàng dịch mô tả này thành một thủ tục đệ quy:
+
+@lisp
+(define (count-change amount)
+  (cc amount 5))
+
+(define (cc amount kinds-of-coins)
+  (cond ((= amount 0) 1)
+        ((or (< amount 0)
+             (= kinds-of-coins 0))
+         0)
+        (else
+         (+ (cc amount (- kinds-of-coins 1))
+            (cc (- amount (first-denomination
+                           kinds-of-coins))
+                kinds-of-coins)))))
+
+(define (first-denomination kinds-of-coins)
+  (cond ((= kinds-of-coins 1) 1)
+        ((= kinds-of-coins 2) 5)
+        ((= kinds-of-coins 3) 10)
+        ((= kinds-of-coins 4) 25)
+        ((= kinds-of-coins 5) 50)))
+@end lisp
+
+@noindent
+(Thủ tục @code{first-denomination} nhận đầu vào là số loại xu có sẵn và trả về mệnh giá của loại đầu tiên.  Ở đây ta đang nghĩ các đồng xu được sắp xếp từ lớn nhất đến nhỏ nhất, nhưng bất kỳ thứ tự nào cũng được.)  Bây giờ ta có thể trả lời câu hỏi ban đầu về việc đổi một đô la:
+
+@lisp
+(count-change 100)
+@i{292}
+@end lisp
+
+@noindent
+@code{Count-change} tạo ra một quá trình đệ quy cây với những phép tính dư thừa tương tự như trong cách triển khai đầu tiên của @code{fib}.  (Sẽ mất khá nhiều thời gian để tính ra con số 292 đó.)  Mặt khác, không rõ ràng làm thế nào để thiết kế một thuật toán tốt hơn để tính kết quả, và ta để lại bài toán này như một thách thức.  Nhận xét rằng một quá trình đệ quy cây có thể cực kỳ kém hiệu quả nhưng thường dễ dàng đặc tả và hiểu đã khiến người ta đề xuất rằng ta có thể đạt được điều tốt nhất của cả hai thế giới bằng cách thiết kế một ``trình biên dịch thông minh'' có thể biến đổi các thủ tục đệ quy cây thành các thủ tục hiệu quả hơn tính cùng kết quả.@footnote{Một cách tiếp cận để đối phó với các phép tính dư thừa là sắp xếp để ta tự động xây dựng một bảng giá trị khi chúng được tính.  Mỗi lần ta được yêu cầu áp dụng thủ tục cho một đối số nào đó, ta trước tiên kiểm tra xem giá trị đã được lưu trong bảng chưa, trong trường hợp đó ta tránh thực hiện phép tính dư thừa.  Chiến lược này, được gọi là @newterm{lập bảng} hay @newterm{ghi nhớ}, có thể được triển khai theo cách đơn giản.  Lập bảng đôi khi có thể được dùng để biến đổi các quá trình đòi hỏi số bước theo hàm mũ (chẳng hạn như @code{count-change}) thành các quá trình có yêu cầu về không gian và thời gian tăng tuyến tính với đầu vào.  Xem @ref{Exercise 3.27}.}
+
+@quotation
+@strong{@anchor{Exercise 1.11}Bài tập 1.11:} Hàm @math{f} được định nghĩa bởi quy tắc rằng @math{{f(n) = n}} nếu @math{{n < 3}} và @math{{f(n)} = {f(n-1)} + {2f(n-2)} + {3f(n-3)}} nếu @math{{n \ge 3}}.  Viết một thủ tục tính @math{f} bằng quá trình đệ quy.  Viết một thủ tục tính @math{f} bằng quá trình lặp.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.12}Bài tập 1.12:} Mẫu số sau được gọi là @newterm{tam giác Pascal}.
+
+@example
+         1
+       1   1
+     1   2   1
+   1   3   3   1
+ 1   4   6   4   1
+       . . .
+@end example
+
+Các số ở cạnh của tam giác đều là 1, và mỗi số bên trong tam giác là tổng của hai số ở trên nó.@footnote{Các phần tử của tam giác Pascal được gọi là @newterm{hệ số nhị thức}, vì hàng thứ @math{{n^{\text{th}}}} gồm các hệ số của các số hạng trong khai triển @math{{(x + y)^n}}.  Mẫu tính các hệ số này xuất hiện trong tác phẩm kinh điển về lý thuyết xác suất năm 1653 của Blaise Pascal, @cite{Trait@'e du triangle arithm@'etique}.  Theo @ref{Knuth (1973)}, cùng mẫu này xuất hiện trong @cite{Szu-yuen Y@"u-chien} (``Gương Quý Của Bốn Phần Tử''), xuất bản bởi nhà toán học Trung Quốc Chu Thế Kiệt năm 1303, trong các tác phẩm của nhà thơ và toán học gia người Ba Tư thế kỷ 12 Omar Khayyam, và trong các tác phẩm của nhà toán học Ấn Độ thế kỷ 12 Bh@'ascara @'Ach@'arya.} Viết một thủ tục tính các phần tử của tam giác Pascal bằng quá trình đệ quy.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.13}Bài tập 1.13:} Chứng minh rằng @math{{\text{Fib}(n)}} là số nguyên gần nhất với @math{{\varphi^n / \sqrt{5}}}, trong đó @math{\varphi = {(1 + \sqrt{5}) / 2}}.  Gợi ý: Đặt @math{\psi = {(1 - \sqrt{5}) / 2}}.  Dùng quy nạp và định nghĩa của các số Fibonacci (xem @ref{1.2.2}) để chứng minh rằng @math{{\text{Fib}(n)} = {(\varphi^n - \psi^n) / \sqrt{5}}}.
+@end quotation
