@@ -1,0 +1,247 @@
+@node	1.1.7, 1.1.8, 1.1.6, 1.1
+@subsection Ví Dụ: Căn Bậc Hai theo Phương Pháp Newton
+
+Các thủ tục, như đã giới thiệu ở trên, rất giống với các hàm toán học bình thường.
+Chúng xác định một giá trị được xác định bởi một hay nhiều tham số. Nhưng có một sự
+khác biệt quan trọng giữa các hàm toán học và các thủ tục máy tính. Các thủ tục phải
+có hiệu lực.
+
+Lấy một ví dụ điển hình, hãy xem xét bài toán tính căn bậc hai. Chúng ta có thể định
+nghĩa hàm căn bậc hai là
+@ifinfo
+
+@example
+sqrt(x) = y sao cho y >= 0 và y^2 = x
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :3:
+
+\sqrt{x} \;\; = \;\; {\text{the} \;\; y} \;\;
+{\text{such that}} \;\; {y \ge 0} \;\; {\text{and} \;\; y^2 = x.}
+\]
+
+@end tex
+Định nghĩa này mô tả một hàm toán học hoàn toàn hợp lệ. Chúng ta có thể dùng nó để
+nhận ra liệu một số có phải là căn bậc hai của một số khác không, hoặc để suy ra các
+tính chất về căn bậc hai nói chung. Mặt khác, định nghĩa không mô tả một thủ tục.
+Thực vậy, nó hầu như không cho chúng ta biết gì về cách thực sự tìm căn bậc hai của
+một số cho trước. Sẽ không giúp ích gì khi diễn đạt lại định nghĩa này trong
+pseudo-Lisp:
+
+@lisp
+(define (sqrt x)
+  (the y (and (>= y 0)
+              (= (square y) x))))
+@end lisp
+
+@noindent
+Điều này chỉ tránh né vấn đề.
+
+Sự tương phản giữa hàm và thủ tục là phản ánh của sự phân biệt chung giữa việc mô
+tả tính chất của mọi thứ và mô tả cách thực hiện mọi thứ, hay, như đôi khi được nhắc
+đến, sự phân biệt giữa tri thức khai báo và tri thức mệnh lệnh. Trong toán học chúng
+ta thường quan tâm đến các mô tả khai báo (cái gì là), trong khi trong khoa học máy
+tính chúng ta thường quan tâm đến các mô tả mệnh lệnh (cách làm như thế nào).@footnote{Các mô tả khai báo và mệnh lệnh có liên quan mật thiết với nhau, như toán học và khoa học máy tính cũng vậy. Ví dụ, nói rằng câu trả lời được tạo ra bởi một chương trình là ``đúng'' là đưa ra một phát biểu khai báo về chương trình. Có một lượng lớn nghiên cứu nhằm thiết lập các kỹ thuật để chứng minh rằng các chương trình là đúng, và phần lớn khó khăn kỹ thuật của chủ đề này liên quan đến việc thương lượng sự chuyển đổi giữa các phát biểu mệnh lệnh (từ đó các chương trình được xây dựng) và các phát biểu khai báo (có thể được sử dụng để suy diễn). Trong cùng một chủ đề, một lĩnh vực quan trọng hiện tại trong thiết kế ngôn ngữ lập trình là việc khám phá các ngôn ngữ cấp rất cao, trong đó người ta thực sự lập trình theo các phát biểu khai báo. Ý tưởng là làm cho các trình thông dịch đủ tinh vi để, với tri thức ``cái gì là'' được chỉ định bởi lập trình viên, chúng có thể tự động tạo ra tri thức ``cách làm như thế nào''. Điều này không thể thực hiện nói chung, nhưng có những lĩnh vực quan trọng nơi tiến bộ đã được thực hiện. Chúng ta sẽ xem lại ý tưởng này trong @ref{Chapter 4}.}
+
+Làm thế nào để tính căn bậc hai? Cách phổ biến nhất là sử dụng phương pháp xấp xỉ
+liên tiếp của Newton, nói rằng bất cứ khi nào chúng ta có một phỏng đoán @math{y}
+cho giá trị của căn bậc hai của một số @math{x}, chúng ta có thể thực hiện một thao
+tác đơn giản để có được phỏng đoán tốt hơn (gần với căn bậc hai thực tế hơn) bằng
+cách tính trung bình của @math{y} với @math{{x / y}}.@footnote{Thuật toán căn bậc
+hai này thực ra là trường hợp đặc biệt của phương pháp Newton, là kỹ thuật chung để
+tìm nghiệm của các phương trình. Bản thân thuật toán căn bậc hai được phát triển bởi
+Heron xứ Alexandria vào thế kỷ đầu sau Công nguyên. Chúng ta sẽ thấy cách diễn đạt
+phương pháp Newton chung dưới dạng thủ tục Lisp trong @ref{1.3.4}.}
+Ví dụ, chúng ta có thể tính căn bậc hai của 2 như sau. Giả sử phỏng đoán ban đầu của
+chúng ta là 1:
+
+@example
+Phỏng đoán  Thương số     Trung bình
+
+1           (2/1)  = 2    ((2 + 1)/2)  = 1.5
+
+1.5         (2/1.5)       ((1.3333 + 1.5)/2)
+              = 1.3333      = 1.4167
+
+1.4167      (2/1.4167)    ((1.4167 + 1.4118)/2)
+              = 1.4118      = 1.4142
+
+1.4142      ...           ...
+@end example
+
+@noindent
+Tiếp tục quá trình này, chúng ta thu được các xấp xỉ ngày càng tốt hơn đến căn bậc
+hai.
+
+Bây giờ hãy hình thức hóa quá trình theo các thủ tục. Chúng ta bắt đầu với một giá
+trị cho số bị khai căn (số mà chúng ta đang cố tính căn bậc hai) và một giá trị cho
+phỏng đoán. Nếu phỏng đoán đủ tốt cho mục đích của chúng ta, chúng ta đã xong; nếu
+không, chúng ta phải lặp lại quá trình với phỏng đoán được cải thiện. Chúng ta viết
+chiến lược cơ bản này như một thủ tục:
+
+@lisp
+(define (sqrt-iter guess x)
+  (if (good-enough? guess x)
+      guess
+      (sqrt-iter (improve guess x) x)))
+@end lisp
+
+@noindent
+Phỏng đoán được cải thiện bằng cách tính trung bình của nó với thương số của số bị
+khai căn và phỏng đoán cũ:
+
+@lisp
+(define (improve guess x)
+  (average guess (/ x guess)))
+@end lisp
+
+@noindent
+trong đó
+
+@lisp
+(define (average x y)
+  (/ (+ x y) 2))
+@end lisp
+
+@noindent
+Chúng ta cũng phải nói rõ ý nghĩa của ``đủ tốt''. Điều sau đây sẽ làm để minh họa,
+nhưng nó thực ra không phải là một bài kiểm tra rất tốt. (Xem @ref{Exercise 1.7}.)
+Ý tưởng là cải thiện câu trả lời cho đến khi nó đủ gần để bình phương của nó khác
+với số bị khai căn ít hơn một sai số chấp nhận được được xác định trước (ở đây
+0.001):@footnote{Thường chúng ta sẽ đặt tên cho các vị từ kết thúc bằng dấu hỏi,
+để giúp chúng ta nhớ rằng chúng là vị từ. Đây chỉ là quy ước phong cách. Theo quan
+điểm của trình thông dịch, dấu hỏi chỉ là một ký tự bình thường.}
+
+@lisp
+(define (good-enough? guess x)
+  (< (abs (- (square guess) x)) 0.001))
+@end lisp
+
+@noindent
+Cuối cùng, chúng ta cần một cách để bắt đầu. Ví dụ, chúng ta luôn có thể phỏng đoán
+rằng căn bậc hai của bất kỳ số nào là 1:@footnote{Hãy chú ý rằng chúng ta diễn đạt
+phỏng đoán ban đầu của mình là 1.0 thay vì 1. Điều này sẽ không tạo ra sự khác biệt
+nào trong nhiều cài đặt Lisp. Tuy nhiên, @abbr{MIT} Scheme phân biệt giữa số nguyên
+chính xác và giá trị thập phân, và chia hai số nguyên tạo ra một số hữu tỷ thay vì
+số thập phân. Ví dụ, chia 10 cho 6 cho ra 5/3, trong khi chia 10.0 cho 6.0 cho ra
+1.6666666666666667. (Chúng ta sẽ học cách cài đặt số học trên số hữu tỷ trong
+@ref{2.1.1}.) Nếu chúng ta bắt đầu với phỏng đoán ban đầu là 1 trong chương trình
+căn bậc hai của chúng ta, và @math{x} là số nguyên chính xác, tất cả các giá trị
+tiếp theo được tạo ra trong phép tính căn bậc hai sẽ là số hữu tỷ thay vì số thập
+phân. Các phép toán hỗn hợp trên số hữu tỷ và số thập phân luôn cho ra số thập phân,
+vì vậy bắt đầu với phỏng đoán ban đầu là 1.0 buộc tất cả các giá trị tiếp theo phải
+là số thập phân.}
+
+@lisp
+(define (sqrt x)
+  (sqrt-iter 1.0 x))
+@end lisp
+
+@noindent
+Nếu chúng ta gõ các định nghĩa này vào trình thông dịch, chúng ta có thể sử dụng
+@code{sqrt} giống như chúng ta có thể sử dụng bất kỳ thủ tục nào:
+
+@lisp
+(sqrt 9)
+@i{3.00009155413138}
+
+(sqrt (+ 100 37))
+@i{11.704699917758145}
+
+(sqrt (+ (sqrt 2) (sqrt 3)))
+@i{1.7739279023207892}
+
+(square (sqrt 1000))
+@i{1000.000369924366}
+@end lisp
+
+@noindent
+Chương trình @code{sqrt} cũng minh họa rằng ngôn ngữ thủ tục đơn giản mà chúng ta
+đã giới thiệu cho đến nay là đủ để viết bất kỳ chương trình thuần số nào mà người
+ta có thể viết bằng, chẳng hạn, C hay Pascal. Điều này có vẻ đáng ngạc nhiên, vì
+chúng ta chưa đưa vào ngôn ngữ của mình bất kỳ cấu trúc lặp (vòng lặp) nào hướng
+dẫn máy tính thực hiện một việc gì đó nhiều lần. @code{Sqrt-iter}, mặt khác, cho
+thấy cách lặp có thể được thực hiện mà không cần cấu trúc đặc biệt nào khác ngoài
+khả năng thông thường để gọi một thủ tục.@footnote{Các bạn đọc lo lắng về các vấn
+đề hiệu quả liên quan đến việc sử dụng các lời gọi thủ tục để cài đặt lặp nên chú
+ý đến các nhận xét về ``đệ quy đuôi'' trong @ref{1.2.1}.}
+
+@quotation
+@strong{@anchor{Exercise 1.6}Bài tập 1.6:} Alyssa P. Hacker không hiểu tại sao
+@code{if} cần được cung cấp như một dạng đặc biệt. ``Tại sao tôi không thể chỉ định
+nghĩa nó như một thủ tục thông thường theo @code{cond}?'' cô ấy hỏi. Người bạn của
+Alyssa là Eva Lu Ator tuyên bố điều này thực sự có thể làm được, và cô ấy định nghĩa
+một phiên bản mới của @code{if}:
+
+@lisp
+(define (new-if predicate
+                then-clause
+                else-clause)
+  (cond (predicate then-clause)
+        (else else-clause)))
+@end lisp
+
+Eva trình bày chương trình cho Alyssa:
+
+@lisp
+(new-if (= 2 3) 0 5)
+@i{5}
+
+(new-if (= 1 1) 0 5)
+@i{0}
+@end lisp
+
+Vui mừng, Alyssa sử dụng @code{new-if} để viết lại chương trình căn bậc hai:
+
+@lisp
+(define (sqrt-iter guess x)
+  (new-if (good-enough? guess x)
+          guess
+          (sqrt-iter (improve guess x) x)))
+@end lisp
+
+Điều gì xảy ra khi Alyssa cố gắng sử dụng điều này để tính căn bậc hai? Hãy giải thích.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.7}Bài tập 1.7:} Bài kiểm tra @code{good-enough?} được
+sử dụng trong tính toán căn bậc hai sẽ không hiệu quả lắm để tìm căn bậc hai của
+các số rất nhỏ. Ngoài ra, trong máy tính thực, các phép toán số học hầu như luôn
+được thực hiện với độ chính xác hạn chế. Điều này làm cho bài kiểm tra của chúng ta
+không đủ cho các số rất lớn. Hãy giải thích những phát biểu này, với các ví dụ cho
+thấy cách bài kiểm tra thất bại với các số nhỏ và lớn. Một chiến lược thay thế để
+cài đặt @code{good-enough?} là theo dõi cách @code{guess} thay đổi từ lần lặp này
+sang lần lặp tiếp theo và dừng khi thay đổi là một phần rất nhỏ của phỏng đoán.
+Hãy thiết kế một thủ tục căn bậc hai sử dụng loại bài kiểm tra kết thúc này. Điều
+này có hoạt động tốt hơn cho các số nhỏ và lớn không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.8}Bài tập 1.8:} Phương pháp Newton cho căn bậc ba dựa
+trên thực tế rằng nếu @math{y} là một xấp xỉ cho căn bậc ba của @math{x}, thì một
+xấp xỉ tốt hơn được cho bởi giá trị
+@ifinfo
+
+@example
+x/y^2 + 2y
+----------
+    3
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :4:
+
+{\frac{{x / y^2} + 2y}{3}.}
+\]
+
+@end tex
+@noindent
+Sử dụng công thức này để cài đặt một thủ tục căn bậc ba tương tự như thủ tục căn
+bậc hai. (Trong @ref{1.3.4} chúng ta sẽ thấy cách cài đặt phương pháp Newton nói
+chung như một trừu tượng hóa của các thủ tục căn bậc hai và căn bậc ba này.)
+@end quotation

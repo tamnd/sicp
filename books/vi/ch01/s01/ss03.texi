@@ -1,0 +1,138 @@
+@node	1.1.3, 1.1.4, 1.1.2, 1.1
+@subsection Đánh Giá Các Tổ Hợp
+
+Một trong những mục tiêu của chúng ta trong chương này là tách biệt các vấn đề về
+tư duy thủ tục. Lấy một ví dụ điển hình, hãy xem xét rằng, khi đánh giá các tổ hợp,
+bản thân trình thông dịch cũng đang thực hiện theo một thủ tục.
+
+@quotation
+Để đánh giá một tổ hợp, thực hiện như sau:
+
+@enumerate 1
+
+@item
+Đánh giá các biểu thức con của tổ hợp.
+
+@item
+Áp dụng thủ tục là giá trị của biểu thức con ngoài cùng bên trái (toán tử) lên các
+đối số là giá trị của các biểu thức con còn lại (toán hạng).
+
+@end enumerate
+@end quotation
+
+@noindent
+Ngay cả quy tắc đơn giản này cũng minh họa một số điểm quan trọng về các quá trình
+nói chung. Thứ nhất, hãy chú ý rằng bước đầu tiên quy định rằng để hoàn thành quá
+trình đánh giá cho một tổ hợp, chúng ta phải trước tiên thực hiện quá trình đánh giá
+trên mỗi phần tử của tổ hợp. Do đó, quy tắc đánh giá có bản chất @newterm{đệ quy};
+tức là, nó bao gồm, như một trong các bước của nó, nhu cầu gọi chính bản thân quy
+tắc.@footnote{Có thể thấy lạ rằng quy tắc đánh giá nói, như một phần của bước đầu
+tiên, rằng chúng ta nên đánh giá phần tử ngoài cùng bên trái của một tổ hợp, vì tại
+thời điểm này đó chỉ có thể là toán tử như @code{+} hay @code{*} đại diện cho một
+thủ tục nguyên thủy tích hợp như phép cộng hay phép nhân. Chúng ta sẽ thấy sau này
+rằng sẽ hữu ích khi có thể làm việc với các tổ hợp mà toán tử của chúng bản thân là
+các biểu thức phức hợp.}
+
+Hãy chú ý cách ý tưởng đệ quy có thể được sử dụng một cách súc tích để diễn đạt những
+gì, trong trường hợp tổ hợp lồng nhau sâu, ngược lại sẽ được xem là một quá trình
+khá phức tạp. Ví dụ, để đánh giá
+
+@lisp
+(* (+ 2 (* 4 6)) (+ 3 5 7))
+@end lisp
+
+@noindent
+đòi hỏi quy tắc đánh giá phải được áp dụng cho bốn tổ hợp khác nhau. Chúng ta có
+thể hình dung quá trình này bằng cách biểu diễn tổ hợp dưới dạng cây, như được hiển
+thị trong @ref{Figure 1.1}. Mỗi tổ hợp được biểu diễn bởi một nút với các nhánh
+tương ứng với toán tử và các toán hạng của tổ hợp xuất phát từ nó. Các nút lá (tức
+là các nút không có nhánh xuất phát) biểu diễn hoặc là toán tử hoặc là số. Nhìn việc
+đánh giá theo cây, chúng ta có thể tưởng tượng rằng giá trị của các toán hạng thấm
+lên trên, bắt đầu từ các nút lá và sau đó kết hợp ở các mức độ ngày càng cao hơn.
+Nói chung, chúng ta sẽ thấy rằng đệ quy là một kỹ thuật rất mạnh mẽ để xử lý các
+đối tượng phân cấp, giống như cây. Trên thực tế, dạng ``giá trị thấm lên'' của quy
+tắc đánh giá là một ví dụ về một loại quá trình chung được gọi là @newterm{tích lũy
+cây}.
+
+@float
+@anchor{Figure 1.1}
+@ifinfo
+@strong{Figure 1.1:} Biểu diễn cây, hiển thị giá trị của mỗi tổ hợp con.
+
+@example
+   390
+   /|\____________
+  / |             \
+ *  26            15
+    /|\           /|\
+   / | \         // \\
+  +  2  24      / | | \
+        /|\    +  3 5  7
+       / | \
+      *  4  6
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.1g,,58mm,,.std.svg}
+@caption{@strong{Figure 1.1:} Biểu diễn cây, hiển thị giá trị của mỗi tổ hợp con.}
+@end iftex
+@end float
+
+@noindent
+Tiếp theo, hãy chú ý rằng việc áp dụng lặp lại bước đầu tiên đưa chúng ta đến điểm
+mà chúng ta cần đánh giá, không phải các tổ hợp, mà là các biểu thức nguyên thủy như
+số, toán tử tích hợp sẵn, hay các tên khác. Chúng ta xử lý các trường hợp nguyên thủy
+bằng cách quy định rằng
+
+@itemize @bullet
+
+@item
+giá trị của các chữ số là các số mà chúng đặt tên,
+
+@item
+giá trị của các toán tử tích hợp sẵn là các chuỗi lệnh máy thực hiện các phép toán
+tương ứng, và
+
+@item
+giá trị của các tên khác là các đối tượng được kết hợp với các tên đó trong môi
+trường.
+
+@end itemize
+
+@noindent
+Chúng ta có thể coi quy tắc thứ hai là trường hợp đặc biệt của quy tắc thứ ba bằng
+cách quy định rằng các ký hiệu như @code{+} và @code{*} cũng được bao gồm trong môi
+trường toàn cục, và được kết hợp với các chuỗi lệnh máy là ``giá trị'' của chúng.
+Điểm quan trọng cần lưu ý là vai trò của môi trường trong việc xác định ý nghĩa của
+các ký hiệu trong biểu thức. Trong một ngôn ngữ tương tác như Lisp, sẽ vô nghĩa khi
+nói về giá trị của biểu thức như @code{(+ x 1)} mà không chỉ định bất kỳ thông tin
+nào về môi trường sẽ cung cấp ý nghĩa cho ký hiệu @code{x} (hoặc thậm chí cho ký
+hiệu @code{+}). Như chúng ta sẽ thấy trong @ref{Chapter 3}, khái niệm chung về môi
+trường như cung cấp ngữ cảnh trong đó việc đánh giá diễn ra sẽ đóng vai trò quan
+trọng trong sự hiểu biết của chúng ta về việc thực thi chương trình.
+
+Hãy chú ý rằng quy tắc đánh giá đã cho ở trên không xử lý các định nghĩa. Chẳng
+hạn, đánh giá @code{(define x 3)} không áp dụng @code{define} lên hai đối số, một
+trong đó là giá trị của ký hiệu @code{x} và cái kia là 3, vì mục đích của
+@code{define} chính xác là để kết hợp @code{x} với một giá trị. (Tức là,
+@code{(define x 3)} không phải là một tổ hợp.)
+
+Những ngoại lệ như vậy đối với quy tắc đánh giá chung được gọi là @newterm{dạng đặc
+biệt}. @code{Define} là ví dụ duy nhất về dạng đặc biệt mà chúng ta đã thấy cho đến
+nay, nhưng chúng ta sẽ gặp những cái khác trong thời gian ngắn. Mỗi dạng đặc biệt có
+quy tắc đánh giá riêng của nó. Các loại biểu thức khác nhau (mỗi loại có quy tắc
+đánh giá liên quan) tạo thành cú pháp của ngôn ngữ lập trình. So với hầu hết các
+ngôn ngữ lập trình khác, Lisp có cú pháp rất đơn giản; tức là, quy tắc đánh giá cho
+các biểu thức có thể được mô tả bằng một quy tắc chung đơn giản cùng với các quy tắc
+chuyên biệt cho một số nhỏ các dạng đặc biệt.@footnote{Các dạng cú pháp đặc biệt chỉ
+là các cấu trúc bề mặt thay thế thuận tiện cho những thứ có thể được viết theo những
+cách đồng nhất hơn đôi khi được gọi là @newterm{đường ngọt cú pháp}, dùng một cụm
+từ được đặt ra bởi Peter Landin. So với người dùng của các ngôn ngữ khác, các lập
+trình viên Lisp, theo quy tắc, ít quan tâm hơn đến các vấn đề cú pháp. (Để so sánh,
+hãy xem bất kỳ cuốn sách hướng dẫn Pascal nào và chú ý xem bao nhiêu phần của nó
+dành cho mô tả cú pháp.) Sự khinh thường cú pháp này một phần là do tính linh hoạt
+của Lisp, điều này làm cho dễ dàng thay đổi cú pháp bề mặt, và một phần là do nhận
+xét rằng nhiều cấu trúc cú pháp ``thuận tiện'', khiến ngôn ngữ kém đồng nhất hơn,
+cuối cùng gây ra nhiều rắc rối hơn giá trị của chúng khi các chương trình trở nên
+lớn và phức tạp. Theo lời Alan Perlis, ``Đường ngọt cú pháp gây ung thư dấu chấm
+phẩy.''}

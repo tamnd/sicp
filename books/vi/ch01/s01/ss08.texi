@@ -1,0 +1,231 @@
+@node	1.1.8, 1.2, Chapter 1, 1.1
+@subsection Thủ Tục như Trừu Tượng Hộp Đen
+
+@code{Sqrt} là ví dụ đầu tiên của chúng ta về một quá trình được định nghĩa bởi một
+tập hợp các thủ tục được định nghĩa lẫn nhau. Hãy chú ý rằng định nghĩa của
+@code{sqrt-iter} là @newterm{đệ quy}; tức là, thủ tục được định nghĩa theo chính
+nó. Ý tưởng về khả năng định nghĩa một thủ tục theo chính nó có thể gây khó chịu;
+có vẻ không rõ ràng làm thế nào một định nghĩa ``vòng tròn'' như vậy có thể có ý
+nghĩa, chứ chưa nói đến việc xác định một quá trình được xác định rõ ràng để máy
+tính thực hiện. Điều này sẽ được đề cập cẩn thận hơn trong @ref{1.2}. Nhưng trước
+tiên hãy xem xét một số điểm quan trọng khác được minh họa bởi ví dụ @code{sqrt}.
+
+Hãy chú ý rằng bài toán tính căn bậc hai tự nhiên phân tách thành một số bài toán
+con: cách kiểm tra xem phỏng đoán có đủ tốt không, cách cải thiện phỏng đoán, v.v.
+Mỗi nhiệm vụ này được thực hiện bởi một thủ tục riêng biệt. Toàn bộ chương trình
+@code{sqrt} có thể được xem như một cụm các thủ tục (được hiển thị trong
+@ref{Figure 1.2}) phản ánh sự phân rã của bài toán thành các bài toán con.
+
+@float
+@anchor{Figure 1.2}
+@ifinfo
+@strong{Figure 1.2:} Sự phân rã thủ tục của chương trình @code{sqrt}.
+
+@example
+                 sqrt
+                  |
+              sqrt-iter
+              /       \
+        good-enough   improve
+        /         \         \
+   square         abs       average
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap1/Fig1.2,,38mm,,.std.svg}
+@caption{@strong{Figure 1.2:} Sự phân rã thủ tục của chương trình @code{sqrt}.}
+@end iftex
+@end float
+
+@noindent
+Tầm quan trọng của chiến lược phân rã này không chỉ đơn giản là người ta đang chia
+chương trình thành các phần. Suy cho cùng, chúng ta có thể lấy bất kỳ chương trình
+lớn nào và chia nó thành các phần---mười dòng đầu tiên, mười dòng tiếp theo, mười
+dòng tiếp theo, v.v. Thay vào đó, điều quan trọng là mỗi thủ tục hoàn thành một
+nhiệm vụ có thể xác định được mà có thể được sử dụng như một mô đun trong việc định
+nghĩa các thủ tục khác. Ví dụ, khi chúng ta định nghĩa thủ tục @code{good-enough?}
+theo @code{square}, chúng ta có thể coi thủ tục @code{square} như một ``hộp đen''.
+Chúng ta không quan tâm vào thời điểm đó về @emph{cách} thủ tục tính kết quả của
+nó, chỉ về thực tế rằng nó tính bình phương. Các chi tiết về cách tính bình phương
+có thể được che giấu, để xem xét sau. Thực vậy, theo quan điểm của thủ tục
+@code{good-enough?}, @code{square} không hoàn toàn là một thủ tục mà là một trừu
+tượng hóa của thủ tục, một cái gọi là @newterm{trừu tượng thủ tục}. Ở cấp độ trừu
+tượng này, bất kỳ thủ tục nào tính bình phương đều như nhau.
+
+Do đó, chỉ xem xét các giá trị mà chúng trả về, hai thủ tục bình phương một số sau
+đây nên không thể phân biệt. Mỗi thủ tục nhận một đối số số và tạo ra bình phương
+của số đó như giá trị.@footnote{Thậm chí không rõ thủ tục nào trong số này là một
+cài đặt hiệu quả hơn. Điều này phụ thuộc vào phần cứng sẵn có. Có những máy mà
+cài đặt ``rõ ràng'' là cái kém hiệu quả hơn. Hãy xem xét một máy có các bảng tra
+cứu logarit và logarit ngược được lưu trữ theo cách rất hiệu quả.}
+
+@lisp
+(define (square x) (* x x))
+
+(define (square x)
+  (exp (double (log x))))
+
+(define (double x) (+ x x))
+@end lisp
+
+@noindent
+Vì vậy, một định nghĩa thủ tục nên có khả năng che giấu chi tiết. Người dùng thủ
+tục có thể đã không tự viết thủ tục, mà có thể đã nhận được nó từ một lập trình
+viên khác như một hộp đen. Người dùng không cần biết thủ tục được cài đặt như thế
+nào để sử dụng nó.
+
+@subsubheading Tên cục bộ
+
+Một chi tiết của việc cài đặt thủ tục không nên quan trọng với người dùng của thủ
+tục là sự lựa chọn của người cài đặt về tên cho các tham số hình thức của thủ tục.
+Do đó, các thủ tục sau không nên có thể phân biệt:
+
+@lisp
+(define (square x) (* x x))
+(define (square y) (* y y))
+@end lisp
+
+@noindent
+Nguyên tắc này---rằng ý nghĩa của thủ tục nên độc lập với các tên tham số được sử
+dụng bởi tác giả của nó---thoạt nhìn có vẻ hiển nhiên, nhưng hậu quả của nó rất sâu
+sắc. Hậu quả đơn giản nhất là các tên tham số của thủ tục phải là cục bộ đối với
+thân của thủ tục. Ví dụ, chúng ta đã sử dụng @code{square} trong định nghĩa của
+@code{good-enough?} trong thủ tục căn bậc hai của chúng ta:
+
+@lisp
+(define (good-enough? guess x)
+  (< (abs (- (square guess) x)) 0.001))
+@end lisp
+
+@noindent
+Ý định của tác giả của @code{good-enough?} là xác định xem bình phương của đối số
+đầu tiên có nằm trong một sai số chấp nhận được so với đối số thứ hai không. Chúng
+ta thấy rằng tác giả của @code{good-enough?} đã sử dụng tên @code{guess} để tham
+chiếu đến đối số đầu tiên và @code{x} để tham chiếu đến đối số thứ hai. Đối số của
+@code{square} là @code{guess}. Nếu tác giả của @code{square} đã sử dụng @code{x}
+(như ở trên) để tham chiếu đến đối số đó, chúng ta thấy rằng @code{x} trong
+@code{good-enough?} phải là một @code{x} khác với cái trong @code{square}. Việc chạy
+thủ tục @code{square} không được ảnh hưởng đến giá trị của @code{x} được sử dụng
+bởi @code{good-enough?}, vì giá trị của @code{x} đó có thể được cần bởi
+@code{good-enough?} sau khi @code{square} đã tính toán xong.
+
+Nếu các tham số không phải là cục bộ đối với thân của các thủ tục tương ứng, thì
+tham số @code{x} trong @code{square} có thể bị nhầm lẫn với tham số @code{x} trong
+@code{good-enough?}, và hành vi của @code{good-enough?} sẽ phụ thuộc vào phiên bản
+@code{square} nào chúng ta sử dụng. Do đó, @code{square} sẽ không phải là hộp đen
+mà chúng ta mong muốn.
+
+Một tham số hình thức của thủ tục có một vai trò rất đặc biệt trong định nghĩa thủ
+tục, ở chỗ tên của tham số hình thức không quan trọng. Tên như vậy được gọi là
+@newterm{biến ràng buộc}, và chúng ta nói rằng định nghĩa thủ tục @newterm{ràng buộc}
+các tham số hình thức của nó. Ý nghĩa của một định nghĩa thủ tục không thay đổi nếu
+một biến ràng buộc được đổi tên nhất quán trong suốt định nghĩa.@footnote{Khái niệm
+đổi tên nhất quán thực ra là tinh tế và khó định nghĩa một cách hình thức. Các nhà
+logic học nổi tiếng đã mắc những lỗi đáng xấu hổ ở đây.} Nếu một biến không bị ràng
+buộc, chúng ta nói rằng nó là @newterm{tự do}. Tập hợp các biểu thức mà một ràng buộc
+xác định một tên được gọi là @newterm{phạm vi} của tên đó. Trong định nghĩa thủ tục,
+các biến ràng buộc được khai báo là tham số hình thức của thủ tục có thân thủ tục là
+phạm vi của chúng.
+
+Trong định nghĩa của @code{good-enough?} ở trên, @code{guess} và @code{x} là các
+biến ràng buộc nhưng @code{<}, @code{-}, @code{abs} và @code{square} là tự do. Ý
+nghĩa của @code{good-enough?} nên độc lập với các tên chúng ta chọn cho @code{guess}
+và @code{x} miễn là chúng riêng biệt và khác với @code{<}, @code{-}, @code{abs} và
+@code{square}. (Nếu chúng ta đổi tên @code{guess} thành @code{abs}, chúng ta sẽ đã
+giới thiệu một lỗi bằng cách @newterm{bắt giữ} biến @code{abs}. Nó sẽ đã thay đổi
+từ tự do thành ràng buộc.) Ý nghĩa của @code{good-enough?} không độc lập với tên của
+các biến tự do của nó, tuy nhiên. Nó chắc chắn phụ thuộc vào thực tế (bên ngoài định
+nghĩa này) rằng ký hiệu @code{abs} đặt tên cho một thủ tục tính giá trị tuyệt đối
+của một số. @code{Good-enough?} sẽ tính một hàm khác nếu chúng ta thay thế
+@code{cos} cho @code{abs} trong định nghĩa của nó.
+
+@subsubheading Định nghĩa nội bộ và cấu trúc khối
+
+Chúng ta có một loại cô lập tên sẵn có cho đến nay: Các tham số hình thức của thủ
+tục là cục bộ đối với thân của thủ tục. Chương trình căn bậc hai minh họa một cách
+khác mà chúng ta muốn kiểm soát việc sử dụng tên. Chương trình hiện tại bao gồm các
+thủ tục riêng biệt:
+
+@lisp
+(define (sqrt x)
+  (sqrt-iter 1.0 x))
+
+(define (sqrt-iter guess x)
+  (if (good-enough? guess x)
+      guess
+      (sqrt-iter (improve guess x) x)))
+
+(define (good-enough? guess x)
+  (< (abs (- (square guess) x)) 0.001))
+
+(define (improve guess x)
+  (average guess (/ x guess)))
+@end lisp
+
+@noindent
+Vấn đề với chương trình này là thủ tục duy nhất quan trọng với người dùng của
+@code{sqrt} là @code{sqrt}. Các thủ tục khác (@code{sqrt-iter}, @code{good-enough?}
+và @code{improve}) chỉ làm lộn xộn tâm trí của họ. Họ không được định nghĩa bất kỳ
+thủ tục nào khác gọi là @code{good-enough?} như một phần của chương trình khác để
+làm việc cùng với chương trình căn bậc hai, vì @code{sqrt} cần nó. Vấn đề đặc biệt
+nghiêm trọng trong việc xây dựng các hệ thống lớn bởi nhiều lập trình viên riêng lẻ.
+Ví dụ, trong việc xây dựng một thư viện lớn các thủ tục số, nhiều hàm số được tính
+như các xấp xỉ liên tiếp và do đó có thể có các thủ tục được đặt tên là
+@code{good-enough?} và @code{improve} như các thủ tục phụ trợ. Chúng ta muốn nội
+địa hóa các thủ tục con, ẩn chúng bên trong @code{sqrt} để @code{sqrt} có thể cùng
+tồn tại với các xấp xỉ liên tiếp khác, mỗi cái có thủ tục @code{good-enough?} riêng
+của nó. Để thực hiện điều này, chúng ta cho phép một thủ tục có các định nghĩa nội
+bộ là cục bộ đối với thủ tục đó. Ví dụ, trong bài toán căn bậc hai, chúng ta có thể
+viết
+
+@lisp
+(define (sqrt x)
+  (define (good-enough? guess x)
+    (< (abs (- (square guess) x)) 0.001))
+  (define (improve guess x)
+    (average guess (/ x guess)))
+  (define (sqrt-iter guess x)
+    (if (good-enough? guess x)
+        guess
+        (sqrt-iter (improve guess x) x)))
+  (sqrt-iter 1.0 x))
+@end lisp
+
+@noindent
+Sự lồng nhau của các định nghĩa như vậy, được gọi là @newterm{cấu trúc khối}, về cơ
+bản là giải pháp đúng cho bài toán đóng gói tên đơn giản nhất. Nhưng có một ý tưởng
+tốt hơn đang ẩn mình ở đây. Ngoài việc nội địa hóa các định nghĩa của các thủ tục
+phụ trợ, chúng ta có thể đơn giản hóa chúng. Vì @code{x} bị ràng buộc trong định
+nghĩa của @code{sqrt}, các thủ tục @code{good-enough?}, @code{improve} và
+@code{sqrt-iter}, được định nghĩa nội bộ trong @code{sqrt}, đều nằm trong phạm vi
+của @code{x}. Do đó, không cần phải truyền @code{x} một cách rõ ràng cho mỗi thủ
+tục này. Thay vào đó, chúng ta cho phép @code{x} là một biến tự do trong các định
+nghĩa nội bộ, như được hiển thị dưới đây. Sau đó @code{x} lấy giá trị của nó từ
+đối số mà thủ tục bao bọc @code{sqrt} được gọi với. Kỷ luật này được gọi là
+@newterm{phạm vi từ vựng}.@footnote{Phạm vi từ vựng quy định rằng các biến tự do
+trong thủ tục được lấy để tham chiếu đến các ràng buộc được tạo bởi các định nghĩa
+thủ tục bao bọc; tức là, chúng được tra cứu trong môi trường nơi thủ tục được định
+nghĩa. Chúng ta sẽ thấy cách hoạt động này trong chi tiết trong chương 3 khi chúng
+ta nghiên cứu các môi trường và hành vi chi tiết của trình thông dịch.@anchor{Footnote 28}}
+
+@lisp
+(define (sqrt x)
+  (define (good-enough? guess)
+    (< (abs (- (square guess) x)) 0.001))
+  (define (improve guess)
+    (average guess (/ x guess)))
+  (define (sqrt-iter guess)
+    (if (good-enough? guess)
+        guess
+        (sqrt-iter (improve guess))))
+  (sqrt-iter 1.0))
+@end lisp
+
+@noindent
+Chúng ta sẽ sử dụng cấu trúc khối một cách rộng rãi để giúp chúng ta chia các
+chương trình lớn thành các phần có thể quản lý được.@footnote{Các định nghĩa nhúng
+phải xuất hiện đầu tiên trong thân thủ tục. Ban quản lý không chịu trách nhiệm về
+hậu quả của việc chạy các chương trình đan xen định nghĩa và sử dụng.}
+Ý tưởng về cấu trúc khối có nguồn gốc từ ngôn ngữ lập trình Algol 60. Nó xuất hiện
+trong hầu hết các ngôn ngữ lập trình tiên tiến và là một công cụ quan trọng để giúp
+tổ chức việc xây dựng các chương trình lớn.

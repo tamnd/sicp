@@ -1,0 +1,294 @@
+@node	1.1.6, 1.1.7, 1.1.5, 1.1
+@subsection Biểu Thức Điều Kiện và Vị Từ
+
+Sức biểu đạt của lớp các thủ tục mà chúng ta có thể định nghĩa tại thời điểm này
+còn rất hạn chế, vì chúng ta không có cách nào để thực hiện kiểm tra và thực hiện
+các phép toán khác nhau tùy thuộc vào kết quả của kiểm tra. Chẳng hạn, chúng ta
+không thể định nghĩa một thủ tục tính giá trị tuyệt đối của một số bằng cách kiểm
+tra xem số đó là dương, âm hay bằng không và thực hiện các hành động khác nhau trong
+các trường hợp khác nhau theo quy tắc
+@ifinfo
+
+@example
+      /
+      |   x  if x > 0
+|x| = <   0  if x = 0
+      |  -x  if x < 0
+      \
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :1:
+
+\left|{x}\right| \; = \;
+  \left\{
+    \begin{array}{rll}
+       x & \;\text{if} & x \gt 0, \\
+       0 & \;\text{if} & x  =  0, \\
+      -x & \;\text{if} & x \lt 0.
+    \end{array}
+  \right.
+\]
+
+@end tex
+Cấu trúc này được gọi là @newterm{phân tích trường hợp}, và có một dạng đặc biệt
+trong Lisp để ký hiệu phân tích trường hợp như vậy. Nó được gọi là @code{cond}
+(viết tắt của ``conditional'' -- điều kiện), và được sử dụng như sau:
+
+@lisp
+(define (abs x)
+  (cond ((> x 0) x)
+        ((= x 0) 0)
+        ((< x 0) (- x))))
+@end lisp
+
+@noindent
+Dạng chung của biểu thức điều kiện là
+
+@lisp
+(cond (⟨@var{p₁}⟩ ⟨@var{e₁}⟩)
+      (⟨@var{p₂}⟩ ⟨@var{e₂}⟩)
+      @r{…}
+      (⟨@var{pₙ}⟩ ⟨@var{eₙ}⟩))
+@end lisp
+
+@noindent
+bao gồm ký hiệu @code{cond} theo sau là các cặp biểu thức trong ngoặc đơn
+
+@lisp
+(⟨@var{p}⟩ ⟨@var{e}⟩)
+@end lisp
+
+@noindent
+được gọi là @newterm{mệnh đề}. Biểu thức đầu tiên trong mỗi cặp là một
+@newterm{vị từ}---tức là, một biểu thức mà giá trị của nó được hiểu là đúng hoặc
+sai.@footnote{``Được hiểu là đúng hoặc sai'' có nghĩa là: Trong Scheme, có hai giá
+trị phân biệt được ký hiệu bởi các hằng số @code{#t} và @code{#f}. Khi trình thông
+dịch kiểm tra giá trị của một vị từ, nó hiểu @code{#f} là sai. Bất kỳ giá trị nào
+khác được coi là đúng. (Do đó, việc cung cấp @code{#t} về mặt logic là không cần
+thiết, nhưng nó thuận tiện.) Trong cuốn sách này, chúng ta sẽ sử dụng các tên
+@code{true} (đúng) và @code{false} (sai), được kết hợp với các giá trị @code{#t} và
+@code{#f} tương ứng.}
+
+Các biểu thức điều kiện được đánh giá như sau. Vị từ @math{{⟨p_1⟩}} được đánh giá
+đầu tiên. Nếu giá trị của nó là sai, thì @math{{⟨p_2⟩}} được đánh giá. Nếu giá trị
+của @math{{⟨p_2⟩}} cũng là sai, thì @math{{⟨p_3⟩}} được đánh giá. Quá trình này
+tiếp tục cho đến khi tìm thấy một vị từ có giá trị đúng, trong trường hợp đó trình
+thông dịch trả về giá trị của @newterm{biểu thức hệ quả} @math{{⟨e⟩}} tương ứng của
+mệnh đề như giá trị của biểu thức điều kiện. Nếu không tìm thấy @math{{⟨p⟩}} nào
+là đúng, giá trị của @code{cond} không xác định.
+
+Từ @newterm{vị từ} được sử dụng cho các thủ tục trả về đúng hoặc sai, cũng như cho
+các biểu thức đánh giá thành đúng hoặc sai. Thủ tục giá trị tuyệt đối @code{abs}
+sử dụng các vị từ nguyên thủy @code{>}, @code{<}, và @code{=}.@footnote{@code{Abs}
+cũng sử dụng toán tử ``trừ'' @code{-}, khi được sử dụng với một toán hạng duy nhất,
+như trong @code{(- x)}, chỉ ra phép phủ định.} Các vị từ này nhận hai số làm đối
+số và kiểm tra xem số thứ nhất có lớn hơn, nhỏ hơn hay bằng số thứ hai tương ứng,
+trả về đúng hoặc sai tương ứng.
+
+Một cách khác để viết thủ tục giá trị tuyệt đối là
+
+@lisp
+(define (abs x)
+  (cond ((< x 0) (- x))
+        (else x)))
+@end lisp
+
+@noindent
+có thể được diễn đạt bằng tiếng Việt là ``Nếu @math{x} nhỏ hơn không, trả về
+@math{{-x}}; ngược lại trả về @math{x}.'' @code{Else} là ký hiệu đặc biệt có thể
+được sử dụng ở chỗ @math{{⟨p⟩}} trong mệnh đề cuối cùng của @code{cond}. Điều này
+khiến @code{cond} trả về như giá trị của nó giá trị của @math{{⟨e⟩}} tương ứng bất
+cứ khi nào tất cả các mệnh đề trước đó đã bị bỏ qua. Trên thực tế, bất kỳ biểu thức
+nào luôn đánh giá thành giá trị đúng đều có thể được sử dụng như @math{{⟨p⟩}} ở đây.
+
+Đây là một cách khác để viết thủ tục giá trị tuyệt đối:
+
+@lisp
+(define (abs x)
+  (if (< x 0)
+      (- x)
+      x))
+@end lisp
+
+@noindent
+Cách này sử dụng dạng đặc biệt @code{if}, một loại điều kiện bị hạn chế có thể
+được sử dụng khi có chính xác hai trường hợp trong phân tích trường hợp. Dạng chung
+của biểu thức @code{if} là
+
+@lisp
+(if ⟨@var{predicate}⟩ ⟨@var{consequent}⟩ ⟨@var{alternative}⟩)
+@end lisp
+
+@noindent
+Để đánh giá một biểu thức @code{if}, trình thông dịch bắt đầu bằng cách đánh giá
+phần @code{⟨}@var{predicate}@code{⟩} của biểu thức. Nếu @code{⟨}@var{predicate}@code{⟩}
+đánh giá thành giá trị đúng, trình thông dịch sau đó đánh giá @code{⟨}@var{consequent}@code{⟩}
+và trả về giá trị của nó. Ngược lại nó đánh giá @code{⟨}@var{alternative}@code{⟩} và
+trả về giá trị của nó.@footnote{Một sự khác biệt nhỏ giữa @code{if} và @code{cond}
+là phần @code{⟨}@var{e}@code{⟩} của mỗi mệnh đề @code{cond} có thể là một chuỗi
+biểu thức. Nếu @code{⟨}@var{p}@code{⟩} tương ứng được tìm thấy là đúng, các biểu
+thức @code{⟨}@var{e}@code{⟩} được đánh giá theo thứ tự và giá trị của biểu thức cuối
+cùng trong chuỗi được trả về như giá trị của @code{cond}. Trong biểu thức @code{if},
+tuy nhiên, @code{⟨}@var{consequent}@code{⟩} và @code{⟨}@var{alternative}@code{⟩}
+phải là các biểu thức đơn.}
+
+Ngoài các vị từ nguyên thủy như @code{<}, @code{=} và @code{>}, còn có các phép
+toán hợp logic, cho phép chúng ta xây dựng các vị từ phức hợp. Ba phép toán được sử
+dụng thường xuyên nhất là:
+
+@itemize @bullet
+
+@item
+@code{(and ⟨@var{e₁}⟩ @r{…} ⟨@var{eₙ}⟩)}
+
+Trình thông dịch đánh giá các biểu thức @code{⟨}@var{e}@code{⟩} lần lượt, theo thứ
+tự từ trái sang phải. Nếu bất kỳ @code{⟨}@var{e}@code{⟩} nào đánh giá thành sai,
+giá trị của biểu thức @code{and} là sai và phần còn lại của @code{⟨}@var{e}@code{⟩}
+không được đánh giá. Nếu tất cả @code{⟨}@var{e}@code{⟩} đánh giá thành giá trị
+đúng, giá trị của biểu thức @code{and} là giá trị của cái cuối cùng.
+
+@item
+@code{(or ⟨@var{e₁}⟩ @r{…} ⟨@var{eₙ}⟩)}
+
+Trình thông dịch đánh giá các biểu thức @code{⟨}@var{e}@code{⟩} lần lượt, theo thứ
+tự từ trái sang phải. Nếu bất kỳ @code{⟨}@var{e}@code{⟩} nào đánh giá thành giá trị
+đúng, giá trị đó được trả về như giá trị của biểu thức @code{or} và phần còn lại của
+@code{⟨}@var{e}@code{⟩} không được đánh giá. Nếu tất cả @code{⟨}@var{e}@code{⟩}
+đánh giá thành sai, giá trị của biểu thức @code{or} là sai.
+
+@item
+@code{(not ⟨@var{e}⟩)}
+
+Giá trị của biểu thức @code{not} là đúng khi biểu thức @code{⟨}@var{e}@code{⟩} đánh
+giá thành sai, và ngược lại là sai.
+
+@end itemize
+
+@noindent
+Hãy chú ý rằng @code{and} và @code{or} là các dạng đặc biệt, không phải thủ tục,
+vì các biểu thức con không nhất thiết đều được đánh giá. @code{Not} là thủ tục bình
+thường.
+
+Ví dụ về cách chúng được sử dụng, điều kiện một số @math{x} nằm trong phạm vi
+@math{5 < x < 10} có thể được diễn đạt là
+
+@lisp
+(and (> x 5) (< x 10))
+@end lisp
+
+@noindent
+Ví dụ khác, chúng ta có thể định nghĩa một vị từ để kiểm tra xem một số có lớn hơn
+hoặc bằng một số khác không là
+
+@lisp
+(define (>= x y)
+  (or (> x y) (= x y)))
+@end lisp
+
+@noindent
+hoặc thay thế là
+
+@lisp
+(define (>= x y)
+  (not (< x y)))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 1.1}Bài tập 1.1:} Dưới đây là một chuỗi biểu thức. Kết
+quả nào được trình thông dịch in ra để phản hồi mỗi biểu thức? Giả sử rằng chuỗi
+được đánh giá theo thứ tự được trình bày.
+
+@lisp
+10
+(+ 5 3 4)
+(- 9 1)
+(/ 6 2)
+(+ (* 2 4) (- 4 6))
+(define a 3)
+(define b (+ a 1))
+(+ a b (* a b))
+(= a b)
+(if (and (> b a) (< b (* a b)))
+    b
+    a)
+(cond ((= a 4) 6)
+      ((= b 4) (+ 6 7 a))
+      (else 25))
+(+ 2 (if (> b a) b a))
+(* (cond ((> a b) a)
+         ((< a b) b)
+         (else -1))
+   (+ a 1))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.2}Bài tập 1.2:} Dịch biểu thức sau sang dạng tiền tố:
+@ifinfo
+
+@example
+5 + 4 + (2 - (3 - (6 + 4/5)))
+-----------------------------
+       3(6 - 2)(2 - 7)
+@end example
+
+@end ifinfo
+@tex
+
+\[ % :2:
+
+{\frac{5 + 4 + (2 - (3 - (6 + \frac{4}{5})))}{3(6 - 2)(2 - 7)}.}
+\]
+
+@end tex
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.3}Bài tập 1.3:} Định nghĩa một thủ tục nhận ba số làm
+đối số và trả về tổng bình phương của hai số lớn hơn.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.4}Bài tập 1.4:} Hãy chú ý rằng mô hình đánh giá của
+chúng ta cho phép các tổ hợp mà toán tử của chúng là các biểu thức phức hợp. Sử dụng
+quan sát này để mô tả hành vi của thủ tục sau:
+
+@lisp
+(define (a-plus-abs-b a b)
+  ((if (> b 0) + -) a b))
+@end lisp
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 1.5}Bài tập 1.5:} Ben Bitdiddle đã phát minh ra một bài
+kiểm tra để xác định xem trình thông dịch mà anh ta đang đối mặt có sử dụng đánh
+giá thứ tự ứng dụng hay đánh giá thứ tự bình thường. Anh ta định nghĩa hai thủ tục
+sau:
+
+@lisp
+(define (p) (p))
+
+(define (test x y)
+  (if (= x 0)
+      0
+      y))
+@end lisp
+
+Sau đó anh ta đánh giá biểu thức
+
+@lisp
+(test 0 (p))
+@end lisp
+
+Hành vi nào sẽ Ben quan sát thấy với trình thông dịch sử dụng đánh giá thứ tự ứng
+dụng? Hành vi nào anh ta sẽ quan sát thấy với trình thông dịch sử dụng đánh giá thứ
+tự bình thường? Hãy giải thích câu trả lời của bạn. (Giả sử rằng quy tắc đánh giá
+cho dạng đặc biệt @code{if} là giống nhau cho dù trình thông dịch sử dụng thứ tự
+bình thường hay thứ tự ứng dụng: Biểu thức vị từ được đánh giá đầu tiên, và kết quả
+xác định liệu có đánh giá biểu thức hệ quả hay biểu thức thay thế.)
+@end quotation
+
+@anchor{Sec.1.1.7}
