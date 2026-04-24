@@ -1,49 +1,31 @@
-#!/usr/bin/env phantomjs
+#!/usr/bin/env node
 
 // Usage: ./put-math.js json_db file1 [file2 ...]
-//  json_db: existing JSON file that contains the MathML database;
-//  file1, file2, ...: the output files to modify.
+//  json_db: existing JSON file mapping LaTeX -> MathML;
+//  file1, file2, ...: output files to modify in place.
+//
+// Replaces LaTeX markup (\(...\), \[...\]) in the given files with MathML
+// from the database. If a formula has no entry, it is rendered in blue so
+// it stands out for the author.
 
-// This replaces all the LaTeX markup in given output files with MathML. 
-// It does it by searching for LaTeX strings delimited by \( \) or \[ \] 
-// and looks up the mapping from LaTeX to MathML in the JSON database.
+const fs = require('fs');
 
-// (c) 2014 Andres Raba, GNU GPL v.3.
+const args = process.argv.slice(2);
+if (args.length < 2) {
+  console.error('Usage: ./put-math.js json_db file1 [file2 ...]');
+  process.exit(1);
+}
 
-var system = require('system'),
-    fs = require('fs');
+const dbPath = args[0];
+const inputs = args.slice(1);
+const pattern = /\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/g;
 
-// LaTeX is enclosed in \( \) or \[ \] delimiters,
-// first pair for inline, second for display math:
-var pattern = /\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]/g;
+const mathml = JSON.parse(fs.readFileSync(dbPath, 'utf8'));
 
-if (system.args.length <= 2) {
-  console.log("Usage: ./put-math.js json_db file1 [file2 ...]");
-  phantom.exit();
-} 
-else {
-  var db = system.args[1];          // JSON database
-  var args = system.args.slice(2);  // file1, file2, ...
-  try {
-    var mathml = JSON.parse(fs.read(db));
-  } 
-  catch(error) {
-    console.log(error);
-    phantom.exit();
-  }
-  args.forEach(function (arg) {
-    try {
-      var file = fs.read(arg);
-      // Replace LaTeX with MathML or paint LaTeX blue
-      // if mapping not found in JSON database:
-      var file = file.replace(pattern, function (latex) {
-        return mathml[latex] || "<span style='color:blue'>" + latex + "</span>";
-      });
-      fs.write(arg, file, 'w');
-    }
-    catch(error) {
-      console.log(error);
-    }
-  });
-  phantom.exit();
+for (const file of inputs) {
+  const text = fs.readFileSync(file, 'utf8');
+  const out = text.replace(pattern, (latex) =>
+    mathml[latex] || "<span style='color:blue'>" + latex + '</span>'
+  );
+  fs.writeFileSync(file, out);
 }

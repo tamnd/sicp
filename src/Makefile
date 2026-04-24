@@ -21,13 +21,7 @@ FIG    = $(DIR)fig/*/*.svg
 CSS    = $(DIR)css/*.css
 FONT   = $(DIR)css/fonts/*
 JS     = $(DIR)js/*.js
-# en_US uses the custom ./texi2any wrapper + local HTML.pm (Texinfo 5.x-compatible).
-# Other languages use system texi2any directly to avoid prototype mismatches in Texinfo 7.x.
-ifeq ($(LANG),en_US)
-CONV = texi2any lib/Texinfo/Convert/HTML.pm
-else
-CONV =
-endif
+CONV   = texi2any lib/Texinfo/Convert/HTML.pm
 MATH   = get-math.js put-math.js mathcell.xhtml
 HIGHL  = en_US/js/highlight/
 PRETTY = $(HIGHL)prettify.js $(HIGHL)lang-lisp.js batch-prettify.js
@@ -86,28 +80,14 @@ endif
 
 $(NEXUS): $(SRC) $(CONV) $(MATH)
 	@echo "Converting Texinfo to HTML (LANG=$(LANG))..."
-ifeq ($(LANG),en_US)
 	@./texi2any --no-warn --html --split=section --no-headers --iftex \
-	  --output $(DIR) $(SRC)
-else
-	@# Pre-flatten the source so texi2any doesn't need to resolve @include
-	@# paths (texi2any 7.x doesn't search the includer's dir, and using -I
-	@# per subdir causes same-named files like ss01.texi to collide).
-	@# --force writes output even with errors (e.g., @ref to untranslated nodes).
-	@../scripts/flatten-texi.pl $(SRC) > $(DIR)sicp-flat.texi
-	@texi2any --no-warn --html --split=section --no-headers --iftex --force \
-	  --set-customization-variable EXTENSION=xhtml \
-	  --output $(DIR) $(DIR)sicp-flat.texi
-	@rm -f $(DIR)sicp-flat.texi
-endif
+	  --force --output $(DIR) $(SRC)
 	@grep -lZ 'This file redirects' $(HTML) | xargs -0 rm -f -- || true
-ifeq ($(LANG),en_US)
 	@echo "Replacing LaTeX with MathML..."
-	@./get-math.js db.json $(HTML)
-	@./put-math.js db.json $(HTML)
+	@./get-math.js db-$(LANG).json $(HTML)
+	@./put-math.js db-$(LANG).json $(HTML)
 	@echo "Syntax highlighting Scheme code..."
 	@./batch-prettify.js $(HTML)
-endif
 	@for file in $(HTML); do \
 	  perl -0p -i -e \
 	    's/^<!DOC/<?xml version="1.0" encoding="utf-8"?>\n<!DOC/' \
