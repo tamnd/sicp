@@ -1,0 +1,269 @@
+@node	2.5.1, 2.5.2, 2.5, 2.5
+@subsection Các Phép Toán Số Học Tổng Quát
+
+Nhiệm vụ thiết kế các phép toán số học tổng quát tương tự như thiết kế các phép
+toán số phức tổng quát. Chúng ta muốn, ví dụ, có thủ tục cộng tổng quát
+@code{add} hoạt động như cộng nguyên thủy thông thường @code{+} trên số thông
+thường, như @code{add-rat} trên số hữu tỉ, và như @code{add-complex} trên số
+phức. Chúng ta có thể cài đặt @code{add}, và các phép toán số học tổng quát
+khác, bằng cách theo cùng chiến lược chúng ta đã dùng trong @ref{2.4.3} để cài
+đặt các bộ chọn tổng quát cho số phức. Chúng ta sẽ gắn thẻ kiểu cho mỗi loại
+số và khiến thủ tục tổng quát phân phối đến gói thích hợp theo kiểu dữ liệu của
+các đối số.
+
+Các thủ tục số học tổng quát được định nghĩa như sau:
+
+@lisp
+(define (add x y) (apply-generic 'add x y))
+(define (sub x y) (apply-generic 'sub x y))
+(define (mul x y) (apply-generic 'mul x y))
+(define (div x y) (apply-generic 'div x y))
+@end lisp
+
+@noindent
+Chúng ta bắt đầu bằng cách cài đặt gói xử lý các số @newterm{thông thường},
+tức là các số nguyên thủy của ngôn ngữ. Chúng ta sẽ gắn thẻ này với ký hiệu
+@code{scheme-number}. Các phép toán số học trong gói này là các thủ tục số học
+nguyên thủy (vì vậy không cần định nghĩa các thủ tục bổ sung để xử lý các số
+không có thẻ). Vì các phép toán này mỗi thủ tục nhận hai đối số, chúng được
+cài đặt vào bảng với chỉ mục danh sách @code{(scheme-number scheme-number)}:
+
+@lisp
+(define (install-scheme-number-package)
+  (define (tag x)
+    (attach-tag 'scheme-number x))
+  (put 'add '(scheme-number scheme-number)
+       (lambda (x y) (tag (+ x y))))
+  (put 'sub '(scheme-number scheme-number)
+       (lambda (x y) (tag (- x y))))
+  (put 'mul '(scheme-number scheme-number)
+       (lambda (x y) (tag (* x y))))
+  (put 'div '(scheme-number scheme-number)
+       (lambda (x y) (tag (/ x y))))
+  (put 'make 'scheme-number
+       (lambda (x) (tag x)))
+  'done)
+@end lisp
+
+@noindent
+Người dùng gói scheme-number sẽ tạo (được gắn thẻ) các số thông thường bằng
+thủ tục:
+
+@lisp
+(define (make-scheme-number n)
+  ((get 'make 'scheme-number) n))
+@end lisp
+
+@noindent
+Bây giờ khuôn khổ của hệ thống số học tổng quát đã sẵn sàng, chúng ta có thể
+dễ dàng thêm các loại số mới. Đây là gói thực hiện số học hữu tỉ. Lưu ý rằng,
+như một lợi ích của tính cộng thêm, chúng ta có thể sử dụng không cần sửa đổi
+mã số hữu tỉ từ @ref{2.1.1} như các thủ tục nội bộ trong gói:
+
+@lisp
+(define (install-rational-package)
+  @r{;; các thủ tục nội bộ}
+  (define (numer x) (car x))
+  (define (denom x) (cdr x))
+  (define (make-rat n d)
+    (let ((g (gcd n d)))
+      (cons (/ n g) (/ d g))))
+  (define (add-rat x y)
+    (make-rat (+ (* (numer x) (denom y))
+                 (* (numer y) (denom x)))
+              (* (denom x) (denom y))))
+  (define (sub-rat x y)
+    (make-rat (- (* (numer x) (denom y))
+                 (* (numer y) (denom x)))
+              (* (denom x) (denom y))))
+  (define (mul-rat x y)
+    (make-rat (* (numer x) (numer y))
+              (* (denom x) (denom y))))
+  (define (div-rat x y)
+    (make-rat (* (numer x) (denom y))
+              (* (denom x) (numer y))))
+  @r{;; giao diện với phần còn lại của hệ thống}
+  (define (tag x) (attach-tag 'rational x))
+  (put 'add '(rational rational)
+       (lambda (x y) (tag (add-rat x y))))
+  (put 'sub '(rational rational)
+       (lambda (x y) (tag (sub-rat x y))))
+  (put 'mul '(rational rational)
+       (lambda (x y) (tag (mul-rat x y))))
+  (put 'div '(rational rational)
+       (lambda (x y) (tag (div-rat x y))))
+  (put 'make 'rational
+       (lambda (n d) (tag (make-rat n d))))
+  'done)
+
+(define (make-rational n d)
+  ((get 'make 'rational) n d))
+@end lisp
+
+@noindent
+Chúng ta có thể cài đặt gói tương tự để xử lý số phức, sử dụng thẻ
+@code{complex}. Khi tạo gói, chúng ta trích xuất từ bảng các phép toán
+@code{make-from-real-imag} và @code{make-from-mag-ang} đã được định nghĩa bởi
+các gói trực giao và cực. Tính cộng thêm cho phép chúng ta sử dụng, như các
+phép toán nội bộ, các thủ tục @code{add-complex}, @code{sub-complex},
+@code{mul-complex}, và @code{div-complex} từ @ref{2.4.1}.
+
+@lisp
+(define (install-complex-package)
+  @r{;; các thủ tục được nhập từ gói trực giao}
+  @r{;; và gói cực}
+  (define (make-from-real-imag x y)
+    ((get 'make-from-real-imag
+          'rectangular)
+     x y))
+  (define (make-from-mag-ang r a)
+    ((get 'make-from-mag-ang 'polar)
+     r a))
+  @r{;; các thủ tục nội bộ}
+  (define (add-complex z1 z2)
+    (make-from-real-imag
+     (+ (real-part z1) (real-part z2))
+     (+ (imag-part z1) (imag-part z2))))
+  (define (sub-complex z1 z2)
+    (make-from-real-imag
+     (- (real-part z1) (real-part z2))
+     (- (imag-part z1) (imag-part z2))))
+  (define (mul-complex z1 z2)
+    (make-from-mag-ang
+     (* (magnitude z1) (magnitude z2))
+     (+ (angle z1) (angle z2))))
+  (define (div-complex z1 z2)
+    (make-from-mag-ang
+     (/ (magnitude z1) (magnitude z2))
+     (- (angle z1) (angle z2))))
+  @r{;; giao diện với phần còn lại của hệ thống}
+  (define (tag z) (attach-tag 'complex z))
+  (put 'add '(complex complex)
+       (lambda (z1 z2)
+         (tag (add-complex z1 z2))))
+  (put 'sub '(complex complex)
+       (lambda (z1 z2)
+         (tag (sub-complex z1 z2))))
+  (put 'mul '(complex complex)
+       (lambda (z1 z2)
+         (tag (mul-complex z1 z2))))
+  (put 'div '(complex complex)
+       (lambda (z1 z2)
+         (tag (div-complex z1 z2))))
+  (put 'make-from-real-imag 'complex
+       (lambda (x y)
+         (tag (make-from-real-imag x y))))
+  (put 'make-from-mag-ang 'complex
+       (lambda (r a)
+         (tag (make-from-mag-ang r a))))
+  'done)
+@end lisp
+
+@noindent
+Các chương trình bên ngoài gói số phức có thể xây dựng số phức từ phần thực và
+phần ảo hoặc từ độ lớn và góc. Hãy chú ý cách các thủ tục cơ bản, ban đầu được
+định nghĩa trong các gói trực giao và cực, được xuất sang gói phức, và từ đó
+được xuất ra thế giới bên ngoài.
+
+@lisp
+(define (make-complex-from-real-imag x y)
+  ((get 'make-from-real-imag 'complex) x y))
+(define (make-complex-from-mag-ang r a)
+  ((get 'make-from-mag-ang 'complex) r a))
+@end lisp
+
+@noindent
+Những gì chúng ta có ở đây là hệ thống thẻ hai cấp. Một số phức điển hình, chẳng
+hạn @math{{3 + 4i}} ở dạng trực giao, sẽ được biểu diễn như được hiển thị trong
+@ref{Figure 2.24}. Thẻ bên ngoài (@code{complex}) được dùng để chuyển hướng số
+đến gói phức. Khi đã vào trong gói phức, thẻ tiếp theo (@code{rectangular}) được
+dùng để chuyển hướng số đến gói trực giao. Trong một hệ thống lớn và phức tạp
+có thể có nhiều cấp, mỗi cấp được giao diện với cấp tiếp theo bằng các phép toán
+tổng quát. Khi một đối tượng dữ liệu được truyền ``xuống dưới'', thẻ bên ngoài
+được dùng để chuyển hướng nó đến gói thích hợp sẽ bị bóc bỏ (bằng cách áp dụng
+@code{contents}) và cấp thẻ tiếp theo (nếu có) trở nên hiển thị để sử dụng cho
+việc phân phối thêm.
+
+@float
+@anchor{Figure 2.24}
+@ifinfo
+@quotation
+@strong{Figure 2.24:} Representation of @math{{3 + 4i}} in rectangular form.
+
+@example
+     +---+---+     +---+---+     +---+---+
+---->| * | *-+---->| * | *-+---->| * | * |
+     +-|-+---+     +-|-+---+     +-|-+-|-+
+       |             |             |   |
+       V             V             V   V
+ +---------+   +-------------+  +---+ +---+
+ | complex |   | rectangular |  | 3 | | 4 |
+ +---------+   +-------------+  +---+ +---+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.24d,108mm,,,.std.svg}
+@caption{@strong{Figure 2.24:} Representation of @math{{3 + 4i}} in rectangular form.}
+@end iftex
+@end float
+
+@noindent
+Trong các gói ở trên, chúng ta đã dùng @code{add-rat}, @code{add-complex}, và
+các thủ tục số học khác chính xác như ban đầu được viết. Tuy nhiên, một khi các
+định nghĩa này là nội bộ của các thủ tục cài đặt khác nhau, chúng không cần
+nữa tên phân biệt với nhau: chúng ta có thể đơn giản đặt tên là @code{add},
+@code{sub}, @code{mul}, và @code{div} trong cả hai gói.
+
+@quotation
+@strong{@anchor{Exercise 2.77}Bài tập 2.77:} Louis Reasoner cố định giá biểu
+thức @code{(magnitude z)} trong đó @code{z} là đối tượng được hiển thị trong
+@ref{Figure 2.24}. Thật bất ngờ, thay vì câu trả lời 5, anh ấy nhận được thông
+báo lỗi từ @code{apply-generic}, nói rằng không có phương pháp cho phép toán
+@code{magnitude} trên các kiểu @code{(complex)}. Anh ấy cho Alyssa P. Hacker
+thấy tương tác này, và cô ấy nói ``Vấn đề là các bộ chọn số phức chưa bao giờ
+được định nghĩa cho số @code{complex}, chỉ cho số @code{polar} và
+@code{rectangular}. Tất cả những gì bạn cần làm để điều này hoạt động là thêm
+vào gói @code{complex}:''
+
+@lisp
+(put 'real-part '(complex) real-part)
+(put 'imag-part '(complex) imag-part)
+(put 'magnitude '(complex) magnitude)
+(put 'angle '(complex) angle)
+@end lisp
+
+Mô tả chi tiết tại sao điều này hoạt động. Ví dụ, theo dõi qua tất cả các thủ
+tục được gọi khi định giá biểu thức @code{(magnitude z)} trong đó @code{z} là
+đối tượng được hiển thị trong @ref{Figure 2.24}. Đặc biệt, @code{apply-generic}
+được gọi bao nhiêu lần? Thủ tục nào được phân phối đến trong mỗi trường hợp?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.78}Bài tập 2.78:} Các thủ tục nội bộ trong gói
+@code{scheme-number} về bản chất không hơn gì các lời gọi đến các thủ tục
+nguyên thủy @code{+}, @code{-}, v.v. Không thể sử dụng trực tiếp các nguyên
+thủy của ngôn ngữ vì hệ thống thẻ kiểu của chúng ta yêu cầu mỗi đối tượng dữ
+liệu phải có kiểu gắn vào. Tuy nhiên, trên thực tế, tất cả các cài đặt Lisp
+đều có hệ thống kiểu, mà họ sử dụng nội bộ. Các vị từ nguyên thủy như
+@code{symbol?} và @code{number?} xác định xem các đối tượng dữ liệu có kiểu
+cụ thể hay không. Sửa đổi các định nghĩa của @code{type-tag}, @code{contents},
+và @code{attach-tag} từ @ref{2.4.2} sao cho hệ thống tổng quát của chúng ta
+tận dụng hệ thống kiểu nội bộ của Scheme. Tức là, hệ thống nên hoạt động như
+trước ngoại trừ các số thông thường nên được biểu diễn đơn giản là số Scheme
+thay vì các cặp có @code{car} là ký hiệu @code{scheme-number}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.79}Bài tập 2.79:} Định nghĩa vị từ bằng nhau tổng
+quát @code{equ?} kiểm tra sự bằng nhau của hai số, và cài đặt nó vào gói số
+học tổng quát. Phép toán này nên hoạt động cho số thông thường, số hữu tỉ, và
+số phức.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.80}Bài tập 2.80:} Định nghĩa vị từ tổng quát
+@code{=zero?} kiểm tra xem đối số của nó có bằng không không, và cài đặt nó
+vào gói số học tổng quát. Phép toán này nên hoạt động cho số thông thường, số
+hữu tỉ, và số phức.
+@end quotation

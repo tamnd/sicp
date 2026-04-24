@@ -1,0 +1,69 @@
+@node	2.5, Chapter 3, 2.4, Chapter 2
+@section Hệ Thống với Các Phép Toán Tổng Quát
+
+Trong phần trước, chúng ta đã thấy cách thiết kế các hệ thống trong đó các
+đối tượng dữ liệu có thể được biểu diễn theo nhiều hơn một cách. Ý tưởng then
+chốt là liên kết mã chỉ định các phép toán dữ liệu với các biểu diễn khác nhau
+thông qua các thủ tục giao diện tổng quát. Bây giờ chúng ta sẽ thấy cách sử
+dụng cùng ý tưởng này không chỉ để định nghĩa các phép toán tổng quát theo các
+biểu diễn khác nhau mà còn để định nghĩa các phép toán tổng quát theo các loại
+đối số khác nhau. Chúng ta đã thấy một số gói số học khác nhau: số học nguyên
+thủy (@code{+}, @code{-}, @code{*}, @code{/}) được tích hợp trong ngôn ngữ của
+chúng ta, số học số hữu tỉ (@code{add-rat}, @code{sub-rat}, @code{mul-rat},
+@code{div-rat}) của @ref{2.1.1}, và số học số phức mà chúng ta đã cài đặt trong
+@ref{2.4.3}. Bây giờ chúng ta sẽ sử dụng các kỹ thuật hướng dữ liệu để xây
+dựng gói các phép toán số học kết hợp tất cả các gói số học mà chúng ta đã xây
+dựng.
+
+@ref{Figure 2.23} cho thấy cấu trúc của hệ thống chúng ta sẽ xây dựng. Hãy
+chú ý các rào cản trừu tượng. Từ góc độ của người sử dụng ``số'', có một thủ
+tục duy nhất @code{add} hoạt động trên bất kỳ số nào được cung cấp. @code{Add}
+là một phần của giao diện tổng quát cho phép các gói số học thông thường, số
+hữu tỉ, và số phức riêng biệt được truy cập một cách đồng nhất bởi các chương
+trình sử dụng số. Bất kỳ gói số học riêng lẻ nào (chẳng hạn gói phức) cũng có
+thể được truy cập thông qua các thủ tục tổng quát (chẳng hạn như @code{add-complex})
+kết hợp các gói được thiết kế cho các biểu diễn khác nhau (chẳng hạn như trực
+giao và cực). Hơn nữa, cấu trúc của hệ thống là cộng thêm, vì vậy người ta có
+thể thiết kế các gói số học riêng lẻ một cách độc lập và kết hợp chúng để tạo
+ra hệ thống số học tổng quát.
+
+@float
+@anchor{Figure 2.23}
+@ifinfo
+@quotation
+@strong{Figure 2.23:} Generic arithmetic system.
+
+@example
+                        Programs that use numbers
+                           +-----------------+
+---------------------------| add sub mul div |-------------------
+                           +-----------------+
+                        Generic arithmetic package
+ +-----------------+   +-------------------------+
+ | add-rat sub-rat |   | add-complex sub-complex |   +---------+
+-|                 |-+-|                         |-+-| + - * / |-
+ | mul-rat div-rat | | | mul-complex div-complex | | +---------+
+ +-----------------+ | +-------------------------+ |
+      Rational       |     Complex artithmetic     |   Ordinary
+     arithmetic      +--------------+--------------+  arithmetic
+                     | Rectangular  |     Polar    |
+---------------------+--------------+--------------+-------------
+             List structure and primitive machine arithmetic
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.23b,138mm,,,.std.svg}
+@caption{@strong{Figure 2.23:} Generic arithmetic system.}
+@end iftex
+@end float
+
+@menu
+* 2.5.1::            Các Phép Toán Số Học Tổng Quát
+* 2.5.2::            Kết Hợp Dữ Liệu Thuộc Các Kiểu Khác Nhau
+* 2.5.3::            Ví Dụ: Đại Số Ký Hiệu
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi

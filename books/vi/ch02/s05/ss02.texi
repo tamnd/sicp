@@ -1,0 +1,433 @@
+@node	2.5.2, 2.5.3, 2.5.1, 2.5
+@subsection Kết Hợp Dữ Liệu Thuộc Các Kiểu Khác Nhau
+
+Chúng ta đã thấy cách định nghĩa hệ thống số học thống nhất bao gồm các số
+thông thường, số phức, số hữu tỉ, và bất kỳ loại số nào khác chúng ta có thể
+quyết định tạo ra, nhưng chúng ta đã bỏ qua một vấn đề quan trọng. Các phép
+toán chúng ta đã định nghĩa cho đến nay coi các kiểu dữ liệu khác nhau là hoàn
+toàn độc lập. Do đó, có các gói riêng biệt để cộng, ví dụ, hai số thông thường
+hoặc hai số phức. Những gì chúng ta chưa xem xét là thực tế rằng có ý nghĩa để
+định nghĩa các phép toán vượt qua ranh giới kiểu, chẳng hạn như cộng số phức
+với số thông thường. Chúng ta đã nỗ lực nhiều để giới thiệu các rào cản giữa
+các phần của chương trình để chúng có thể được phát triển và hiểu riêng biệt.
+Chúng ta muốn giới thiệu các phép toán xuyên kiểu theo cách được kiểm soát cẩn
+thận, để chúng ta có thể hỗ trợ chúng mà không vi phạm nghiêm trọng các ranh
+giới mô-đun.
+
+Một cách xử lý các phép toán xuyên kiểu là thiết kế một thủ tục khác nhau cho
+mỗi tổ hợp kiểu có thể mà phép toán hợp lệ. Ví dụ, chúng ta có thể mở rộng
+gói số phức để cung cấp thủ tục cộng số phức với số thông thường và cài đặt nó
+vào bảng sử dụng thẻ @code{(complex scheme-number)}:@footnote{Chúng ta cũng
+phải cung cấp thủ tục gần như giống hệt nhau để xử lý các kiểu
+@code{(scheme-number complex)}.}
+
+@lisp
+(define (add-complex-to-schemenum z x)
+  (make-from-real-imag (+ (real-part z) x)
+                       (imag-part z)))
+
+(put 'add
+     '(complex scheme-number)
+     (lambda (z x)
+       (tag (add-complex-to-schemenum z x))))
+@end lisp
+
+@noindent
+Kỹ thuật này hoạt động được, nhưng cồng kềnh. Với hệ thống như vậy, chi phí
+để giới thiệu một kiểu mới không chỉ là xây dựng gói các thủ tục cho kiểu đó
+mà còn là xây dựng và cài đặt các thủ tục cài đặt các phép toán xuyên kiểu.
+Điều này có thể dễ dàng nhiều mã hơn cần thiết để định nghĩa các phép toán trên
+bản thân kiểu. Phương pháp này cũng làm giảm khả năng kết hợp các gói riêng
+biệt một cách cộng thêm, hoặc ít nhất là hạn chế mức độ mà những người cài đặt
+các gói riêng lẻ cần tính đến các gói khác. Ví dụ, trong ví dụ trên, có vẻ hợp
+lý rằng việc xử lý các phép toán hỗn hợp trên số phức và số thông thường là
+trách nhiệm của gói số phức. Việc kết hợp số hữu tỉ và số phức, tuy nhiên, có
+thể được thực hiện bởi gói phức, gói hữu tỉ, hoặc gói thứ ba nào đó sử dụng
+các phép toán được trích xuất từ hai gói này. Xây dựng các chính sách mạch lạc
+về phân chia trách nhiệm giữa các gói có thể là nhiệm vụ khổng lồ trong thiết
+kế hệ thống với nhiều gói và nhiều phép toán xuyên kiểu.
+
+@subsubheading Ép kiểu
+
+Trong tình huống chung của các phép toán hoàn toàn không liên quan hoạt động
+trên các kiểu hoàn toàn không liên quan, cài đặt các phép toán xuyên kiểu rõ
+ràng, dù cồng kềnh, là điều tốt nhất người ta có thể kỳ vọng. May mắn thay,
+chúng ta thường có thể làm tốt hơn bằng cách tận dụng cấu trúc bổ sung có thể
+tiềm ẩn trong hệ thống kiểu của chúng ta. Thường các kiểu dữ liệu khác nhau
+không hoàn toàn độc lập, và có thể có những cách mà các đối tượng của một kiểu
+có thể được coi là thuộc kiểu khác. Quá trình này được gọi là @newterm{ép kiểu}.
+Ví dụ, nếu được yêu cầu kết hợp số học một số thông thường với số phức, chúng
+ta có thể coi số thông thường như số phức có phần ảo bằng không. Điều này biến
+bài toán thành việc kết hợp hai số phức, có thể được xử lý theo cách thông
+thường bởi gói số học phức.
+
+Nói chung, chúng ta có thể cài đặt ý tưởng này bằng cách thiết kế các thủ tục
+ép kiểu biến đổi đối tượng của một kiểu thành đối tượng tương đương của kiểu
+khác. Đây là thủ tục ép kiểu điển hình, biến đổi số thông thường cho trước
+thành số phức có phần thực đó và phần ảo bằng không:
+
+@lisp
+(define (scheme-number->complex n)
+  (make-complex-from-real-imag
+   (contents n) 0))
+@end lisp
+
+@noindent
+Chúng ta cài đặt các thủ tục ép kiểu này vào bảng ép kiểu đặc biệt, được chỉ
+mục theo tên của hai kiểu:
+
+@lisp
+(put-coercion 'scheme-number 'complex
+              scheme-number->complex)
+@end lisp
+
+@noindent
+(Chúng ta giả sử rằng có các thủ tục @code{put-coercion} và @code{get-coercion}
+để thao tác bảng này.) Nói chung, một số ô trong bảng sẽ trống, vì nói chung
+không thể ép bất kỳ đối tượng dữ liệu nào thuộc mỗi kiểu thành tất cả các kiểu
+khác. Ví dụ, không có cách nào để ép số phức tùy ý thành số thông thường, vì
+vậy không có thủ tục @code{complex->scheme-number} tổng quát nào trong bảng.
+
+Sau khi bảng ép kiểu được thiết lập, chúng ta có thể xử lý ép kiểu theo cách
+thống nhất bằng cách sửa đổi thủ tục @code{apply-generic} của @ref{2.4.3}.
+Khi được yêu cầu áp dụng một phép toán, trước tiên chúng ta kiểm tra xem phép
+toán có được định nghĩa cho các kiểu của đối số hay không, giống như trước.
+Nếu có, chúng ta phân phối đến thủ tục tìm thấy trong bảng phép toán-và-kiểu.
+Nếu không, chúng ta thử ép kiểu. Để đơn giản, chúng ta chỉ xem xét trường hợp
+có hai đối số.@footnote{Xem @ref{Exercise 2.82} để tổng quát hóa.} Chúng ta
+kiểm tra bảng ép kiểu để xem đối tượng của kiểu đầu tiên có thể được ép thành
+kiểu thứ hai không. Nếu có, chúng ta ép đối số đầu tiên và thử phép toán lại.
+Nếu không thể ép đối tượng của kiểu đầu tiên thành kiểu thứ hai, chúng ta thử
+ép theo hướng ngược lại để xem có cách nào ép đối số thứ hai thành kiểu của
+đối số đầu tiên không. Cuối cùng, nếu không có cách nào biết để ép kiểu này
+thành kiểu kia, chúng ta từ bỏ. Đây là thủ tục:
+
+@lisp
+(define (apply-generic op . args)
+  (let ((type-tags (map type-tag args)))
+    (let ((proc (get op type-tags)))
+      (if proc
+          (apply proc (map contents args))
+          (if (= (length args) 2)
+              (let ((type1 (car type-tags))
+                    (type2 (cadr type-tags))
+                    (a1 (car args))
+                    (a2 (cadr args)))
+                (let ((t1->t2
+                       (get-coercion type1
+                                     type2))
+                      (t2->t1
+                       (get-coercion type2
+                                     type1)))
+                  (cond (t1->t2
+                         (apply-generic
+                          op (t1->t2 a1) a2))
+                        (t2->t1
+                         (apply-generic
+                          op a1 (t2->t1 a2)))
+                        (else
+                         (error
+                          "No method for
+                           these types"
+                          (list
+                           op
+                           type-tags))))))
+              (error
+               "No method for these types"
+               (list op type-tags)))))))
+@end lisp
+
+@noindent
+Sơ đồ ép kiểu này có nhiều ưu điểm hơn phương pháp định nghĩa các phép toán
+xuyên kiểu rõ ràng, như được phác thảo ở trên. Mặc dù chúng ta vẫn cần viết
+các thủ tục ép kiểu để liên kết các kiểu (có thể @math{n^2} thủ tục cho hệ
+thống với @math{n} kiểu), chúng ta chỉ cần viết một thủ tục cho mỗi cặp kiểu
+thay vì một thủ tục khác nhau cho mỗi tập hợp các kiểu và mỗi phép toán
+tổng quát.@footnote{Nếu thông minh, chúng ta thường có thể làm với ít hơn
+@math{n^2} thủ tục ép kiểu. Ví dụ, nếu chúng ta biết cách chuyển đổi từ kiểu 1
+sang kiểu 2 và từ kiểu 2 sang kiểu 3, thì chúng ta có thể sử dụng kiến thức này
+để chuyển đổi từ kiểu 1 sang kiểu 3. Điều này có thể giảm đáng kể số lượng thủ
+tục ép kiểu chúng ta cần cung cấp rõ ràng khi thêm kiểu mới vào hệ thống. Nếu
+chúng ta sẵn sàng xây dựng lượng tinh tế cần thiết vào hệ thống, chúng ta có
+thể có nó tìm kiếm ``đồ thị'' của các quan hệ giữa các kiểu và tự động tạo ra
+các thủ tục ép kiểu có thể được suy ra từ những thủ tục được cung cấp rõ ràng.}
+Những gì chúng ta dựa vào ở đây là thực tế rằng sự biến đổi thích hợp giữa
+các kiểu chỉ phụ thuộc vào bản thân các kiểu, không phụ thuộc vào phép toán
+cần áp dụng.
+
+Mặt khác, có thể có các ứng dụng mà sơ đồ ép kiểu của chúng ta không đủ tổng
+quát. Ngay cả khi không đối tượng nào trong số các đối tượng cần kết hợp có thể
+được chuyển đổi thành kiểu của đối tượng kia, vẫn có thể thực hiện phép toán
+bằng cách chuyển đổi cả hai đối tượng thành kiểu thứ ba. Để xử lý sự phức tạp
+như vậy trong khi vẫn bảo tồn tính mô-đun trong chương trình của chúng ta,
+thường cần xây dựng các hệ thống tận dụng cấu trúc thêm trong các quan hệ giữa
+các kiểu, như chúng ta thảo luận tiếp theo.
+
+@subsubheading Phân cấp kiểu
+
+Sơ đồ ép kiểu được trình bày ở trên dựa trên sự tồn tại của các quan hệ tự nhiên
+giữa các cặp kiểu. Thường có cấu trúc ``toàn cục'' hơn trong cách các kiểu khác
+nhau liên quan với nhau. Ví dụ, giả sử chúng ta đang xây dựng hệ thống số học
+tổng quát để xử lý các số nguyên, số hữu tỉ, số thực, và số phức. Trong hệ thống
+như vậy, khá tự nhiên khi coi số nguyên là một loại đặc biệt của số hữu tỉ, đến
+lượt là loại đặc biệt của số thực, đến lượt là loại đặc biệt của số phức. Những
+gì chúng ta thực sự có là cái gọi là @newterm{phân cấp kiểu}, trong đó, ví dụ,
+số nguyên là @newterm{kiểu con} của số hữu tỉ (tức là, bất kỳ phép toán nào có
+thể áp dụng cho số hữu tỉ đều có thể tự động áp dụng cho số nguyên). Ngược lại,
+chúng ta nói rằng số hữu tỉ tạo thành @newterm{kiểu cha} của số nguyên. Phân
+cấp cụ thể chúng ta có ở đây có dạng rất đơn giản, trong đó mỗi kiểu có nhiều
+nhất một kiểu cha và nhiều nhất một kiểu con. Cấu trúc như vậy, được gọi là
+@newterm{tháp}, được minh họa trong @ref{Figure 2.25}.
+
+@float
+@anchor{Figure 2.25}
+@ifinfo
+@quotation
+@strong{Figure 2.25:} A tower of types.
+
+@example
+ complex
+   ^
+   |
+  real
+   ^
+   |
+rational
+   ^
+   |
+integer
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.25,20mm,,,.std.svg}
+@caption{@strong{Figure 2.25:} A tower of types.}
+@end iftex
+@end float
+
+@noindent
+Nếu chúng ta có cấu trúc tháp, thì chúng ta có thể đơn giản hóa đáng kể bài
+toán thêm kiểu mới vào phân cấp, vì chúng ta chỉ cần chỉ định cách kiểu mới
+được nhúng vào kiểu cha ngay trên nó và cách nó là kiểu cha của kiểu dưới nó.
+Ví dụ, nếu chúng ta muốn cộng số nguyên với số phức, chúng ta không cần định
+nghĩa rõ ràng thủ tục ép kiểu đặc biệt @code{integer->complex}. Thay vào đó,
+chúng ta định nghĩa cách số nguyên có thể được biến đổi thành số hữu tỉ, cách
+số hữu tỉ được biến đổi thành số thực, và cách số thực được biến đổi thành số
+phức. Sau đó chúng ta cho phép hệ thống biến đổi số nguyên thành số phức qua
+các bước này rồi cộng hai số phức.
+
+Chúng ta có thể thiết kế lại thủ tục @code{apply-generic} theo cách sau: Với
+mỗi kiểu, chúng ta cần cung cấp thủ tục @code{raise}, ``nâng'' các đối tượng
+của kiểu đó lên một cấp trong tháp. Sau đó khi hệ thống được yêu cầu thực hiện
+phép toán trên các đối tượng thuộc các kiểu khác nhau, nó có thể liên tiếp nâng
+các kiểu thấp hơn cho đến khi tất cả các đối tượng ở cùng cấp trong tháp.
+(@ref{Exercise 2.83} và @ref{Exercise 2.84} quan tâm đến các chi tiết cài đặt
+chiến lược như vậy.)
+
+Một lợi thế khác của tháp là chúng ta có thể dễ dàng cài đặt khái niệm rằng
+mỗi kiểu ``kế thừa'' tất cả các phép toán được định nghĩa trên kiểu cha. Ví
+dụ, nếu chúng ta không cung cấp thủ tục đặc biệt để tìm phần thực của số
+nguyên, chúng ta vẫn nên kỳ vọng rằng @code{real-part} sẽ được định nghĩa cho
+số nguyên do thực tế là số nguyên là kiểu con của số phức. Trong tháp, chúng ta
+có thể sắp xếp để điều này xảy ra theo cách thống nhất bằng cách sửa đổi
+@code{apply-generic}. Nếu phép toán cần thiết không được định nghĩa trực tiếp
+cho kiểu của đối tượng cho trước, chúng ta nâng đối tượng lên kiểu cha và thử
+lại. Chúng ta do đó leo lên tháp, biến đổi đối số khi đi, cho đến khi chúng ta
+tìm thấy cấp mà phép toán mong muốn có thể được thực hiện hoặc đến đỉnh (trong
+đó trường hợp chúng ta từ bỏ).
+
+Một lợi thế khác của tháp so với phân cấp tổng quát hơn là nó cho chúng ta
+cách đơn giản để ``hạ'' đối tượng dữ liệu xuống biểu diễn đơn giản nhất. Ví
+dụ, nếu chúng ta cộng @math{{2 + 3i}} với @math{{4 - 3i}}, thật tốt khi thu được
+câu trả lời là số nguyên 6 thay vì số phức @math{{6 + 0i}}. @ref{Exercise 2.85}
+thảo luận về cách cài đặt phép toán hạ như vậy. (Thủ thuật là chúng ta cần cách
+tổng quát để phân biệt những đối tượng có thể được hạ, như @math{{6 + 0i}}, với
+những đối tượng không thể, như @math{{6 + 2i}}.)
+
+@subsubheading Sự thiếu đủ của các phân cấp
+
+Nếu các kiểu dữ liệu trong hệ thống của chúng ta có thể được sắp xếp tự nhiên
+trong tháp, điều này đơn giản hóa đáng kể các bài toán xử lý các phép toán tổng
+quát trên các kiểu khác nhau, như chúng ta đã thấy. Thật không may, điều này
+thường không phải là trường hợp. @ref{Figure 2.26} minh họa một sắp xếp phức
+tạp hơn của các kiểu hỗn hợp, lần này cho thấy các quan hệ giữa các kiểu hình
+học khác nhau. Chúng ta thấy rằng, nói chung, một kiểu có thể có nhiều hơn một
+kiểu con. Tam giác và tứ giác, ví dụ, đều là kiểu con của đa giác. Ngoài ra,
+một kiểu có thể có nhiều hơn một kiểu cha. Ví dụ, tam giác vuông cân có thể
+được coi là tam giác cân hoặc tam giác vuông. Vấn đề nhiều kiểu cha này đặc biệt
+gai, vì nó có nghĩa là không có cách duy nhất để ``nâng'' kiểu trong phân cấp.
+Tìm kiểu cha ``đúng'' để áp dụng phép toán cho đối tượng có thể đòi hỏi tìm
+kiếm đáng kể qua toàn bộ mạng kiểu bởi một thủ tục như @code{apply-generic}.
+Vì nói chung có nhiều kiểu con cho một kiểu, có một bài toán tương tự trong việc
+ép giá trị ``xuống'' phân cấp kiểu. Xử lý số lượng lớn các kiểu liên quan với
+nhau trong khi vẫn bảo tồn tính mô-đun trong thiết kế các hệ thống lớn rất
+khó khăn, và là một lĩnh vực nghiên cứu hiện tại nhiều.@footnote{Nhận xét này,
+cũng xuất hiện trong xuất bản đầu tiên của cuốn sách này, đúng như thời điểm
+chúng tôi viết nó mười hai năm trước. Việc phát triển khuôn khổ hữu ích, tổng
+quát để biểu đạt các quan hệ giữa các kiểu thực thể khác nhau (những gì các
+triết học gia gọi là ``bản thể luận'') có vẻ khó giải quyết. Sự khác biệt
+chính giữa sự nhầm lẫn tồn tại mười năm trước và sự nhầm lẫn tồn tại bây giờ
+là bây giờ một loạt các lý thuyết bản thể luận không đầy đủ đã được thể hiện
+trong vô số ngôn ngữ lập trình không đầy đủ tương ứng. Ví dụ, phần lớn sự phức
+tạp của các ngôn ngữ lập trình hướng đối tượng---và sự khác biệt tinh tế và gây
+nhầm lẫn giữa các ngôn ngữ hướng đối tượng hiện đại---tập trung vào việc xử lý
+các phép toán tổng quát trên các kiểu liên quan. Thảo luận của chúng ta về các
+đối tượng tính toán trong @ref{Chapter 3} hoàn toàn tránh các vấn đề này.
+Những người đọc quen với lập trình hướng đối tượng sẽ nhận thấy rằng chúng ta
+có nhiều điều để nói trong chương 3 về trạng thái cục bộ, nhưng chúng ta thậm
+chí không đề cập đến ``lớp'' hay ``kế thừa.'' Trên thực tế, chúng ta nghi ngờ
+rằng các vấn đề này không thể được giải quyết một cách đầy đủ theo thiết kế
+ngôn ngữ máy tính đơn thuần, mà không còn phải dựa vào công việc trong biểu
+diễn kiến thức và lập luận tự động.}
+
+@float
+@anchor{Figure 2.26}
+@ifinfo
+@quotation
+@strong{Figure 2.26:} Relations among types of geometric figures.
+
+@example
+                     polygon
+                    /       \
+                   /         \
+            triangle         quadrilateral
+            /     \              /     \
+           /       \            /       \
+     isosceles   right      trapezoid   kite
+     triangle    triangle       |         |
+      |     \      |            |         |
+      |      \     |            |         |
+equilateral   isosceles   parallelogram   |
+triangle      right          |       \    |
+              triangle       |        \   |
+                          rectangle  rhombus
+                                \    /
+                                 \  /
+                                square
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap2/Fig2.26f,147mm,,,.std.svg}
+@caption{@strong{Figure 2.26:} Relations among types of geometric figures.}
+@end iftex
+@end float
+
+@quotation
+@strong{@anchor{Exercise 2.81}Bài tập 2.81:} Louis Reasoner đã chú ý rằng
+@code{apply-generic} có thể cố ép các đối số thành kiểu của nhau ngay cả khi
+chúng đã có cùng kiểu. Do đó, anh ấy lập luận, chúng ta cần đặt các thủ tục
+vào bảng ép kiểu để @newterm{ép} các đối số của mỗi kiểu thành chính kiểu của
+chúng. Ví dụ, ngoài ép kiểu @code{scheme-number->complex} được hiển thị ở trên,
+anh ấy sẽ làm:
+
+@lisp
+(define (scheme-number->scheme-number n) n)
+(define (complex->complex z) z)
+
+(put-coercion 'scheme-number 'scheme-number
+              scheme-number->scheme-number)
+
+(put-coercion 'complex 'complex
+              complex->complex)
+@end lisp
+
+@enumerate a
+
+@item
+Với các thủ tục ép kiểu của Louis được cài đặt, điều gì xảy ra nếu
+@code{apply-generic} được gọi với hai đối số thuộc kiểu @code{scheme-number}
+hoặc hai đối số thuộc kiểu @code{complex} cho phép toán không tìm thấy trong
+bảng cho các kiểu đó? Ví dụ, giả sử chúng ta đã định nghĩa phép toán lũy thừa
+tổng quát:
+
+@lisp
+(define (exp x y)
+  (apply-generic 'exp x y))
+@end lisp
+
+@noindent
+và đã đặt thủ tục cho lũy thừa vào gói scheme-number nhưng không vào gói nào
+khác:
+
+@lisp
+@r{;; được thêm vào gói scheme-number}
+(put 'exp
+     '(scheme-number scheme-number)
+     (lambda (x y)
+       (tag (expt x y))))
+       @r{; dùng @code{expt} nguyên thủy}
+@end lisp
+
+@noindent
+Điều gì xảy ra nếu chúng ta gọi @code{exp} với hai số phức làm đối số?
+
+@item
+Louis có đúng rằng cần làm gì đó về ép kiểu với các đối số cùng kiểu, hay
+@code{apply-generic} hoạt động đúng như hiện tại?
+
+@item
+Sửa đổi @code{apply-generic} sao cho nó không thử ép kiểu nếu hai đối số có
+cùng kiểu.
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.82}Bài tập 2.82:} Hãy chỉ ra cách tổng quát hóa
+@code{apply-generic} để xử lý ép kiểu trong trường hợp tổng quát của nhiều
+đối số. Một chiến lược là cố ép tất cả các đối số thành kiểu của đối số đầu
+tiên, sau đó thành kiểu của đối số thứ hai, v.v. Cho ví dụ về tình huống mà
+chiến lược này (và tương tự phiên bản hai đối số được nêu ở trên) không đủ
+tổng quát. (Gợi ý: Hãy xem xét trường hợp có một số phép toán kiểu hỗn hợp
+phù hợp trong bảng mà sẽ không được thử.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.83}Bài tập 2.83:} Giả sử bạn đang thiết kế hệ thống
+số học tổng quát để xử lý tháp kiểu được hiển thị trong @ref{Figure 2.25}: số
+nguyên, số hữu tỉ, số thực, số phức. Với mỗi kiểu (trừ số phức), thiết kế thủ
+tục nâng các đối tượng của kiểu đó lên một cấp trong tháp. Hãy chỉ ra cách cài
+đặt phép toán @code{raise} tổng quát sẽ hoạt động cho mỗi kiểu (trừ số phức).
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.84}Bài tập 2.84:} Sử dụng phép toán @code{raise}
+của @ref{Exercise 2.83}, sửa đổi thủ tục @code{apply-generic} sao cho nó ép
+các đối số để có cùng kiểu bằng phương pháp nâng liên tiếp, như được thảo luận
+trong phần này. Bạn sẽ cần nghĩ ra cách kiểm tra kiểu nào trong hai kiểu cao
+hơn trong tháp. Hãy làm điều này theo cách ``tương thích'' với phần còn lại của
+hệ thống và sẽ không dẫn đến vấn đề khi thêm các cấp mới vào tháp.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.85}Bài tập 2.85:} Phần này đề cập đến phương pháp
+để ``đơn giản hóa'' đối tượng dữ liệu bằng cách hạ nó trong tháp kiểu càng
+thấp càng tốt. Thiết kế thủ tục @code{drop} thực hiện điều này cho tháp được
+mô tả trong @ref{Exercise 2.83}. Chìa khóa là quyết định, theo cách tổng quát
+nào đó, xem đối tượng có thể được hạ không. Ví dụ, số phức @math{{1.5 + 0i}}
+có thể được hạ đến @code{real}, số phức @math{{1 + 0i}} có thể được hạ đến
+@code{integer}, và số phức @math{{2 + 3i}} không thể được hạ chút nào. Đây là
+kế hoạch để xác định xem đối tượng có thể được hạ không: Bắt đầu bằng cách
+định nghĩa phép toán tổng quát @code{project} ``đẩy'' đối tượng xuống trong
+tháp. Ví dụ, chiếu số phức sẽ liên quan đến việc bỏ phần ảo. Sau đó một số có
+thể được hạ nếu, khi chúng ta @code{project} nó và @code{raise} kết quả trở
+lại kiểu chúng ta bắt đầu, chúng ta nhận được thứ gì đó bằng với những gì chúng
+ta bắt đầu. Hãy chỉ ra cách cài đặt ý tưởng này chi tiết, bằng cách viết thủ
+tục @code{drop} hạ đối tượng càng thấp càng tốt. Bạn sẽ cần thiết kế các phép
+toán chiếu khác nhau@footnote{Số thực có thể được chiếu thành số nguyên sử dụng
+nguyên thủy @code{round}, trả về số nguyên gần nhất với đối số.} và cài đặt
+@code{project} như phép toán tổng quát trong hệ thống. Bạn cũng sẽ cần sử dụng
+vị từ bằng nhau tổng quát, như được mô tả trong @ref{Exercise 2.79}. Cuối cùng,
+sử dụng @code{drop} để viết lại @code{apply-generic} từ @ref{Exercise 2.84}
+sao cho nó ``đơn giản hóa'' các câu trả lời.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.86}Bài tập 2.86:} Giả sử chúng ta muốn xử lý số
+phức có phần thực, phần ảo, độ lớn, và góc có thể là số thông thường, số hữu
+tỉ, hoặc các số khác chúng ta có thể muốn thêm vào hệ thống. Mô tả và cài đặt
+các thay đổi với hệ thống cần thiết để đáp ứng điều này. Bạn sẽ phải định nghĩa
+các phép toán như @code{sine} và @code{cosine} tổng quát theo số thông thường
+và số hữu tỉ.
+@end quotation

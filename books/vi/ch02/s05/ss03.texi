@@ -1,0 +1,835 @@
+@node	2.5.3, Chapter 3, 2.4, 2.5
+@subsection Ví Dụ: Đại Số Ký Hiệu
+
+Thao tác các biểu thức đại số ký hiệu là một quá trình phức tạp minh họa nhiều
+bài toán khó nhất xảy ra trong thiết kế các hệ thống quy mô lớn. Biểu thức đại
+số, nói chung, có thể được coi như cấu trúc phân cấp, cây các toán tử được áp
+dụng cho các toán hạng. Chúng ta có thể xây dựng các biểu thức đại số bằng cách
+bắt đầu với tập hợp các đối tượng nguyên thủy, như hằng số và biến, và kết hợp
+chúng bằng các toán tử đại số, như cộng và nhân. Như trong các ngôn ngữ khác,
+chúng ta tạo ra các trừu tượng cho phép chúng ta đề cập đến các đối tượng phức
+hợp theo các thuật ngữ đơn giản. Các trừu tượng điển hình trong đại số ký hiệu
+là các ý tưởng như tổ hợp tuyến tính, đa thức, hàm hữu tỉ, hoặc hàm lượng giác.
+Chúng ta có thể coi chúng là các ``kiểu'' phức hợp, thường hữu ích để chỉ đạo
+quá trình xử lý các biểu thức. Ví dụ, chúng ta có thể mô tả biểu thức
+@ifinfo
+
+@example
+x^2 sin (y^2 + 1) + x cos 2y + cos(y^3 - 2y^2)
+@end example
+
+@end ifinfo
+@tex
+\[ % :49:
+  {x^2 \sin (y^2 + 1)} + {x \cos 2y} + {\cos(y^3 - 2y^2)}  \]
+@end tex
+@noindent
+như đa thức theo @math{x} với hệ số là các hàm lượng giác của đa thức theo
+@math{y} có hệ số nguyên.
+
+Chúng ta sẽ không cố gắng phát triển hệ thống thao tác đại số hoàn chỉnh ở
+đây. Các hệ thống như vậy là các chương trình cực kỳ phức tạp, thể hiện kiến
+thức đại số sâu sắc và các thuật toán tinh tế. Những gì chúng ta sẽ làm là nhìn
+vào một phần đơn giản nhưng quan trọng của thao tác đại số: số học của các đa
+thức. Chúng ta sẽ minh họa các loại quyết định mà người thiết kế hệ thống như
+vậy phải đối mặt, và cách áp dụng các ý tưởng về dữ liệu trừu tượng và các phép
+toán tổng quát để giúp tổ chức nỗ lực này.
+
+@subsubheading Số học trên đa thức
+
+Nhiệm vụ đầu tiên của chúng ta trong việc thiết kế hệ thống thực hiện số học
+trên đa thức là quyết định đa thức là gì. Các đa thức thường được định nghĩa
+tương đối với các biến nhất định (các @newterm{biến không xác định} của đa thức).
+Để đơn giản, chúng ta sẽ giới hạn ở các đa thức chỉ có một biến không xác định
+(@newterm{đa thức một biến}).@footnote{Mặt khác, chúng ta sẽ cho phép các đa
+thức có hệ số là bản thân các đa thức theo các biến khác. Điều này sẽ cho chúng
+ta về cơ bản cùng sức mạnh biểu diễn như hệ thống đa biến đầy đủ, mặc dù nó
+dẫn đến các bài toán ép kiểu, như được thảo luận bên dưới.} Chúng ta sẽ định
+nghĩa đa thức là tổng các hạng tử, mỗi hạng tử là hằng số, lũy thừa của biến
+không xác định, hoặc tích của hằng số và lũy thừa của biến không xác định. Hằng
+số được định nghĩa là biểu thức đại số không phụ thuộc vào biến không xác định
+của đa thức. Ví dụ,
+@ifinfo
+
+@example
+5x^2 + 3x + 7
+@end example
+
+@end ifinfo
+@tex
+\[ % :50:
+  {5x^2} + {3x} + 7  \]
+@end tex
+@noindent
+là đa thức đơn giản theo @math{x}, và
+@ifinfo
+
+@example
+(y^2 + 1)x^3 + (2y)x + 1
+@end example
+
+@end ifinfo
+@tex
+\[ % :51:
+  {(y^2 + 1)x^3} + {(2y)x + 1}  \]
+@end tex
+@noindent
+là đa thức theo @math{x} có hệ số là đa thức theo @math{y}.
+
+Chúng ta đã đang né tránh một số vấn đề gai. Đa thức đầu tiên trong số này có
+giống với đa thức @math{{5y^2 + 3y + 7}} không? Câu trả lời hợp lý có thể là
+``có, nếu chúng ta đang xem xét đa thức hoàn toàn như hàm toán học, nhưng không,
+nếu chúng ta đang xem xét đa thức là dạng cú pháp.'' Đa thức thứ hai về mặt
+đại số tương đương với đa thức theo @math{y} có hệ số là đa thức theo @math{x}.
+Hệ thống của chúng ta có nên nhận ra điều này không? Hơn nữa, có các cách khác
+để biểu diễn đa thức---ví dụ, như tích của các nhân tử, hoặc (với đa thức một
+biến) như tập hợp các nghiệm, hoặc như danh sách các giá trị của đa thức tại
+tập hợp điểm được chỉ định.@footnote{Với đa thức một biến, cho giá trị của đa
+thức tại tập hợp điểm cho trước có thể là biểu diễn đặc biệt tốt. Điều này làm
+cho số học đa thức cực kỳ đơn giản. Để thu được, ví dụ, tổng của hai đa thức
+được biểu diễn theo cách này, chúng ta chỉ cần cộng các giá trị của đa thức tại
+các điểm tương ứng. Để biến đổi trở lại biểu diễn quen thuộc hơn, chúng ta có
+thể sử dụng công thức nội suy Lagrange, cho thấy cách tìm lại hệ số của đa
+thức bậc @math{n} khi biết các giá trị của đa thức tại @math{{n + 1}} điểm.} Chúng ta
+có thể lách qua các câu hỏi này bằng cách quyết định rằng trong hệ thống thao
+tác đại số của chúng ta, ``đa thức'' sẽ là dạng cú pháp cụ thể, không phải ý
+nghĩa toán học cơ bản của nó.
+
+Bây giờ chúng ta phải xem xét cách thực hiện số học trên đa thức. Trong hệ
+thống đơn giản này, chúng ta sẽ chỉ xem xét phép cộng và phép nhân. Hơn nữa,
+chúng ta sẽ khăng khăng rằng hai đa thức cần kết hợp phải có cùng biến không
+xác định.
+
+Chúng ta sẽ tiếp cận thiết kế hệ thống bằng cách theo kỷ luật trừu tượng dữ
+liệu quen thuộc. Chúng ta sẽ biểu diễn các đa thức sử dụng cấu trúc dữ liệu
+gọi là @newterm{poly}, bao gồm biến và tập hợp các hạng tử. Chúng ta giả sử
+chúng ta có bộ chọn @code{variable} và @code{term-list} trích xuất các phần đó
+từ poly và bộ tạo @code{make-poly} lắp ráp poly từ biến và danh sách hạng tử
+cho trước. Biến sẽ chỉ là ký hiệu, vì vậy chúng ta có thể dùng thủ tục
+@code{same-variable?} của @ref{2.3.2} để so sánh các biến. Các thủ tục sau
+định nghĩa phép cộng và nhân của các poly:
+
+@lisp
+(define (add-poly p1 p2)
+  (if (same-variable? (variable p1)
+                      (variable p2))
+      (make-poly
+       (variable p1)
+       (add-terms (term-list p1)
+                  (term-list p2)))
+      (error "Polys not in same var:
+              ADD-POLY"
+             (list p1 p2))))
+
+(define (mul-poly p1 p2)
+  (if (same-variable? (variable p1)
+                      (variable p2))
+      (make-poly
+       (variable p1)
+       (mul-terms (term-list p1)
+                  (term-list p2)))
+      (error "Polys not in same var:
+              MUL-POLY"
+             (list p1 p2))))
+@end lisp
+
+@noindent
+Để kết hợp đa thức vào hệ thống số học tổng quát của chúng ta, chúng ta cần
+cung cấp cho chúng thẻ kiểu. Chúng ta sẽ sử dụng thẻ @code{polynomial}, và
+cài đặt các phép toán thích hợp trên đa thức được gắn thẻ vào bảng phép toán.
+Chúng ta sẽ nhúng tất cả mã vào thủ tục cài đặt cho gói đa thức, tương tự như
+các gói trong @ref{2.5.1}:
+
+@lisp
+(define (install-polynomial-package)
+  @r{;; các thủ tục nội bộ}
+  @r{;; biểu diễn poly}
+  (define (make-poly variable term-list)
+    (cons variable term-list))
+  (define (variable p) (car p))
+  (define (term-list p) (cdr p))
+  ⟨@emph{các thủ tục @code{same-variable?}
+   và @code{variable?} từ §2.3.2}⟩
+
+  @r{;; biểu diễn hạng tử và danh sách hạng tử}
+  ⟨@emph{các thủ tục @code{adjoin-term} @r{…} @code{coeff}
+  từ văn bản bên dưới}⟩
+
+  (define (add-poly p1 p2) @r{…})
+  ⟨@emph{các thủ tục được dùng bởi @code{add-poly}}⟩
+  (define (mul-poly p1 p2) @r{…})
+  ⟨@emph{các thủ tục được dùng bởi @code{mul-poly}}⟩
+
+  @r{;; giao diện với phần còn lại của hệ thống}
+  (define (tag p) (attach-tag 'polynomial p))
+  (put 'add '(polynomial polynomial)
+       (lambda (p1 p2)
+         (tag (add-poly p1 p2))))
+  (put 'mul '(polynomial polynomial)
+       (lambda (p1 p2)
+         (tag (mul-poly p1 p2))))
+  (put 'make 'polynomial
+       (lambda (var terms)
+         (tag (make-poly var terms))))
+  'done)
+@end lisp
+
+@noindent
+Phép cộng đa thức được thực hiện theo từng hạng tử. Các hạng tử cùng bậc (tức
+là có cùng lũy thừa của biến không xác định) phải được kết hợp. Điều này được
+thực hiện bằng cách tạo hạng tử mới cùng bậc có hệ số là tổng các hệ số của
+các số hạng. Các hạng tử trong một số hạng mà không có hạng tử cùng bậc trong
+số hạng kia đơn giản là được tích lũy vào đa thức tổng đang được xây dựng.
+
+Để thao tác các danh sách hạng tử, chúng ta sẽ giả sử rằng chúng ta có bộ tạo
+@code{the-empty-termlist} trả về danh sách hạng tử rỗng và bộ tạo
+@code{adjoin-term} thêm hạng tử mới vào danh sách hạng tử. Chúng ta cũng sẽ
+giả sử có vị từ @code{empty-termlist?} cho biết danh sách hạng tử có rỗng không,
+bộ chọn @code{first-term} trích xuất hạng tử bậc cao nhất từ danh sách hạng tử,
+và bộ chọn @code{rest-terms} trả về tất cả trừ hạng tử bậc cao nhất. Để thao
+tác các hạng tử, chúng ta giả sử có bộ tạo @code{make-term} xây dựng hạng tử
+với bậc và hệ số cho trước, và bộ chọn @code{order} và @code{coeff} trả về,
+lần lượt, bậc và hệ số của hạng tử. Các phép toán này cho phép chúng ta coi
+cả hạng tử và danh sách hạng tử như các trừu tượng dữ liệu, mà biểu diễn cụ
+thể của chúng chúng ta có thể lo lắng riêng biệt.
+
+Đây là thủ tục xây dựng danh sách hạng tử cho tổng của hai đa thức:@footnote{Phép toán này rất giống phép toán @code{union-set} có thứ tự mà chúng ta đã
+phát triển trong @ref{Exercise 2.62}. Trên thực tế, nếu chúng ta nghĩ về các
+hạng tử của đa thức như tập hợp được sắp xếp theo lũy thừa của biến không xác
+định, thì chương trình tạo danh sách hạng tử cho tổng hầu như giống hệt với
+@code{union-set}.}
+
+@lisp
+(define (add-terms L1 L2)
+  (cond ((empty-termlist? L1) L2)
+        ((empty-termlist? L2) L1)
+        (else
+         (let ((t1 (first-term L1))
+               (t2 (first-term L2)))
+           (cond ((> (order t1) (order t2))
+                  (adjoin-term
+                   t1
+                   (add-terms (rest-terms L1)
+                              L2)))
+                 ((< (order t1) (order t2))
+                  (adjoin-term
+                   t2
+                   (add-terms
+                    L1
+                    (rest-terms L2))))
+                 (else
+                  (adjoin-term
+                   (make-term
+                    (order t1)
+                    (add (coeff t1)
+                         (coeff t2)))
+                   (add-terms
+                    (rest-terms L1)
+                    (rest-terms L2)))))))))
+@end lisp
+
+@noindent
+Điểm quan trọng nhất cần lưu ý ở đây là chúng ta đã dùng thủ tục cộng tổng
+quát @code{add} để cộng các hệ số của các hạng tử được kết hợp. Điều này có
+hậu quả mạnh mẽ, như chúng ta sẽ thấy bên dưới.
+
+Để nhân hai danh sách hạng tử, chúng ta nhân từng hạng tử của danh sách đầu
+tiên với tất cả các hạng tử của danh sách kia, sử dụng lặp đi lặp lại
+@code{mul-term-by-all-terms}, nhân hạng tử cho trước với tất cả các hạng tử
+trong danh sách hạng tử cho trước. Các danh sách hạng tử kết quả (một cho mỗi
+hạng tử của danh sách đầu tiên) được tích lũy thành tổng. Nhân hai hạng tử
+tạo ra hạng tử có bậc là tổng các bậc của các thừa số và hệ số là tích các hệ
+số của các thừa số:
+
+@lisp
+(define (mul-terms L1 L2)
+  (if (empty-termlist? L1)
+      (the-empty-termlist)
+      (add-terms
+       (mul-term-by-all-terms
+        (first-term L1) L2)
+       (mul-terms (rest-terms L1) L2))))
+
+(define (mul-term-by-all-terms t1 L)
+  (if (empty-termlist? L)
+      (the-empty-termlist)
+      (let ((t2 (first-term L)))
+        (adjoin-term
+         (make-term
+          (+ (order t1) (order t2))
+          (mul (coeff t1) (coeff t2)))
+         (mul-term-by-all-terms
+          t1
+          (rest-terms L))))))
+@end lisp
+
+@noindent
+Đây thực sự là tất cả những gì cần để cộng và nhân đa thức. Lưu ý rằng, vì
+chúng ta thực hiện trên các hạng tử sử dụng các thủ tục tổng quát @code{add}
+và @code{mul}, gói đa thức của chúng ta tự động có thể xử lý bất kỳ loại hệ
+số nào được biết đến bởi gói số học tổng quát. Nếu chúng ta bao gồm cơ chế ép
+kiểu như một trong những cơ chế được thảo luận trong @ref{2.5.2}, thì chúng ta
+cũng tự động có thể xử lý các phép toán trên đa thức thuộc các kiểu hệ số khác
+nhau, chẳng hạn như
+@ifinfo
+
+@example
+                         /        2                 \
+[3x^2 + (2 + 3i)x + 7] * | x^4 + --- x^2 + (5 + 3i) |
+                         \        3                 /
+@end example
+
+@end ifinfo
+@tex
+\[ % :52:
+  {[3x^2 + (2 + 3i)x + 7] \cdot} {\left[ x^4 + {2\over3} x^2 + (5 + 3i) \right].}  \]
+@end tex
+Vì chúng ta đã cài đặt các thủ tục cộng và nhân đa thức @code{add-poly} và
+@code{mul-poly} trong hệ thống số học tổng quát như các phép toán @code{add} và
+@code{mul} cho kiểu @code{polynomial}, hệ thống của chúng ta cũng tự động có
+thể xử lý các phép toán đa thức như
+@ifinfo
+
+@example
+[(y + 1)x^2 + (y^2 + 1)x + (y - 1)] * [(y - 2)x + (y^3 + 7)]
+@end example
+
+@end ifinfo
+@tex
+\[ % :53:
+  {\Big[(y + 1)x^2} + {(y^2 + 1)x} + {(y - 1)\Big] \cdot} {\Big[(y - 2)x} + {(y^3 + 7)\Big].}  \]
+@end tex
+Lý do là khi hệ thống cố kết hợp các hệ số, nó sẽ phân phối qua @code{add} và
+@code{mul}. Vì các hệ số bản thân là đa thức (theo @math{y}), chúng sẽ được kết
+hợp bằng @code{add-poly} và @code{mul-poly}. Kết quả là một loại ``đệ quy hướng
+dữ liệu'' trong đó, ví dụ, lời gọi đến @code{mul-poly} sẽ dẫn đến các lời gọi
+đệ quy đến @code{mul-poly} để nhân các hệ số. Nếu các hệ số của hệ số bản thân
+là đa thức (như có thể được dùng để biểu diễn đa thức trong ba biến), hướng dữ
+liệu sẽ đảm bảo rằng hệ thống sẽ đi qua thêm một cấp lời gọi đệ quy, và cứ
+thế qua nhiều cấp tùy theo cấu trúc của dữ liệu quy định.@footnote{Để điều này
+hoạt động hoàn toàn trơn tru, chúng ta cũng nên thêm vào hệ thống số học tổng
+quát khả năng ép ``số'' thành đa thức bằng cách coi nó như đa thức bậc không
+có hệ số là số đó. Điều này là cần thiết nếu chúng ta sẽ thực hiện các phép
+toán như
+@ifinfo
+
+@example
+[x^2 + (y + 1)x + 5] + [x^2 + 2x + 1]
+@end example
+
+@end ifinfo
+@tex
+\[ % :54:
+  {[x^2 + (y + 1)x + 5]} + {[x^2 + 2x + 1],}  \]
+@end tex
+@noindent
+đòi hỏi cộng hệ số @math{{y + 1}} với hệ số 2.}
+
+@subsubheading Biểu diễn danh sách hạng tử
+
+Cuối cùng, chúng ta phải đối mặt với công việc cài đặt biểu diễn tốt cho các
+danh sách hạng tử. Danh sách hạng tử thực ra là tập hợp các hệ số được khóa
+theo bậc của hạng tử. Do đó, bất kỳ phương pháp nào để biểu diễn tập hợp, như
+được thảo luận trong @ref{2.3.3}, đều có thể được áp dụng cho nhiệm vụ này.
+Mặt khác, các thủ tục @code{add-terms} và @code{mul-terms} của chúng ta luôn
+truy cập danh sách hạng tử tuần tự từ bậc cao nhất đến thấp nhất. Do đó, chúng
+ta sẽ sử dụng một loại biểu diễn danh sách có thứ tự nào đó.
+
+Chúng ta nên cấu trúc danh sách biểu diễn danh sách hạng tử như thế nào? Một
+yếu tố cần xem xét là ``mật độ'' của các đa thức chúng ta muốn thao tác. Đa
+thức được gọi là @newterm{dày đặc} nếu nó có các hệ số khác không trong hầu
+hết các bậc. Nếu nó có nhiều hạng tử không thì được gọi là @newterm{thưa}.
+Ví dụ,
+@ifinfo
+
+@example
+A : x^5 + 2x^4 + 3x^2 - 2x - 5
+@end example
+
+@end ifinfo
+@tex
+\[ % :55:
+  A: \quad {x^5} + {2x^4} + {3x^2} - {2x} - 5  \]
+@end tex
+@noindent
+là đa thức dày đặc, trong khi
+@ifinfo
+
+@example
+B : x^100 + 2x^2 + 1
+@end example
+
+@end ifinfo
+@tex
+\[ % :56:
+  B: \quad x^{100} + {2x^2} + 1  \]
+@end tex
+@noindent
+là thưa.
+
+Các danh sách hạng tử của đa thức dày đặc được biểu diễn hiệu quả nhất như
+danh sách các hệ số. Ví dụ, @math{A} ở trên sẽ được biểu diễn gọn gàng như
+@code{(1 2 0 3 -2 -5)}. Bậc của hạng tử trong biểu diễn này là độ dài của
+danh sách con bắt đầu từ hệ số của hạng tử đó, giảm đi 1.@footnote{Trong các
+ví dụ đa thức này, chúng ta giả sử rằng chúng ta đã cài đặt hệ thống số học
+tổng quát sử dụng cơ chế kiểu được gợi ý trong @ref{Exercise 2.78}. Do đó, các
+hệ số là số thông thường sẽ được biểu diễn là bản thân các số thay vì các cặp
+có @code{car} là ký hiệu @code{scheme-number}.} Đây sẽ là biểu diễn tệ khủng
+khiếp cho đa thức thưa như @math{B}: Sẽ có một danh sách khổng lồ các số không
+xen kẽ bởi một vài hạng tử khác không cô đơn. Biểu diễn hợp lý hơn của danh
+sách hạng tử của đa thức thưa là danh sách các hạng tử khác không, trong đó
+mỗi hạng tử là danh sách chứa bậc của hạng tử và hệ số cho bậc đó. Trong sơ
+đồ như vậy, đa thức @math{B} được biểu diễn hiệu quả như @code{((100 1) (2 2) (0 1))}.
+Vì hầu hết các thao tác đa thức được thực hiện trên đa thức thưa, chúng ta sẽ
+sử dụng phương pháp này. Chúng ta sẽ giả sử danh sách hạng tử được biểu diễn
+như danh sách các hạng tử, được sắp xếp từ hạng tử bậc cao nhất đến thấp nhất.
+Khi chúng ta đã đưa ra quyết định này, việc cài đặt các bộ chọn và bộ tạo cho
+các hạng tử và danh sách hạng tử là đơn giản:@footnote{Mặc dù chúng ta giả
+định danh sách hạng tử được sắp xếp, chúng ta đã cài đặt @code{adjoin-term}
+để đơn giản @code{cons} hạng tử mới lên danh sách hạng tử hiện có. Chúng ta
+có thể làm điều này miễn là chúng ta đảm bảo rằng các thủ tục (như
+@code{add-terms}) sử dụng @code{adjoin-term} luôn gọi nó với hạng tử bậc cao
+hơn xuất hiện trong danh sách. Nếu chúng ta không muốn đưa ra đảm bảo như vậy,
+chúng ta có thể đã cài đặt @code{adjoin-term} tương tự bộ tạo @code{adjoin-set}
+cho biểu diễn danh sách có thứ tự của tập hợp (@ref{Exercise 2.61}).}
+
+@lisp
+(define (adjoin-term term term-list)
+  (if (=zero? (coeff term))
+      term-list
+      (cons term term-list)))
+(define (the-empty-termlist) '())
+(define (first-term term-list) (car term-list))
+(define (rest-terms term-list) (cdr term-list))
+(define (empty-termlist? term-list)
+  (null? term-list))
+(define (make-term order coeff)
+  (list order coeff))
+(define (order term) (car term))
+(define (coeff term) (cadr term))
+@end lisp
+
+@noindent
+trong đó @code{=zero?} như được định nghĩa trong @ref{Exercise 2.80}. (Xem
+cũng @ref{Exercise 2.87} bên dưới.)
+
+Người dùng gói đa thức sẽ tạo (được gắn thẻ) đa thức bằng thủ tục:
+
+@lisp
+(define (make-polynomial var terms)
+  ((get 'make 'polynomial) var terms))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 2.87}Bài tập 2.87:} Cài đặt @code{=zero?} cho đa
+thức trong gói số học tổng quát. Điều này sẽ cho phép @code{adjoin-term} hoạt
+động cho đa thức có hệ số bản thân là đa thức.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.88}Bài tập 2.88:} Mở rộng hệ thống đa thức để bao
+gồm phép trừ đa thức. (Gợi ý: Bạn có thể thấy hữu ích khi định nghĩa phép
+toán phủ định tổng quát.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.89}Bài tập 2.89:} Định nghĩa các thủ tục cài đặt
+biểu diễn danh sách hạng tử được mô tả ở trên phù hợp cho đa thức dày đặc.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.90}Bài tập 2.90:} Giả sử chúng ta muốn có hệ thống
+đa thức hiệu quả cho cả đa thức thưa và dày đặc. Một cách để làm điều này là
+cho phép cả hai loại biểu diễn danh sách hạng tử trong hệ thống. Tình huống
+tương tự như ví dụ số phức của @ref{2.4}, nơi chúng ta cho phép cả biểu diễn
+trực giao và cực. Để làm điều này, chúng ta phải phân biệt các kiểu danh sách
+hạng tử khác nhau và làm cho các phép toán trên danh sách hạng tử trở nên tổng
+quát. Thiết kế lại hệ thống đa thức để cài đặt sự tổng quát hóa này. Đây là
+nỗ lực lớn, không phải thay đổi cục bộ.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.91}Bài tập 2.91:} Đa thức một biến có thể được chia
+cho một đa thức khác để tạo ra thương đa thức và phần dư đa thức. Ví dụ,
+@ifinfo
+
+@example
+x^5 - 1
+------- = x^3 + x, phần dư x - 1
+x^2 - 1
+@end example
+
+@end ifinfo
+@tex
+\[ % :57:
+  {x^5 - 1 \over x^2 - 1} \,=\, {x^3 + x,} \text{  phần dư  } {x - 1.}  \]
+@end tex
+Phép chia có thể được thực hiện qua phép chia dài. Tức là, chia hạng tử bậc
+cao nhất của số bị chia cho hạng tử bậc cao nhất của số chia. Kết quả là hạng
+tử đầu tiên của thương. Tiếp theo, nhân kết quả với số chia, trừ đó từ số bị
+chia, và tạo ra phần còn lại của câu trả lời bằng cách đệ quy chia hiệu cho số
+chia. Dừng khi bậc của số chia vượt quá bậc của số bị chia và khai báo số bị
+chia là phần dư. Ngoài ra, nếu số bị chia trở thành không, trả về không cho cả
+thương và phần dư.
+
+Chúng ta có thể thiết kế thủ tục @code{div-poly} theo mô hình của @code{add-poly}
+và @code{mul-poly}. Thủ tục kiểm tra xem hai poly có cùng biến không. Nếu có,
+@code{div-poly} bóc bỏ biến và truyền bài toán cho @code{div-terms}, thực hiện
+phép chia trên danh sách hạng tử. @code{Div-poly} cuối cùng gắn lại biến cho
+kết quả được cung cấp bởi @code{div-terms}. Tiện lợi khi thiết kế @code{div-terms}
+để tính cả thương và phần dư của phép chia. @code{Div-terms} có thể nhận hai
+danh sách hạng tử làm đối số và trả về danh sách gồm danh sách hạng tử thương
+và danh sách hạng tử phần dư.
+
+Hoàn thành định nghĩa sau của @code{div-terms} bằng cách điền vào các biểu thức
+còn thiếu. Dùng điều này để cài đặt @code{div-poly}, nhận hai poly làm đối số
+và trả về danh sách gồm đa thức thương và đa thức phần dư.
+
+@lisp
+(define (div-terms L1 L2)
+  (if (empty-termlist? L1)
+      (list (the-empty-termlist)
+            (the-empty-termlist))
+      (let ((t1 (first-term L1))
+            (t2 (first-term L2)))
+        (if (> (order t2) (order t1))
+            (list (the-empty-termlist) L1)
+            (let ((new-c (div (coeff t1)
+                              (coeff t2)))
+                  (new-o (- (order t1)
+                            (order t2))))
+              (let ((rest-of-result
+                     ⟨@var{tính phần còn lại của kết quả
+                     đệ quy}⟩ ))
+                ⟨@var{tạo kết quả hoàn chỉnh}⟩ ))))))
+@end lisp
+@end quotation
+
+@subsubheading Phân cấp kiểu trong đại số ký hiệu
+
+Hệ thống đa thức của chúng ta minh họa cách các đối tượng của một kiểu (đa
+thức) thực tế có thể là các đối tượng phức tạp có các đối tượng thuộc nhiều
+kiểu khác nhau như các phần. Điều này không gây ra khó khăn thực sự trong việc
+định nghĩa các phép toán tổng quát. Chúng ta chỉ cần cài đặt các phép toán
+tổng quát thích hợp để thực hiện các thao tác cần thiết trên các phần của các
+kiểu phức hợp. Trên thực tế, chúng ta đã thấy rằng đa thức tạo thành một loại
+``trừu tượng dữ liệu đệ quy'', trong đó các phần của đa thức có thể bản thân
+là đa thức. Các phép toán tổng quát và phong cách lập trình hướng dữ liệu của
+chúng ta có thể xử lý sự phức tạp này không mấy khó khăn.
+
+Mặt khác, đại số đa thức là hệ thống mà các kiểu dữ liệu không thể được sắp
+xếp tự nhiên trong tháp. Ví dụ, có thể có đa thức theo @math{x} có hệ số là
+đa thức theo @math{y}. Cũng có thể có đa thức theo @math{y} có hệ số là đa thức
+theo @math{x}. Không kiểu nào trong số này ``cao hơn'' kiểu kia theo bất kỳ
+cách tự nhiên nào, nhưng thường cần phải cộng các phần tử từ mỗi tập hợp. Có
+một số cách để làm điều này. Một khả năng là chuyển đổi một đa thức sang kiểu
+của đa thức kia bằng cách mở rộng và sắp xếp lại các hạng tử để cả hai đa thức
+đều có cùng biến chính. Có thể áp đặt cấu trúc giống tháp bằng cách sắp xếp
+thứ tự các biến và do đó luôn chuyển đổi đa thức nào thành ``dạng chính tắc''
+với biến ưu tiên cao nhất là trội và các biến ưu tiên thấp hơn được chôn vùi
+trong các hệ số. Chiến lược này hoạt động khá tốt, ngoại trừ việc chuyển đổi
+có thể mở rộng đa thức một cách không cần thiết, làm cho nó khó đọc và có thể
+kém hiệu quả hơn để làm việc. Chiến lược tháp chắc chắn không tự nhiên cho
+lĩnh vực này hoặc bất kỳ lĩnh vực nào mà người dùng có thể tạo ra các kiểu mới
+động bằng cách sử dụng các kiểu cũ theo nhiều dạng kết hợp khác nhau, chẳng
+hạn như hàm lượng giác, chuỗi lũy thừa, và tích phân.
+
+Không có gì ngạc nhiên khi kiểm soát ép kiểu là vấn đề nghiêm trọng trong thiết
+kế các hệ thống thao tác đại số quy mô lớn. Phần lớn sự phức tạp của các hệ
+thống như vậy liên quan đến các quan hệ giữa các kiểu đa dạng. Thực ra, có thể
+nói công bằng rằng chúng ta vẫn chưa hoàn toàn hiểu ép kiểu. Trên thực tế,
+chúng ta vẫn chưa hoàn toàn hiểu khái niệm kiểu dữ liệu. Tuy nhiên, những gì
+chúng ta biết cung cấp cho chúng ta các nguyên tắc cấu trúc và tính mô-đun
+mạnh mẽ để hỗ trợ thiết kế các hệ thống lớn.
+
+@quotation
+@strong{@anchor{Exercise 2.92}Bài tập 2.92:} Bằng cách áp đặt thứ tự trên
+các biến, mở rộng gói đa thức để phép cộng và nhân đa thức hoạt động cho các
+đa thức theo các biến khác nhau. (Đây không dễ!)
+@end quotation
+
+@subsubheading Bài tập mở rộng: Hàm hữu tỉ
+
+Chúng ta có thể mở rộng hệ thống số học tổng quát để bao gồm @newterm{hàm hữu tỉ}.
+Đây là các ``phân số'' có tử số và mẫu số là đa thức, chẳng hạn như
+@ifinfo
+
+@example
+ x + 1
+-------
+x^3 - 1
+@end example
+
+@end ifinfo
+@tex
+\[ % :58:
+  {{x + 1 \over x^3 - 1}.}  \]
+@end tex
+Hệ thống nên có thể cộng, trừ, nhân, và chia các hàm hữu tỉ, và thực hiện các
+tính toán như
+@ifinfo
+
+@example
+ x + 1       x      x^3 + 2x^2 + 3x + 1
+------- + ------- = -------------------
+x^3 - 1   x^2 - 1    x^4 + x^3 - x - 1
+@end example
+
+@end ifinfo
+@tex
+\[ % :59:
+  {x + 1 \over x^3 - 1} + {x \over x^2 - 1} \,=\,
+  {{x^3 + 2x^2 + 3x + 1 \over x^4 + x^3 - x - 1}.}  \]
+@end tex
+@noindent
+(Ở đây tổng đã được rút gọn bằng cách loại bỏ các nhân tử chung. Phép nhân
+chéo thông thường sẽ tạo ra đa thức bậc bốn chia cho đa thức bậc năm.)
+
+Nếu chúng ta sửa đổi gói số học hữu tỉ để sử dụng các phép toán tổng quát,
+thì nó sẽ làm những gì chúng ta muốn, ngoại trừ bài toán rút gọn phân số đến
+dạng thấp nhất.
+
+@quotation
+@strong{@anchor{Exercise 2.93}Bài tập 2.93:} Sửa đổi gói số học hữu tỉ để
+sử dụng các phép toán tổng quát, nhưng thay đổi @code{make-rat} sao cho nó
+không cố rút gọn phân số đến dạng thấp nhất. Kiểm tra hệ thống bằng cách gọi
+@code{make-rational} trên hai đa thức để tạo ra hàm hữu tỉ:
+
+@lisp
+(define p1 (make-polynomial 'x '((2 1) (0 1))))
+(define p2 (make-polynomial 'x '((3 1) (0 1))))
+(define rf (make-rational p2 p1))
+@end lisp
+
+Bây giờ cộng @code{rf} với chính nó, sử dụng @code{add}. Bạn sẽ quan sát thấy
+rằng thủ tục cộng này không rút gọn phân số đến dạng thấp nhất.
+@end quotation
+
+@noindent
+Chúng ta có thể rút gọn phân số đa thức đến dạng thấp nhất sử dụng cùng ý
+tưởng chúng ta đã dùng với số nguyên: sửa đổi @code{make-rat} để chia cả tử
+số và mẫu số cho ước số chung lớn nhất của chúng. Khái niệm ``ước số chung
+lớn nhất'' có nghĩa với đa thức. Trên thực tế, chúng ta có thể tính UCLN của
+hai đa thức sử dụng về cơ bản cùng Thuật toán Euclid hoạt động cho số nguyên.@footnote{Thực tế rằng Thuật toán Euclid hoạt động cho đa thức được chính thức
+hóa trong đại số bằng cách nói rằng các đa thức tạo thành một loại miền đại
+số gọi là @newterm{vành Euclid}. Vành Euclid là miền cho phép cộng, trừ, và
+nhân giao hoán, cùng với cách gán cho mỗi phần tử @math{x} của vành một số
+nguyên dương ``đo lường'' @math{{m(x)}} với các tính chất rằng @math{{m(xy) \ge m(x)}}
+với mọi @math{x} và @math{y} khác không và với bất kỳ @math{x} và @math{y} nào,
+tồn tại @math{q} sao cho @math{{y = qx + r}} và hoặc @math{{r = 0}} hoặc
+@math{{m(r) < m(x)}}. Từ quan điểm trừu tượng, đây là những gì cần thiết để
+chứng minh Thuật toán Euclid hoạt động. Với miền số nguyên, đo lường @math{m}
+của số nguyên là giá trị tuyệt đối của chính số nguyên đó. Với miền đa thức,
+đo lường của đa thức là bậc của nó.} Phiên bản số nguyên là
+
+@lisp
+(define (gcd a b)
+  (if (= b 0)
+      a
+      (gcd b (remainder a b))))
+@end lisp
+
+@noindent
+Sử dụng điều này, chúng ta có thể thực hiện sửa đổi rõ ràng để định nghĩa phép
+toán UCLN hoạt động trên danh sách hạng tử:
+
+@lisp
+(define (gcd-terms a b)
+  (if (empty-termlist? b)
+      a
+      (gcd-terms b (remainder-terms a b))))
+@end lisp
+
+@noindent
+trong đó @code{remainder-terms} chọn thành phần phần dư của danh sách được trả
+về bởi phép toán chia danh sách hạng tử @code{div-terms} đã được cài đặt trong
+@ref{Exercise 2.91}.
+
+@quotation
+@strong{@anchor{Exercise 2.94}Bài tập 2.94:} Sử dụng @code{div-terms}, cài
+đặt thủ tục @code{remainder-terms} và dùng điều này để định nghĩa @code{gcd-terms}
+như trên. Bây giờ viết thủ tục @code{gcd-poly} tính UCLN đa thức của hai poly.
+(Thủ tục nên báo lỗi nếu hai poly không có cùng biến.) Cài đặt trong hệ thống
+phép toán tổng quát @code{greatest-common-divisor} rút gọn thành @code{gcd-poly}
+cho đa thức và thành @code{gcd} thông thường cho số thông thường. Để thử
+nghiệm, hãy thử
+
+@lisp
+(define p1
+  (make-polynomial
+   'x '((4 1) (3 -1) (2 -2) (1 2))))
+
+(define p2
+  (make-polynomial
+   'x '((3 1) (1 -1))))
+
+(greatest-common-divisor p1 p2)
+@end lisp
+
+@noindent
+và kiểm tra kết quả bằng tay.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 2.95}Bài tập 2.95:} Định nghĩa @math{P_1}, @math{P_2},
+và @math{P_3} là các đa thức
+@ifinfo
+
+@example
+P_1 : x^2 - 2x + 1
+
+P_2 : 11x^2 + 7
+
+P_3 : 13x + 5
+@end example
+
+@end ifinfo
+@tex
+\[ % :60:
+\begin{array}{rl}
+  P_1:  &   x^2 - 2x + 1, \\
+  P_2:  &   11x^2 + 7,    \\
+  P_3:  &   13x + 5.
+\end{array}
+\]
+@end tex
+Bây giờ định nghĩa @math{Q_1} là tích của @math{P_1} và @math{P_2}, và @math{Q_2}
+là tích của @math{P_1} và @math{P_3}, và dùng @code{greatest-common-divisor}
+(@ref{Exercise 2.94}) để tính UCLN của @math{Q_1} và @math{Q_2}. Lưu ý rằng
+câu trả lời không giống @math{P_1}. Ví dụ này đưa các phép toán không nguyên
+vào tính toán, gây khó khăn với thuật toán UCLN.@footnote{Trong cài đặt như
+MIT Scheme, điều này tạo ra đa thức thực sự là ước số của @math{Q_1} và @math{Q_2},
+nhưng với hệ số hữu tỉ. Trong nhiều hệ thống Scheme khác, trong đó phép chia số
+nguyên có thể tạo ra số thập phân có độ chính xác hạn chế, chúng ta có thể không
+nhận được ước số hợp lệ.} Để hiểu những gì đang xảy ra, hãy thử theo dõi
+@code{gcd-terms} khi tính UCLN hoặc thử thực hiện phép chia bằng tay.
+@end quotation
+
+@noindent
+Chúng ta có thể giải quyết bài toán được hiển thị trong @ref{Exercise 2.95}
+nếu chúng ta sử dụng sửa đổi sau của thuật toán UCLN (chỉ thực sự hoạt động
+trong trường hợp đa thức với hệ số nguyên). Trước khi thực hiện bất kỳ phép
+chia đa thức nào trong tính toán UCLN, chúng ta nhân số bị chia với một hệ số
+hằng số nguyên, được chọn để đảm bảo rằng không có phân số nào phát sinh trong
+quá trình chia. Câu trả lời của chúng ta do đó sẽ khác với UCLN thực sự một hệ
+số hằng số nguyên, nhưng điều này không quan trọng trong trường hợp rút gọn hàm
+hữu tỉ đến dạng thấp nhất; UCLN sẽ được dùng để chia cả tử số và mẫu số, vì
+vậy hệ số hằng số nguyên sẽ tự triệt tiêu.
+
+Chính xác hơn, nếu @math{P} và @math{Q} là đa thức, cho @math{O_1} là bậc của
+@math{P} (tức là bậc của hạng tử lớn nhất của @math{P}) và @math{O_2} là bậc
+của @math{Q}. Cho @math{c} là hệ số đầu của @math{Q}. Thì có thể chứng minh
+rằng, nếu chúng ta nhân @math{P} với @newterm{hệ số nguyên hóa} @math{c^{1 + O_1 - O_2}},
+đa thức kết quả có thể được chia bởi @math{Q} sử dụng thuật toán @code{div-terms}
+mà không tạo ra phân số nào. Phép toán nhân số bị chia với hằng số này rồi
+chia được đôi khi gọi là @newterm{phép chia giả} của @math{P} cho @math{Q}. Phần
+dư của phép chia được gọi là @newterm{phần dư giả}.
+
+@quotation
+@strong{@anchor{Exercise 2.96}Bài tập 2.96:}
+@enumerate a
+
+@item
+Cài đặt thủ tục @code{pseudoremainder-terms}, giống như @code{remainder-terms}
+ngoại trừ nó nhân số bị chia với hệ số nguyên hóa được mô tả ở trên trước khi
+gọi @code{div-terms}. Sửa đổi @code{gcd-terms} để sử dụng
+@code{pseudoremainder-terms}, và xác minh rằng @code{greatest-common-divisor}
+bây giờ tạo ra câu trả lời với hệ số nguyên trong ví dụ trong @ref{Exercise 2.95}.
+
+@item
+UCLN bây giờ có hệ số nguyên, nhưng chúng lớn hơn những hệ số của @math{P_1}.
+Sửa đổi @code{gcd-terms} sao cho nó loại bỏ các nhân tử chung khỏi hệ số của
+câu trả lời bằng cách chia tất cả các hệ số cho ước số chung lớn nhất (số nguyên)
+của chúng.
+
+@end enumerate
+@end quotation
+
+@noindent
+Vì vậy, đây là cách rút gọn hàm hữu tỉ đến dạng thấp nhất:
+
+@itemize @bullet
+
+@item
+Tính UCLN của tử số và mẫu số, sử dụng phiên bản @code{gcd-terms} từ
+@ref{Exercise 2.96}.
+
+@item
+Khi bạn thu được UCLN, nhân cả tử số và mẫu số với cùng hệ số nguyên hóa trước
+khi chia cho UCLN, để phép chia cho UCLN sẽ không tạo ra hệ số không nguyên.
+Là hệ số bạn có thể sử dụng hệ số đầu của UCLN lũy thừa @math{{1 + O_1 - O_2}},
+trong đó @math{O_2} là bậc của UCLN và @math{O_1} là cực đại của bậc của tử số
+và mẫu số. Điều này sẽ đảm bảo rằng chia tử số và mẫu số cho UCLN sẽ không
+tạo ra phân số nào.
+
+@item
+Kết quả của phép toán này sẽ là tử số và mẫu số với hệ số nguyên. Các hệ số
+thường sẽ rất lớn do tất cả các hệ số nguyên hóa, vì vậy bước cuối cùng là
+loại bỏ các nhân tử dư thừa bằng cách tính ước số chung lớn nhất (số nguyên)
+của tất cả hệ số của tử số và mẫu số và chia bởi hệ số này.
+
+@end itemize
+
+@quotation
+@strong{@anchor{Exercise 2.97}Bài tập 2.97:}
+@enumerate a
+
+@item
+Cài đặt thuật toán này như thủ tục @code{reduce-terms} nhận hai danh sách hạng
+tử @code{n} và @code{d} làm đối số và trả về danh sách @code{nn}, @code{dd},
+là @code{n} và @code{d} được rút gọn đến dạng thấp nhất qua thuật toán nêu
+ở trên. Cũng viết thủ tục @code{reduce-poly}, tương tự @code{add-poly}, kiểm
+tra xem hai poly có cùng biến không. Nếu có, @code{reduce-poly} bóc bỏ biến
+và truyền bài toán cho @code{reduce-terms}, rồi gắn lại biến vào hai danh sách
+hạng tử được cung cấp bởi @code{reduce-terms}.
+
+@item
+Định nghĩa thủ tục tương tự @code{reduce-terms} làm những gì @code{make-rat}
+ban đầu đã làm với số nguyên:
+
+@lisp
+(define (reduce-integers n d)
+  (let ((g (gcd n d)))
+    (list (/ n g) (/ d g))))
+@end lisp
+
+và định nghĩa @code{reduce} như phép toán tổng quát gọi @code{apply-generic}
+để phân phối đến @code{reduce-poly} (cho đối số @code{polynomial}) hoặc
+@code{reduce-integers} (cho đối số @code{scheme-number}). Bây giờ bạn có thể
+dễ dàng làm cho gói số học hữu tỉ rút gọn phân số đến dạng thấp nhất bằng
+cách có @code{make-rat} gọi @code{reduce} trước khi kết hợp tử số và mẫu số
+cho trước để tạo số hữu tỉ. Hệ thống bây giờ xử lý các biểu thức hữu tỉ theo
+số nguyên hoặc đa thức. Để kiểm tra chương trình, hãy thử ví dụ ở đầu bài tập
+mở rộng này:
+
+@lisp
+(define p1
+  (make-polynomial 'x '((1 1) (0 1))))
+(define p2
+  (make-polynomial 'x '((3 1) (0 -1))))
+(define p3
+  (make-polynomial 'x '((1 1))))
+(define p4
+  (make-polynomial 'x '((2 1) (0 -1))))
+(define rf1 (make-rational p1 p2))
+(define rf2 (make-rational p3 p4))
+(add rf1 rf2)
+@end lisp
+
+Xem liệu bạn có nhận được câu trả lời đúng, được rút gọn đúng đắn đến dạng
+thấp nhất.
+@end enumerate
+@end quotation
+
+@noindent
+Tính toán UCLN là trung tâm của bất kỳ hệ thống nào thực hiện các phép toán
+trên hàm hữu tỉ. Thuật toán được sử dụng ở trên, mặc dù đơn giản về mặt toán
+học, cực kỳ chậm. Sự chậm này là do một phần lớn số phép chia và một phần do
+kích thước khổng lồ của các hệ số trung gian được tạo ra bởi các phép chia giả.
+Một trong những lĩnh vực tích cực trong sự phát triển của các hệ thống thao tác
+đại số là thiết kế các thuật toán tốt hơn để tính UCLN đa thức.@footnote{Một
+phương pháp cực kỳ hiệu quả và thanh lịch để tính UCLN đa thức đã được phát
+hiện bởi Richard @ref{Zippel (1979)}. Phương pháp là thuật toán xác suất, giống
+như kiểm tra nhanh cho tính nguyên tố mà chúng ta đã thảo luận trong @ref{Chapter 1}.
+Cuốn sách của Zippel (@ref{Zippel 1993}) mô tả phương pháp này, cùng với các
+cách khác để tính UCLN đa thức.}
