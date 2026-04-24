@@ -28,6 +28,19 @@ jobs:
       - name: Pull build image
         run: docker pull ${{ env.BUILD_IMAGE }}
 
+      - name: Diagnostic
+        run: |
+          docker run --rm ${{ env.BUILD_IMAGE }} bash -c '
+            which texi2any; texi2any --version | head -1;
+            ls -la /usr/local/share/texinfo/Texinfo/ 2>&1 | head -5;
+            ls -la /usr/local/share/texinfo/Texinfo/Convert/ 2>&1 | head;
+            perl -e "print join(\"\n\", @INC)";
+            echo;
+            node -e "console.log(process.version)";
+            node -e "require(\"mathjax-full/es5/node-main\"); console.log(\"mathjax ok\")";
+            node -e "require(\"jsdom\"); console.log(\"jsdom ok\")";
+          '
+
       - name: Build HTML for non-English languages
         # English HTML is pre-built and committed to src/en_US/.
         # Other languages are generated here from their books/ sources.
