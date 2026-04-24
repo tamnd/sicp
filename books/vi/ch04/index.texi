@@ -1,0 +1,170 @@
+@node    Chapter 4, 4.1, 3.5, Top
+@chapter Trừu Tượng Hóa Siêu Ngôn Ngữ
+
+@quotation
+@dots{} Chính những từ mang phép màu---Abracadabra, Vừng ơi hãy mở ra, và
+những từ khác---nhưng những từ kỳ diệu trong câu chuyện này không kỳ diệu
+trong câu chuyện kia. Phép màu thực sự là hiểu những từ nào có tác dụng,
+khi nào, và cho mục đích gì; bí quyết là học chính cái bí quyết đó.
+
+@dots{} Và những từ đó được tạo nên từ các chữ cái trong bảng chữ cái của
+chúng ta: vài chục nét nguệch ngoạc mà chúng ta có thể vẽ bằng bút. Đây
+chính là chìa khóa! Và cũng là kho báu, nếu chúng ta có thể chạm tay vào!
+Cứ như thể---cứ như thể chìa khóa của kho báu @emph{chính là} kho báu vậy!
+
+---John Barth, @cite{Chimera}
+@end quotation
+
+
+@noindent
+Trong nghiên cứu về thiết kế chương trình, chúng ta đã thấy rằng các lập
+trình viên chuyên nghiệp kiểm soát sự phức tạp của các thiết kế bằng cùng
+các kỹ thuật tổng quát được dùng bởi các nhà thiết kế của tất cả các hệ
+thống phức tạp. Họ kết hợp các phần tử nguyên thủy để tạo ra các đối tượng
+phức hợp, họ trừu tượng hóa các đối tượng phức hợp để tạo ra các khối xây
+dựng cấp cao hơn, và họ duy trì tính mô-đun bằng cách áp dụng các quan điểm
+phù hợp ở quy mô lớn về cấu trúc hệ thống. Trong việc minh họa các kỹ thuật
+này, chúng ta đã dùng Lisp như một ngôn ngữ để mô tả các quá trình và xây
+dựng các đối tượng và quá trình dữ liệu tính toán để mô hình hóa các hiện
+tượng phức tạp trong thế giới thực. Tuy nhiên, khi chúng ta đối mặt với các
+bài toán ngày càng phức tạp hơn, chúng ta sẽ thấy rằng Lisp, hay thực ra
+bất kỳ ngôn ngữ lập trình cố định nào, cũng không đủ cho nhu cầu của chúng
+ta. Chúng ta phải liên tục quay sang các ngôn ngữ mới để diễn đạt ý tưởng
+của mình hiệu quả hơn. Thiết lập các ngôn ngữ mới là một chiến lược mạnh mẽ
+để kiểm soát sự phức tạp trong thiết kế kỹ thuật; chúng ta thường có thể
+tăng cường khả năng xử lý một bài toán phức tạp bằng cách áp dụng một ngôn
+ngữ mới cho phép chúng ta mô tả (và do đó suy nghĩ về) bài toán theo một
+cách khác, sử dụng các nguyên thủy, các phương tiện kết hợp và các phương
+tiện trừu tượng hóa đặc biệt phù hợp với bài toán đang giải.@footnote{Ý
+tưởng tương tự xuất hiện khắp nơi trong mọi lĩnh vực kỹ thuật. Ví dụ, các
+kỹ sư điện dùng nhiều ngôn ngữ khác nhau để mô tả các mạch. Hai trong số
+đó là ngôn ngữ của các @newterm{mạng} điện và ngôn ngữ của các @newterm{hệ
+thống} điện. Ngôn ngữ mạng nhấn mạnh việc mô hình hóa vật lý của các thiết
+bị theo các phần tử điện rời rạc. Các đối tượng nguyên thủy của ngôn ngữ
+mạng là các thành phần điện nguyên thủy như điện trở, tụ điện, cuộn cảm và
+transistor, được đặc trưng theo các biến vật lý gọi là điện áp và dòng điện.
+Khi mô tả các mạch bằng ngôn ngữ mạng, kỹ sư quan tâm đến các đặc điểm vật
+lý của thiết kế. Ngược lại, các đối tượng nguyên thủy của ngôn ngữ hệ thống
+là các mô-đun xử lý tín hiệu như bộ lọc và bộ khuếch đại. Chỉ hành vi chức
+năng của các mô-đun là có liên quan, và các tín hiệu được thao tác mà không
+quan tâm đến hiện thực vật lý của chúng như điện áp và dòng điện. Ngôn ngữ
+hệ thống được xây dựng trên ngôn ngữ mạng, theo nghĩa là các phần tử của
+các hệ thống xử lý tín hiệu được xây dựng từ các mạng điện. Tuy nhiên ở đây,
+mối quan tâm là về tổ chức quy mô lớn của các thiết bị điện để giải một bài
+toán ứng dụng cho trước; tính khả thi vật lý của các phần được giả định. Bộ
+sưu tập ngôn ngữ phân lớp này là một ví dụ khác về kỹ thuật thiết kế phân
+tầng được minh họa bởi ngôn ngữ hình ảnh trong @ref{2.2.4}.}
+
+Lập trình được phú cho vô số ngôn ngữ. Có các ngôn ngữ vật lý, chẳng hạn
+như các ngôn ngữ máy cho các máy tính cụ thể. Các ngôn ngữ này liên quan
+đến việc biểu diễn dữ liệu và điều khiển theo các bit lưu trữ riêng lẻ và
+các lệnh máy nguyên thủy. Lập trình viên ngôn ngữ máy quan tâm đến việc
+dùng phần cứng cho trước để xây dựng các hệ thống và tiện ích cho hiện thực
+hiệu quả các tính toán hạn chế tài nguyên. Các ngôn ngữ cấp cao, được xây
+dựng trên một nền ngôn ngữ máy, ẩn đi các mối quan tâm về biểu diễn dữ liệu
+như các bộ sưu tập bit và biểu diễn các chương trình như các dãy lệnh nguyên
+thủy. Các ngôn ngữ này có các phương tiện kết hợp và trừu tượng hóa, chẳng
+hạn như định nghĩa thủ tục, phù hợp với tổ chức quy mô lớn hơn của các hệ
+thống.
+
+@newterm{Trừu tượng hóa siêu ngôn ngữ}---thiết lập các ngôn ngữ mới---đóng
+vai trò quan trọng trong tất cả các ngành thiết kế kỹ thuật. Nó đặc biệt
+quan trọng đối với lập trình máy tính, vì trong lập trình chúng ta không chỉ
+có thể xây dựng các ngôn ngữ mới mà còn có thể hiện thực các ngôn ngữ này
+bằng cách xây dựng các trình định giá. Một @newterm{trình định giá} (hoặc
+@newterm{trình thông dịch}) cho một ngôn ngữ lập trình là một thủ tục mà,
+khi áp dụng cho một biểu thức của ngôn ngữ, thực hiện các hành động cần
+thiết để định giá biểu thức đó.
+
+Đây không phải là phóng đại khi coi điều này là ý tưởng căn bản nhất trong
+lập trình:
+
+@quotation
+Trình định giá, xác định ý nghĩa của các biểu thức trong một ngôn ngữ lập
+trình, chỉ là một chương trình khác.
+@end quotation
+
+@noindent
+Để nhận thức được điểm này là để thay đổi hình ảnh của chúng ta về bản thân
+như những lập trình viên. Chúng ta bắt đầu thấy mình như những người thiết
+kế ngôn ngữ, chứ không chỉ là người dùng các ngôn ngữ được thiết kế bởi
+người khác.
+
+Trên thực tế, chúng ta có thể coi gần như bất kỳ chương trình nào là trình
+định giá của một số ngôn ngữ. Ví dụ, hệ thống thao tác đa thức của
+@ref{2.5.3} thể hiện các quy tắc số học đa thức và hiện thực chúng theo các
+phép toán trên dữ liệu có cấu trúc danh sách. Nếu chúng ta tăng cường hệ
+thống này với các thủ tục để đọc và in các biểu thức đa thức, chúng ta có
+lõi của một ngôn ngữ đặc biệt để xử lý các bài toán trong toán học ký hiệu.
+Bộ mô phỏng logic số của @ref{3.3.4} và bộ lan truyền ràng buộc của
+@ref{3.3.5} là các ngôn ngữ hợp lệ theo đúng nghĩa của chúng, mỗi cái có
+các nguyên thủy, các phương tiện kết hợp và các phương tiện trừu tượng hóa
+riêng. Nhìn từ góc độ này, công nghệ để đối phó với các hệ thống máy tính
+quy mô lớn hợp nhất với công nghệ để xây dựng các ngôn ngữ máy tính mới, và
+khoa học máy tính bản thân không hơn (và không kém) gì học phần của việc xây
+dựng các ngôn ngữ mô tả phù hợp.
+
+Bây giờ chúng ta bắt đầu một chuyến tham quan về công nghệ mà theo đó các
+ngôn ngữ được thiết lập theo các ngôn ngữ khác. Trong chương này chúng ta sẽ
+dùng Lisp làm cơ sở, hiện thực các trình định giá như các thủ tục Lisp. Lisp
+đặc biệt phù hợp cho nhiệm vụ này, vì khả năng biểu diễn và thao tác các
+biểu thức ký hiệu. Chúng ta sẽ thực hiện bước đầu tiên trong việc hiểu cách
+các ngôn ngữ được hiện thực bằng cách xây dựng một trình định giá cho chính
+Lisp. Ngôn ngữ được hiện thực bởi trình định giá của chúng ta sẽ là một tập
+con của phương ngữ Scheme của Lisp mà chúng ta dùng trong cuốn sách này.
+Mặc dù trình định giá được mô tả trong chương này được viết cho một phương
+ngữ cụ thể của Lisp, nó chứa cấu trúc thiết yếu của một trình định giá cho
+bất kỳ ngôn ngữ hướng biểu thức nào được thiết kế để viết các chương trình
+cho một máy tuần tự. (Trên thực tế, hầu hết các bộ xử lý ngôn ngữ đều chứa,
+sâu bên trong chúng, một trình định giá Lisp nhỏ.) Trình định giá đã được
+đơn giản hóa cho mục đích minh họa và thảo luận, và một số tính năng đã bị
+bỏ qua mà sẽ quan trọng cần đưa vào trong một hệ thống Lisp chất lượng sản
+xuất. Tuy nhiên, trình định giá đơn giản này là đủ để thực thi hầu hết các
+chương trình trong cuốn sách này.@footnote{Các tính năng quan trọng nhất mà
+trình định giá của chúng ta bỏ qua là các cơ chế xử lý lỗi và hỗ trợ gỡ
+lỗi. Để thảo luận sâu hơn về các trình định giá, xem @ref{Friedman et al. 1992},
+trình bày về các ngôn ngữ lập trình thông qua một chuỗi các trình định giá
+được viết bằng Scheme.}
+
+Một ưu điểm quan trọng của việc làm cho trình định giá có thể truy cập như
+một chương trình Lisp là chúng ta có thể hiện thực các quy tắc định giá thay
+thế bằng cách mô tả chúng như các sửa đổi đối với chương trình trình định
+giá. Một nơi mà chúng ta có thể sử dụng sức mạnh này để đạt hiệu quả tốt là
+để có thêm quyền kiểm soát các cách mà các mô hình tính toán thể hiện khái
+niệm về thời gian, điều rất trung tâm trong thảo luận ở @ref{Chapter 3}. Ở
+đó, chúng ta đã giảm thiểu một số phức tạp của trạng thái và phép gán bằng
+cách dùng các luồng để tách biệt biểu diễn thời gian trong thế giới khỏi
+thời gian trong máy tính. Tuy nhiên, các chương trình luồng của chúng ta đôi
+khi khó sử dụng, vì chúng bị ràng buộc bởi định giá theo thứ tự áp dụng của
+Scheme. Trong @ref{4.2}, chúng ta sẽ thay đổi ngôn ngữ nền để cung cấp cho
+một cách tiếp cận tinh tế hơn, bằng cách sửa đổi trình định giá để cung cấp
+cho @newterm{định giá theo thứ tự thông thường}.
+
+@ref{4.3} hiện thực một thay đổi ngôn ngữ tham vọng hơn, theo đó các biểu
+thức có nhiều giá trị, thay vì chỉ một giá trị duy nhất. Trong ngôn ngữ
+@newterm{tính toán không xác định} này, việc diễn đạt các quá trình tạo ra
+tất cả các giá trị có thể cho các biểu thức và sau đó tìm kiếm các giá trị
+thỏa mãn một số ràng buộc là tự nhiên. Theo nghĩa của các mô hình tính toán
+và thời gian, điều này giống như để thời gian phân nhánh thành một tập hợp
+``các tương lai có thể'' và sau đó tìm kiếm các dòng thời gian phù hợp. Với
+trình định giá không xác định của chúng ta, việc theo dõi nhiều giá trị và
+thực hiện tìm kiếm được xử lý tự động bởi cơ chế nền của ngôn ngữ.
+
+Trong @ref{4.4} chúng ta hiện thực một ngôn ngữ @newterm{lập trình logic}
+trong đó tri thức được diễn đạt theo các quan hệ, thay vì theo các tính toán
+với đầu vào và đầu ra. Mặc dù điều này làm cho ngôn ngữ khác hoàn toàn so
+với Lisp, hay thực ra so với bất kỳ ngôn ngữ thông thường nào, chúng ta sẽ
+thấy rằng trình định giá lập trình logic chia sẻ cấu trúc thiết yếu của
+trình định giá Lisp.
+
+@menu
+* 4.1::              The Metacircular Evaluator
+* 4.2::              Variations on a Scheme -- Lazy Evaluation
+* 4.3::              Variations on a Scheme -- Nondeterministic Computing
+* 4.4::              Logic Programming
+@end menu
+
+@include s01/index.texi
+@include s02/index.texi
+@include s03/index.texi
+@include s04/index.texi

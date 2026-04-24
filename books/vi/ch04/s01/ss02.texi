@@ -1,0 +1,487 @@
+@node	4.1.2, 4.1.3, 4.1.1, 4.1
+@subsection Biểu Diễn Các Biểu Thức
+
+Trình định giá gợi nhớ đến chương trình vi phân ký hiệu được thảo luận trong
+@ref{2.3.2}. Cả hai chương trình đều hoạt động trên các biểu thức ký hiệu.
+Trong cả hai chương trình, kết quả của việc thao tác trên một biểu thức phức
+hợp được xác định bằng cách thao tác đệ quy trên các phần của biểu thức và
+kết hợp các kết quả theo cách phụ thuộc vào kiểu của biểu thức. Trong cả hai
+chương trình, chúng ta đã dùng trừu tượng hóa dữ liệu để tách các quy tắc
+thao tác tổng quát khỏi các chi tiết về cách biểu thức được biểu diễn. Trong
+chương trình vi phân, điều này có nghĩa là cùng thủ tục vi phân có thể xử
+lý các biểu thức đại số ở dạng tiền tố, dạng trung tố, hoặc dạng khác. Đối
+với trình định giá, điều này có nghĩa là cú pháp của ngôn ngữ đang được định
+giá được xác định hoàn toàn bởi các thủ tục phân loại và trích xuất các phần
+của biểu thức.
+
+Đây là đặc tả cú pháp của ngôn ngữ của chúng ta:
+
+@itemize
+
+@item
+Các mục tự định giá duy nhất là các số và chuỗi:
+
+@lisp
+(define (self-evaluating? exp)
+  (cond ((number? exp) true)
+        ((string? exp) true)
+        (else false)))
+@end lisp
+
+@item
+Các biến được biểu diễn bởi các ký hiệu:
+
+@lisp
+(define (variable? exp) (symbol? exp))
+@end lisp
+
+@item
+Các trích dẫn có dạng @code{(quote ⟨@var{text-of-quotation}⟩)}:@footnote{Như
+đã đề cập trong @ref{2.3.1}, trình định giá nhìn thấy một biểu thức trích
+dẫn như một danh sách bắt đầu với @code{quote}, ngay cả khi biểu thức được
+nhập với dấu nháy đơn. Ví dụ, biểu thức @code{'a} sẽ được trình định giá
+nhìn thấy như @code{(quote a)}. Xem @ref{Exercise 2.55}.}
+
+@lisp
+(define (quoted? exp)
+  (tagged-list? exp 'quote))
+
+(define (text-of-quotation exp)
+  (cadr exp))
+@end lisp
+
+@code{Quoted?} được định nghĩa theo thủ tục @code{tagged-list?}, nhận biết
+các danh sách bắt đầu với một ký hiệu được chỉ định:
+
+@lisp
+(define (tagged-list? exp tag)
+  (if (pair? exp)
+      (eq? (car exp) tag)
+      false))
+@end lisp
+
+@item
+Các phép gán có dạng @code{(set! ⟨@var{var}⟩ ⟨@var{value}⟩)}:
+
+@lisp
+(define (assignment? exp)
+  (tagged-list? exp 'set!))
+
+(define (assignment-variable exp)
+  (cadr exp))
+
+(define (assignment-value exp) (caddr exp))
+@end lisp
+
+@item
+Các định nghĩa có dạng
+
+@lisp
+(define ⟨@var{var}⟩ ⟨@var{value}⟩)
+@end lisp
+
+@noindent
+hoặc dạng
+
+@lisp
+(define (⟨@var{var}⟩ ⟨@var{param₁}⟩ @r{…} ⟨@var{paramₙ}⟩)
+  ⟨@var{body}⟩)
+@end lisp
+
+Dạng sau (định nghĩa thủ tục chuẩn) là đường cú pháp cho
+
+@lisp
+(define ⟨@var{var}⟩
+  (lambda (⟨@var{param₁}⟩ @r{…} ⟨@var{paramₙ}⟩)
+    ⟨@var{body}⟩))
+@end lisp
+
+Các thủ tục cú pháp tương ứng như sau:
+
+@lisp
+(define (definition? exp)
+  (tagged-list? exp 'define))
+
+(define (definition-variable exp)
+  (if (symbol? (cadr exp))
+      (cadr exp)
+      (caadr exp)))
+
+(define (definition-value exp)
+  (if (symbol? (cadr exp))
+      (caddr exp)
+      (make-lambda
+       (cdadr exp)   @r{; formal parameters}
+       (cddr exp)))) @r{; body}
+@end lisp
+
+@item
+Các biểu thức @code{lambda} là các danh sách bắt đầu với ký hiệu
+@code{lambda}:
+
+@lisp
+(define (lambda? exp)
+  (tagged-list? exp 'lambda))
+(define (lambda-parameters exp) (cadr exp))
+(define (lambda-body exp) (cddr exp))
+@end lisp
+
+Chúng ta cũng cung cấp một bộ xây dựng cho các biểu thức @code{lambda},
+được dùng bởi @code{definition-value} ở trên:
+
+@lisp
+(define (make-lambda parameters body)
+  (cons 'lambda (cons parameters body)))
+@end lisp
+
+@item
+Các điều kiện bắt đầu bằng @code{if} và có một vị từ, một hệ quả, và một
+biểu thức thay thế (tùy chọn). Nếu biểu thức không có phần thay thế, chúng
+ta cung cấp @code{false} làm biểu thức thay thế.@footnote{Giá trị của một
+biểu thức @code{if} khi vị từ là sai và không có biểu thức thay thế là không
+xác định trong Scheme; chúng ta đã chọn ở đây làm cho nó là false. Chúng ta
+sẽ hỗ trợ việc dùng các biến @code{true} và @code{false} trong các biểu thức
+cần định giá bằng cách ràng buộc chúng trong môi trường toàn cục. Xem
+@ref{4.1.4}.}
+
+@lisp
+(define (if? exp) (tagged-list? exp 'if))
+(define (if-predicate exp) (cadr exp))
+(define (if-consequent exp) (caddr exp))
+(define (if-alternative exp)
+  (if (not (null? (cdddr exp)))
+      (cadddr exp)
+      'false))
+@end lisp
+
+Chúng ta cũng cung cấp một bộ xây dựng cho các biểu thức @code{if}, được
+dùng bởi @code{cond->if} để biến đổi các biểu thức @code{cond} thành các
+biểu thức @code{if}:
+
+@lisp
+(define (make-if predicate
+                 consequent
+                 alternative)
+  (list 'if
+        predicate
+        consequent
+        alternative))
+@end lisp
+
+@item
+@code{Begin} đóng gói một dãy biểu thức thành một biểu thức duy nhất. Chúng
+ta đưa vào các phép toán cú pháp trên các biểu thức @code{begin} để trích
+xuất dãy thực sự từ biểu thức @code{begin}, cũng như các bộ chọn trả về biểu
+thức đầu tiên và phần còn lại của các biểu thức trong dãy.@footnote{Các bộ
+chọn này cho một danh sách biểu thức---và các bộ chọn tương ứng cho một danh
+sách toán hạng---không nhằm mục đích là một trừu tượng hóa dữ liệu. Chúng
+được đưa vào như các tên ghi nhớ cho các phép toán danh sách cơ bản để giúp
+dễ dàng hiểu trình định giá điều khiển tường minh trong @ref{5.4}.}
+
+@lisp
+(define (begin? exp)
+  (tagged-list? exp 'begin))
+(define (begin-actions exp) (cdr exp))
+(define (last-exp? seq) (null? (cdr seq)))
+(define (first-exp seq) (car seq))
+(define (rest-exps seq) (cdr seq))
+@end lisp
+
+Chúng ta cũng đưa vào một bộ xây dựng @code{sequence->exp} (để dùng bởi
+@code{cond->if}) biến đổi một dãy thành một biểu thức duy nhất, dùng
+@code{begin} nếu cần:
+
+@lisp
+(define (sequence->exp seq)
+  (cond ((null? seq) seq)
+        ((last-exp? seq) (first-exp seq))
+        (else (make-begin seq))))
+
+(define (make-begin seq) (cons 'begin seq))
+@end lisp
+
+@item
+Một ứng dụng thủ tục là bất kỳ biểu thức phức hợp nào không phải là một
+trong các kiểu biểu thức trên. @code{car} của biểu thức là toán tử, và
+@code{cdr} là danh sách các toán hạng:
+
+@lisp
+(define (application? exp) (pair? exp))
+(define (operator exp) (car exp))
+(define (operands exp) (cdr exp))
+(define (no-operands? ops) (null? ops))
+(define (first-operand ops) (car ops))
+(define (rest-operands ops) (cdr ops))
+@end lisp
+
+@end itemize
+
+@subsubheading Các biểu thức dẫn xuất
+
+Một số dạng đặc biệt trong ngôn ngữ của chúng ta có thể được định nghĩa
+theo các biểu thức liên quan đến các dạng đặc biệt khác, thay vì được hiện
+thực trực tiếp. Một ví dụ là @code{cond}, có thể được hiện thực như một tổ
+các biểu thức @code{if}. Ví dụ, chúng ta có thể rút gọn bài toán định giá
+biểu thức
+
+@lisp
+(cond ((> x 0) x)
+      ((= x 0) (display 'zero) 0)
+      (else (- x)))
+@end lisp
+
+@noindent
+thành bài toán định giá biểu thức sau liên quan đến các biểu thức @code{if}
+và @code{begin}:
+
+@lisp
+(if (> x 0)
+    x
+    (if (= x 0)
+        (begin (display 'zero) 0)
+        (- x)))
+@end lisp
+
+@noindent
+Hiện thực định giá @code{cond} theo cách này đơn giản hóa trình định giá vì
+nó giảm số lượng các dạng đặc biệt mà quá trình định giá phải được chỉ định
+tường minh.
+
+Chúng ta đưa vào các thủ tục cú pháp trích xuất các phần của biểu thức
+@code{cond}, và một thủ tục @code{cond->if} biến đổi các biểu thức @code{cond}
+thành các biểu thức @code{if}. Một phân tích trường hợp bắt đầu với
+@code{cond} và có một danh sách các mệnh đề vị từ-hành động. Một mệnh đề là
+mệnh đề @code{else} nếu vị từ của nó là ký hiệu @code{else}.@footnote{Giá
+trị của một biểu thức @code{cond} khi tất cả các vị từ đều sai và không có
+mệnh đề @code{else} là không xác định trong Scheme; chúng ta đã chọn ở đây
+làm cho nó là false.}
+
+@lisp
+(define (cond? exp)
+  (tagged-list? exp 'cond))
+(define (cond-clauses exp) (cdr exp))
+(define (cond-else-clause? clause)
+  (eq? (cond-predicate clause) 'else))
+(define (cond-predicate clause)
+  (car clause))
+(define (cond-actions clause)
+  (cdr clause))
+(define (cond->if exp)
+  (expand-clauses (cond-clauses exp)))
+(define (expand-clauses clauses)
+  (if (null? clauses)
+      'false     @r{; no @code{else} clause}
+      (let ((first (car clauses))
+            (rest (cdr clauses)))
+        (if (cond-else-clause? first)
+            (if (null? rest)
+                (sequence->exp
+                 (cond-actions first))
+                (error "ELSE clause isn't
+                        last: COND->IF"
+                       clauses))
+            (make-if (cond-predicate first)
+                     (sequence->exp
+                      (cond-actions first))
+                     (expand-clauses
+                      rest))))))
+@end lisp
+
+@noindent
+Các biểu thức (chẳng hạn như @code{cond}) mà chúng ta chọn hiện thực như
+các phép biến đổi cú pháp được gọi là @newterm{biểu thức dẫn xuất}. Các biểu
+thức @code{let} cũng là các biểu thức dẫn xuất (xem
+@ref{Exercise 4.6}).@footnote{Các hệ thống Lisp thực tế cung cấp một cơ chế
+cho phép người dùng thêm các biểu thức dẫn xuất mới và chỉ định hiện thực
+của chúng như các phép biến đổi cú pháp mà không sửa đổi trình định giá.
+Phép biến đổi do người dùng định nghĩa như vậy được gọi là @newterm{macro}.
+Mặc dù dễ dàng thêm một cơ chế cơ bản để định nghĩa các macro, ngôn ngữ kết
+quả có các vấn đề xung đột tên tinh tế. Có nhiều nghiên cứu về các cơ chế
+định nghĩa macro không gây ra những khó khăn này. Xem, ví dụ,
+@ref{Kohlbecker 1986}, @ref{Clinger and Rees 1991}, và @ref{Hanson 1991}.}
+
+@quotation
+@strong{@anchor{Exercise 4.2}Exercise 4.2:} Louis Reasoner dự định sắp xếp
+lại các mệnh đề @code{cond} trong @code{eval} sao cho mệnh đề ứng dụng thủ
+tục xuất hiện trước mệnh đề phép gán. Anh lập luận rằng điều này sẽ làm cho
+trình thông dịch hiệu quả hơn: Vì các chương trình thường chứa nhiều ứng
+dụng hơn các phép gán, định nghĩa, v.v., @code{eval} đã sửa đổi của anh
+thường sẽ kiểm tra ít mệnh đề hơn @code{eval} ban đầu trước khi nhận biết
+kiểu của một biểu thức.
+
+@enumerate a
+
+@item
+Có gì sai với kế hoạch của Louis? (Gợi ý: @code{eval} của Louis sẽ làm gì
+với biểu thức @code{(define x 3)}?)
+
+@item
+Louis thất vọng vì kế hoạch của anh không hiệu quả. Anh sẵn sàng làm bất
+cứ điều gì để làm cho trình định giá của mình nhận biết các ứng dụng thủ
+tục trước khi nó kiểm tra hầu hết các loại biểu thức khác. Hãy giúp anh
+bằng cách thay đổi cú pháp của ngôn ngữ được định giá sao cho các ứng dụng
+thủ tục bắt đầu bằng @code{call}. Ví dụ, thay vì @code{(factorial 3)} chúng
+ta bây giờ sẽ phải viết @code{(call factorial 3)} và thay vì @code{(+ 1 2)}
+chúng ta sẽ phải viết @code{(call + 1 2)}.
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.3}Exercise 4.3:} Viết lại @code{eval} sao cho
+việc điều phối được thực hiện theo kiểu hướng dữ liệu. So sánh điều này với
+thủ tục vi phân hướng dữ liệu của @ref{Exercise 2.73}. (Bạn có thể dùng
+@code{car} của một biểu thức phức hợp làm kiểu của biểu thức, như phù hợp
+với cú pháp được hiện thực trong phần này.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.4}Exercise 4.4:} Nhắc lại các định nghĩa về các
+dạng đặc biệt @code{and} và @code{or} từ @ref{Chapter 1}:
+
+@itemize @bullet
+
+@item
+@code{and}: Các biểu thức được định giá từ trái sang phải. Nếu bất kỳ biểu
+thức nào định giá thành false, false được trả về; bất kỳ biểu thức còn lại
+nào đều không được định giá. Nếu tất cả các biểu thức định giá thành các giá
+trị đúng, giá trị của biểu thức cuối cùng được trả về. Nếu không có biểu
+thức nào thì true được trả về.
+
+@item
+@code{or}: Các biểu thức được định giá từ trái sang phải. Nếu bất kỳ biểu
+thức nào định giá thành một giá trị đúng, giá trị đó được trả về; bất kỳ
+biểu thức còn lại nào đều không được định giá. Nếu tất cả các biểu thức
+định giá thành false, hoặc nếu không có biểu thức nào, thì false được trả
+về.
+
+@end itemize
+
+Cài đặt @code{and} và @code{or} như các dạng đặc biệt mới cho trình định giá
+bằng cách định nghĩa các thủ tục cú pháp và thủ tục định giá @code{eval-and}
+và @code{eval-or} phù hợp. Ngoài ra, hãy chỉ ra cách hiện thực @code{and} và
+@code{or} như các biểu thức dẫn xuất.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.5}Exercise 4.5:} Scheme cho phép một cú pháp bổ
+sung cho các mệnh đề @code{cond},
+@code{(⟨@var{test}⟩ => ⟨@var{recipient}⟩)}. Nếu
+@code{⟨}@var{test}@code{⟩} định giá thành một giá trị đúng, thì
+@code{⟨}@var{recipient}@code{⟩} được định giá. Giá trị của nó phải là một thủ
+tục một đối số; thủ tục này sau đó được gọi trên giá trị của
+@code{⟨}@var{test}@code{⟩}, và kết quả được trả về là giá trị của biểu thức
+@code{cond}. Ví dụ
+
+@lisp
+(cond ((assoc 'b '((a 1) (b 2))) => cadr)
+      (else false))
+@end lisp
+
+@noindent
+trả về 2. Sửa đổi cách xử lý @code{cond} để nó hỗ trợ cú pháp mở rộng này.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.6}Exercise 4.6:} Các biểu thức @code{let} là các
+biểu thức dẫn xuất, vì
+
+@lisp
+(let ((⟨@var{var₁}⟩ ⟨@var{exp₁}⟩) @r{…} (⟨@var{varₙ}⟩ ⟨@var{expₙ}⟩))
+  ⟨@var{body}⟩)
+@end lisp
+
+@noindent
+tương đương với
+
+@lisp
+((lambda (⟨@var{var₁}⟩ @r{…} ⟨@var{varₙ}⟩)
+   ⟨@var{body}⟩)
+ ⟨@var{exp₁}⟩
+ @r{…}
+ ⟨@var{expₙ}⟩)
+@end lisp
+
+Hiện thực một phép biến đổi cú pháp @code{let->combination} rút gọn việc
+định giá các biểu thức @code{let} thành việc định giá các tổ hợp kiểu được
+trình bày ở trên, và thêm mệnh đề thích hợp vào @code{eval} để xử lý các
+biểu thức @code{let}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.7}Exercise 4.7:} @code{Let*} tương tự như
+@code{let}, ngoại trừ các ràng buộc của các biến @code{let*} được thực hiện
+tuần tự từ trái sang phải, và mỗi ràng buộc được tạo ra trong một môi trường
+mà tất cả các ràng buộc trước đó đều hiện hữu. Ví dụ
+
+@lisp
+(let* ((x 3)
+       (y (+ x 2))
+       (z (+ x y 5)))
+  (* x z))
+@end lisp
+
+@noindent
+trả về 39. Giải thích cách một biểu thức @code{let*} có thể được viết lại
+như một tập hợp các biểu thức @code{let} lồng nhau, và viết một thủ tục
+@code{let*->nested-lets} thực hiện phép biến đổi này. Nếu chúng ta đã hiện
+thực @code{let} (@ref{Exercise 4.6}) và muốn mở rộng trình định giá để xử
+lý @code{let*}, việc thêm một mệnh đề vào @code{eval} có hành động là
+
+@lisp
+(eval (let*->nested-lets exp) env)
+@end lisp
+
+@noindent
+có đủ không, hay chúng ta phải tường minh mở rộng @code{let*} theo các biểu
+thức không dẫn xuất?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.8}Exercise 4.8:} ``@code{let} có tên'' là một
+biến thể của @code{let} có dạng
+
+@lisp
+(let ⟨@var{var}⟩ ⟨@var{bindings}⟩ ⟨@var{body}⟩)
+@end lisp
+
+@code{⟨}@var{bindings}@code{⟩} và @code{⟨}@var{body}@code{⟩} giống như trong
+@code{let} thông thường, ngoại trừ @code{⟨}@var{var}@code{⟩} được ràng buộc
+trong @code{⟨}@var{body}@code{⟩} với một thủ tục có thân là
+@code{⟨}@var{body}@code{⟩} và có các tham số là các biến trong
+@code{⟨}@var{bindings}@code{⟩}. Như vậy, người ta có thể thực thi lặp đi lặp
+lại @code{⟨}@var{body}@code{⟩} bằng cách gọi thủ tục có tên
+@code{⟨}@var{var}@code{⟩}. Ví dụ, thủ tục Fibonacci lặp (@ref{1.2.2}) có thể
+được viết lại dùng @code{let} có tên như sau:
+
+@lisp
+(define (fib n)
+  (let fib-iter ((a 1) (b 0) (count n))
+    (if (= count 0)
+        b
+        (fib-iter (+ a b)
+                  a
+                  (- count 1)))))
+@end lisp
+
+Sửa đổi @code{let->combination} từ @ref{Exercise 4.6} để cũng hỗ trợ
+@code{let} có tên.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.9}Exercise 4.9:} Nhiều ngôn ngữ hỗ trợ nhiều cấu
+trúc lặp khác nhau, chẳng hạn như @code{do}, @code{for}, @code{while} và
+@code{until}. Trong Scheme, các quá trình lặp có thể được diễn đạt theo các
+lời gọi thủ tục thông thường, vì vậy các cấu trúc lặp đặc biệt không cung
+cấp lợi ích thiết yếu nào về sức mạnh tính toán. Mặt khác, các cấu trúc như
+vậy thường thuận tiện. Thiết kế một số cấu trúc lặp, đưa ra các ví dụ về
+cách dùng chúng, và chỉ ra cách hiện thực chúng như các biểu thức dẫn xuất.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.10}Exercise 4.10:} Bằng cách dùng trừu tượng hóa
+dữ liệu, chúng ta có thể viết một thủ tục @code{eval} độc lập với cú pháp
+cụ thể của ngôn ngữ cần định giá. Để minh họa điều này, hãy thiết kế và
+hiện thực một cú pháp mới cho Scheme bằng cách sửa đổi các thủ tục trong
+phần này, mà không thay đổi @code{eval} hay @code{apply}.
+@end quotation

@@ -1,0 +1,259 @@
+@node	4.1.3, 4.1.4, 4.1.2, 4.1
+@subsection Các Cấu Trúc Dữ Liệu Của Trình Định Giá
+
+Ngoài việc định nghĩa cú pháp bên ngoài của các biểu thức, hiện thực trình
+định giá cũng phải định nghĩa các cấu trúc dữ liệu mà trình định giá thao
+tác nội bộ, như một phần của việc thực thi chương trình, chẳng hạn như cách
+biểu diễn các thủ tục và môi trường và cách biểu diễn true và false.
+
+@subsubheading Kiểm tra các vị từ
+
+Đối với các điều kiện, chúng ta chấp nhận bất kỳ điều gì là đúng mà không
+phải đối tượng @code{false} tường minh.
+
+@lisp
+(define (true? x)
+  (not (eq? x false)))
+
+(define (false? x)
+  (eq? x false))
+@end lisp
+
+@subsubheading Biểu diễn các thủ tục
+
+Để xử lý các nguyên thủy, chúng ta giả định rằng chúng ta có sẵn các thủ
+tục sau:
+
+@itemize @bullet
+
+@item
+@code{(apply-primitive-procedure ⟨@var{proc}⟩ ⟨@var{args}⟩)}
+
+@noindent
+áp dụng thủ tục nguyên thủy cho trước cho các giá trị đối số trong danh sách
+@code{⟨}@var{args}@code{⟩} và trả về kết quả của ứng dụng.
+
+@item
+@code{(primitive-procedure? ⟨@var{proc}⟩)}
+
+@noindent
+kiểm tra xem @code{⟨}@var{proc}@code{⟩} có phải là thủ tục nguyên thủy không.
+
+@end itemize
+
+@noindent
+Các cơ chế xử lý các nguyên thủy này được mô tả thêm trong @ref{4.1.4}.
+
+Các thủ tục phức hợp được xây dựng từ các tham số, thân thủ tục và môi
+trường bằng bộ xây dựng @code{make-procedure}:
+
+@lisp
+(define (make-procedure parameters body env)
+  (list 'procedure parameters body env))
+(define (compound-procedure? p)
+  (tagged-list? p 'procedure))
+(define (procedure-parameters p) (cadr p))
+(define (procedure-body p) (caddr p))
+(define (procedure-environment p) (cadddr p))
+@end lisp
+
+@subsubheading Các phép toán trên Môi Trường
+
+Trình định giá cần các phép toán để thao tác các môi trường. Như giải thích
+trong @ref{3.2}, một môi trường là một dãy các khung, trong đó mỗi khung là
+một bảng các ràng buộc liên kết các biến với các giá trị tương ứng của chúng.
+Chúng ta dùng các phép toán sau để thao tác các môi trường:
+
+@itemize @bullet
+
+@item
+@code{(lookup-variable-value ⟨@var{var}⟩ ⟨@var{env}⟩)}
+
+trả về giá trị được ràng buộc với ký hiệu @code{⟨}@var{var}@code{⟩} trong môi
+trường @code{⟨}@var{env}@code{⟩}, hoặc báo hiệu lỗi nếu biến chưa được ràng
+buộc.
+
+@item
+@code{(extend-environment ⟨@var{variables}⟩ ⟨@var{values}⟩ ⟨@var{base-env}⟩)}
+
+trả về một môi trường mới, gồm một khung mới trong đó các ký hiệu trong danh
+sách @code{⟨}@var{variables}@code{⟩} được ràng buộc với các phần tử tương ứng
+trong danh sách @code{⟨}@var{values}@code{⟩}, trong đó môi trường bao quanh là
+môi trường @code{⟨}@var{base-env}@code{⟩}.
+
+@item
+@code{(define-variable! ⟨@var{var}⟩ ⟨@var{value}⟩ ⟨@var{env}⟩)}
+
+thêm vào khung đầu tiên trong môi trường @code{⟨}@var{env}@code{⟩} một ràng
+buộc mới liên kết biến @code{⟨}@var{var}@code{⟩} với giá trị
+@code{⟨}@var{value}@code{⟩}.
+
+@item
+@code{(set-variable-value! ⟨@var{var}⟩ ⟨@var{value}⟩ ⟨@var{env}⟩)}
+
+thay đổi ràng buộc của biến @code{⟨}@var{var}@code{⟩} trong môi trường
+@code{⟨}@var{env}@code{⟩} sao cho biến bây giờ được ràng buộc với giá trị
+@code{⟨}@var{value}@code{⟩}, hoặc báo hiệu lỗi nếu biến chưa được ràng buộc.
+
+@end itemize
+
+@noindent
+Để hiện thực các phép toán này, chúng ta biểu diễn một môi trường như một
+danh sách các khung. Môi trường bao quanh của một môi trường là @code{cdr}
+của danh sách. Môi trường rỗng đơn giản là danh sách rỗng.
+
+@lisp
+(define (enclosing-environment env) (cdr env))
+(define (first-frame env) (car env))
+(define the-empty-environment '())
+@end lisp
+
+@noindent
+Mỗi khung của một môi trường được biểu diễn như một cặp danh sách: một danh
+sách các biến được ràng buộc trong khung đó và một danh sách các giá trị liên
+kết.@footnote{Các khung thực ra không phải là một trừu tượng hóa dữ liệu trong
+mã sau: @code{Set-variable-value!} và @code{define-variable!} dùng
+@code{set-car!} để trực tiếp sửa đổi các giá trị trong một khung. Mục đích
+của các thủ tục khung là làm cho các thủ tục thao tác môi trường dễ đọc hơn.}
+
+@lisp
+(define (make-frame variables values)
+  (cons variables values))
+(define (frame-variables frame) (car frame))
+(define (frame-values frame) (cdr frame))
+(define (add-binding-to-frame! var val frame)
+  (set-car! frame (cons var (car frame)))
+  (set-cdr! frame (cons val (cdr frame))))
+@end lisp
+
+@noindent
+Để mở rộng một môi trường bằng một khung mới liên kết các biến với các giá
+trị, chúng ta tạo một khung gồm danh sách các biến và danh sách các giá trị,
+và chúng ta thêm khung này vào môi trường. Chúng ta báo hiệu lỗi nếu số lượng
+biến không khớp với số lượng giá trị.
+
+@lisp
+(define (extend-environment vars vals base-env)
+  (if (= (length vars) (length vals))
+      (cons (make-frame vars vals) base-env)
+      (if (< (length vars) (length vals))
+          (error "Too many arguments supplied"
+                 vars
+                 vals)
+          (error "Too few arguments supplied"
+                 vars
+                 vals))))
+@end lisp
+
+@noindent
+Để tra cứu một biến trong môi trường, chúng ta duyệt danh sách biến trong
+khung đầu tiên. Nếu chúng ta tìm thấy biến mong muốn, chúng ta trả về phần
+tử tương ứng trong danh sách giá trị. Nếu chúng ta không tìm thấy biến trong
+khung hiện tại, chúng ta tìm kiếm trong môi trường bao quanh, v.v. Nếu chúng
+ta đến môi trường rỗng, chúng ta báo hiệu lỗi ``biến chưa được ràng buộc''.
+
+@lisp
+(define (lookup-variable-value var env)
+  (define (env-loop env)
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (env-loop
+              (enclosing-environment env)))
+            ((eq? var (car vars))
+             (car vals))
+            (else (scan (cdr vars)
+                        (cdr vals)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable" var)
+        (let ((frame (first-frame env)))
+          (scan (frame-variables frame)
+                (frame-values frame)))))
+  (env-loop env))
+@end lisp
+
+@noindent
+Để đặt một biến thành giá trị mới trong một môi trường được chỉ định, chúng
+ta tìm kiếm biến, giống như trong @code{lookup-variable-value}, và thay đổi
+giá trị tương ứng khi tìm thấy.
+
+@lisp
+(define (set-variable-value! var val env)
+  (define (env-loop env)
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (env-loop
+              (enclosing-environment env)))
+            ((eq? var (car vars))
+             (set-car! vals val))
+            (else (scan (cdr vars)
+                        (cdr vals)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable: SET!" var)
+        (let ((frame (first-frame env)))
+          (scan (frame-variables frame)
+                (frame-values frame)))))
+  (env-loop env))
+@end lisp
+
+@noindent
+Để định nghĩa một biến, chúng ta tìm kiếm ràng buộc cho biến trong khung
+đầu tiên, và thay đổi ràng buộc nếu nó tồn tại (giống như trong
+@code{set-variable-value!}). Nếu không có ràng buộc như vậy, chúng ta thêm
+một cái vào khung đầu tiên.
+
+@lisp
+(define (define-variable! var val env)
+  (let ((frame (first-frame env)))
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (add-binding-to-frame!
+              var val frame))
+            ((eq? var (car vars))
+             (set-car! vals val))
+            (else (scan (cdr vars)
+                        (cdr vals)))))
+    (scan (frame-variables frame)
+          (frame-values frame))))
+@end lisp
+
+@noindent
+Phương pháp được mô tả ở đây chỉ là một trong nhiều cách hợp lý để biểu
+diễn các môi trường. Vì chúng ta đã dùng trừu tượng hóa dữ liệu để cô lập
+phần còn lại của trình định giá khỏi lựa chọn cách biểu diễn chi tiết, chúng
+ta có thể thay đổi cách biểu diễn môi trường nếu muốn. (Xem @ref{Exercise 4.11}.)
+Trong một hệ thống Lisp chất lượng sản xuất, tốc độ của các phép toán môi
+trường của trình định giá---đặc biệt là tốc độ tra cứu biến---có tác động
+lớn đến hiệu suất của hệ thống. Cách biểu diễn được mô tả ở đây, mặc dù đơn
+giản về mặt khái niệm, không hiệu quả và thường không được dùng trong một
+hệ thống sản xuất.@footnote{Nhược điểm của cách biểu diễn này (cũng như biến
+thể trong @ref{Exercise 4.11}) là trình định giá có thể phải tìm kiếm qua
+nhiều khung để tìm ràng buộc cho một biến cho trước. (Cách tiếp cận như vậy
+được gọi là @newterm{ràng buộc sâu}.) Một cách để tránh sự không hiệu quả
+này là sử dụng chiến lược gọi là @newterm{địa chỉ từ vựng}, sẽ được thảo
+luận trong @ref{5.5.6}.}
+
+@quotation
+@strong{@anchor{Exercise 4.11}Exercise 4.11:} Thay vì biểu diễn một khung
+như một cặp danh sách, chúng ta có thể biểu diễn một khung như một danh sách
+các ràng buộc, trong đó mỗi ràng buộc là một cặp tên-giá trị. Viết lại các
+phép toán môi trường để dùng cách biểu diễn thay thế này.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.12}Exercise 4.12:} Các thủ tục
+@code{define-variable!}, @code{set-variable-value!} và
+@code{lookup-variable-value} có thể được diễn đạt theo các thủ tục trừu
+tượng hơn để duyệt cấu trúc môi trường. Định nghĩa các trừu tượng hóa nắm
+bắt các mẫu chung và định nghĩa lại ba thủ tục theo các trừu tượng hóa này.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.13}Exercise 4.13:} Scheme cho phép chúng ta tạo
+các ràng buộc mới cho các biến bằng phương tiện @code{define}, nhưng không
+cung cấp cách để loại bỏ các ràng buộc. Hiện thực cho trình định giá một
+dạng đặc biệt @code{make-unbound!} loại bỏ ràng buộc của một ký hiệu cho
+trước khỏi môi trường mà biểu thức @code{make-unbound!} được định giá. Bài
+toán này không được chỉ định hoàn toàn. Ví dụ, chúng ta có nên chỉ xóa ràng
+buộc trong khung đầu tiên của môi trường không? Hoàn thiện đặc tả và biện
+hộ cho bất kỳ lựa chọn nào bạn thực hiện.
+@end quotation

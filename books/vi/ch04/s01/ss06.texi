@@ -1,0 +1,342 @@
+@node	4.1.6, 4.1.7, 4.1.5, 4.1
+@subsection Các Định Nghĩa Nội Bộ
+
+Mô hình môi trường định giá và trình định giá siêu vòng của chúng ta thực thi
+các định nghĩa theo trình tự, mở rộng khung môi trường từng định nghĩa một.
+Điều này đặc biệt thuận tiện cho việc phát triển chương trình tương tác, trong
+đó lập trình viên cần tự do pha trộn việc áp dụng các thủ tục với việc định
+nghĩa các thủ tục mới. Tuy nhiên, nếu chúng ta suy nghĩ cẩn thận về các định
+nghĩa nội bộ được dùng để hiện thực cấu trúc khối (được giới thiệu trong
+@ref{1.1.8}), chúng ta sẽ thấy rằng việc mở rộng môi trường từng tên một
+có thể không phải là cách tốt nhất để định nghĩa các biến cục bộ.
+
+Hãy xem xét một thủ tục với các định nghĩa nội bộ, chẳng hạn như
+
+@lisp
+(define (f x)
+  (define (even? n)
+    (if (= n 0)
+        true
+        (odd? (- n 1))))
+  (define (odd? n)
+    (if (= n 0)
+        false
+        (even? (- n 1))))
+  ⟨@var{rest of body of @code{f}}⟩)
+@end lisp
+
+@noindent
+Ý định của chúng ta ở đây là tên @code{odd?} trong thân của thủ tục
+@code{even?} phải tham chiếu đến thủ tục @code{odd?} được định nghĩa sau
+@code{even?}. Phạm vi của tên @code{odd?} là toàn bộ thân của @code{f}, không
+chỉ là phần thân của @code{f} bắt đầu từ điểm mà @code{define} cho @code{odd?}
+xuất hiện. Thực vậy, khi chúng ta xem xét rằng @code{odd?} bản thân nó được
+định nghĩa theo @code{even?}---vì vậy @code{even?} và @code{odd?} là các thủ
+tục đệ quy lẫn nhau---chúng ta thấy rằng cách diễn giải duy nhất thỏa mãn
+của hai @code{define} là coi chúng như thể các tên @code{even?} và @code{odd?}
+đang được thêm vào môi trường đồng thời. Tổng quát hơn, trong cấu trúc khối,
+phạm vi của một tên cục bộ là toàn bộ thân thủ tục mà @code{define} được
+định giá.
+
+Trên thực tế, trình thông dịch của chúng ta sẽ định giá các lời gọi đến
+@code{f} một cách đúng đắn, nhưng vì một lý do ``tình cờ'': Vì các định
+nghĩa của các thủ tục nội bộ đến trước, không có lời gọi nào đến các thủ tục
+này sẽ được định giá cho đến khi tất cả chúng đã được định nghĩa. Do đó,
+@code{odd?} sẽ đã được định nghĩa vào lúc @code{even?} được thực thi. Trên
+thực tế, cơ chế định giá tuần tự của chúng ta sẽ cho kết quả tương tự như
+cơ chế trực tiếp hiện thực định nghĩa đồng thời cho bất kỳ thủ tục nào mà
+các định nghĩa nội bộ đến trước trong thân và việc định giá các biểu thức
+giá trị cho các biến được định nghĩa không thực sự dùng bất kỳ biến nào
+được định nghĩa. (Để xem ví dụ về một thủ tục không tuân theo các hạn chế
+này, vì vậy định nghĩa tuần tự không tương đương với định nghĩa đồng thời,
+xem @ref{Exercise 4.19}.)@footnote{Mong muốn các chương trình không phụ thuộc
+vào cơ chế định giá này là lý do cho nhận xét ``quản lý không chịu trách
+nhiệm'' trong @ref{Footnote 28} của @ref{Chapter 1}. Bằng cách khăng khăng
+rằng các định nghĩa nội bộ đến trước và không dùng nhau trong khi các định
+nghĩa đang được định giá, tiêu chuẩn @abbr{IEEE} cho Scheme để lại cho người
+hiện thực một số lựa chọn trong cơ chế dùng để định giá các định nghĩa này.
+Lựa chọn một quy tắc định giá thay vì quy tắc khác ở đây có vẻ là vấn đề
+nhỏ, chỉ ảnh hưởng đến cách diễn giải các chương trình ``được hình thành
+xấu''. Tuy nhiên, chúng ta sẽ thấy trong @ref{5.5.6} rằng việc chuyển sang
+mô hình phạm vi đồng thời cho các định nghĩa nội bộ tránh được một số khó
+khăn khó chịu mà nếu không sẽ nảy sinh khi hiện thực một trình biên dịch.}
+
+Tuy nhiên, có một cách đơn giản để xử lý các định nghĩa sao cho các tên được
+định nghĩa nội bộ có phạm vi đồng thời thực sự---chỉ cần tạo tất cả các biến
+cục bộ sẽ có trong môi trường hiện tại trước khi định giá bất kỳ biểu thức
+giá trị nào. Một cách để làm điều này là bằng một phép biến đổi cú pháp trên
+các biểu thức @code{lambda}. Trước khi định giá thân của một biểu thức
+@code{lambda}, chúng ta ``quét ra'' và loại bỏ tất cả các định nghĩa nội bộ
+trong thân. Các biến được định nghĩa nội bộ sẽ được tạo với @code{let} và
+sau đó được đặt thành các giá trị của chúng bằng phép gán. Ví dụ, thủ tục
+
+@lisp
+(lambda ⟨@var{vars}⟩
+  (define u ⟨@var{e1}⟩)
+  (define v ⟨@var{e2}⟩)
+  ⟨@var{e3}⟩)
+@end lisp
+
+@noindent
+sẽ được biến đổi thành
+
+@lisp
+(lambda ⟨@var{vars}⟩
+  (let ((u '*unassigned*)
+        (v '*unassigned*))
+    (set! u ⟨@var{e1}⟩)
+    (set! v ⟨@var{e2}⟩)
+    ⟨@var{e3}⟩))
+@end lisp
+
+@noindent
+trong đó @code{*unassigned*} là một ký hiệu đặc biệt gây ra việc tra cứu một
+biến để báo hiệu lỗi nếu có cố gắng dùng giá trị của biến chưa được gán.
+
+Một chiến lược thay thế để quét ra các định nghĩa nội bộ được thể hiện trong
+@ref{Exercise 4.18}. Không giống như phép biến đổi được thể hiện ở trên, điều
+này thực thi hạn chế rằng các giá trị của các biến được định nghĩa có thể
+được định giá mà không dùng bất kỳ giá trị nào của các biến.@footnote{Tiêu
+chuẩn @abbr{IEEE} cho Scheme cho phép các chiến lược hiện thực khác nhau bằng
+cách chỉ định rằng lập trình viên có trách nhiệm tuân theo hạn chế này, không
+phải hiện thực để thực thi nó. Một số hiện thực Scheme, bao gồm @abbr{MIT}
+Scheme, dùng phép biến đổi được thể hiện ở trên. Do đó, một số chương trình
+không tuân theo hạn chế này thực ra sẽ chạy trong các hiện thực như vậy.}
+
+@quotation
+@strong{@anchor{Exercise 4.16}Exercise 4.16:} Trong bài tập này chúng ta hiện
+thực phương pháp vừa được mô tả để diễn giải các định nghĩa nội bộ. Chúng ta
+giả định rằng trình định giá hỗ trợ @code{let} (xem @ref{Exercise 4.6}).
+
+@enumerate a
+
+@item
+Thay đổi @code{lookup-variable-value} (@ref{4.1.3}) để báo hiệu lỗi nếu giá
+trị nó tìm thấy là ký hiệu @code{*unassigned*}.
+
+@item
+Viết một thủ tục @code{scan-out-defines} nhận một thân thủ tục và trả về
+một thân tương đương không có định nghĩa nội bộ, bằng cách thực hiện phép
+biến đổi được mô tả ở trên.
+
+@item
+Cài đặt @code{scan-out-defines} trong trình thông dịch, trong
+@code{make-procedure} hoặc trong @code{procedure-body} (xem @ref{4.1.3}). Vị
+trí nào tốt hơn? Tại sao?
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.17}Exercise 4.17:} Vẽ sơ đồ của môi trường có
+hiệu lực khi định giá biểu thức @code{⟨}@var{e3}@code{⟩} trong thủ tục trong
+văn bản, so sánh cách này sẽ được cấu trúc khi các định nghĩa được diễn giải
+tuần tự với cách nó sẽ được cấu trúc nếu các định nghĩa được quét ra như
+được mô tả. Tại sao lại có một khung thêm trong chương trình được biến đổi?
+Giải thích tại sao sự khác biệt trong cấu trúc môi trường này không bao giờ
+có thể tạo ra sự khác biệt trong hành vi của một chương trình đúng. Thiết kế
+một cách để làm cho trình thông dịch hiện thực quy tắc phạm vi ``đồng thời''
+cho các định nghĩa nội bộ mà không xây dựng khung thêm.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.18}Exercise 4.18:} Hãy xem xét một chiến lược thay
+thế để quét ra các định nghĩa biến đổi ví dụ trong văn bản thành
+
+@lisp
+(lambda ⟨@var{vars}⟩
+  (let ((u '*unassigned*)
+        (v '*unassigned*))
+    (let ((a ⟨@var{e1}⟩)
+          (b ⟨@var{e2}⟩))
+      (set! u a)
+      (set! v b))
+    ⟨@var{e3}⟩))
+@end lisp
+
+Ở đây @code{a} và @code{b} nhằm biểu diễn các tên biến mới, được tạo bởi
+trình thông dịch, không xuất hiện trong chương trình của người dùng. Hãy xem
+xét thủ tục @code{solve} từ @ref{3.5.4}:
+
+@lisp
+(define (solve f y0 dt)
+  (define y (integral (delay dy) y0 dt))
+  (define dy (stream-map f y))
+  y)
+@end lisp
+
+Thủ tục này có hoạt động nếu các định nghĩa nội bộ được quét ra như được thể
+hiện trong bài tập này không? Còn nếu chúng được quét ra như được thể hiện
+trong văn bản? Giải thích.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.19}Exercise 4.19:} Ben Bitdiddle, Alyssa P. Hacker
+và Eva Lu Ator đang tranh luận về kết quả mong muốn của việc định giá biểu
+thức
+
+@lisp
+(let ((a 1))
+  (define (f x)
+    (define b (+ a x))
+    (define a 5)
+    (+ a b))
+  (f 10))
+@end lisp
+
+Ben khẳng định rằng kết quả phải được thu được bằng cách dùng quy tắc tuần
+tự cho @code{define}: @code{b} được định nghĩa là 11, rồi @code{a} được định
+nghĩa là 5, vì vậy kết quả là 16. Alyssa phản đối rằng đệ quy lẫn nhau đòi
+hỏi quy tắc phạm vi đồng thời cho các định nghĩa thủ tục nội bộ, và thật
+bất hợp lý khi đối xử với tên thủ tục khác với các tên khác. Do đó, cô lập
+luận cho cơ chế được hiện thực trong @ref{Exercise 4.16}. Điều này sẽ dẫn
+đến @code{a} chưa được gán vào lúc giá trị cho @code{b} cần được tính. Do
+đó, theo quan điểm của Alyssa, thủ tục nên tạo ra lỗi. Eva có ý kiến thứ
+ba. Cô nói rằng nếu các định nghĩa của @code{a} và @code{b} thực sự đồng
+thời, thì giá trị 5 cho @code{a} nên được dùng khi định giá @code{b}. Do
+đó, theo quan điểm của Eva, @code{a} phải là 5, @code{b} phải là 15, và kết
+quả phải là 20. Bạn ủng hộ quan điểm nào (nếu có) trong số này? Bạn có thể
+nghĩ ra cách để hiện thực các định nghĩa nội bộ để chúng hoạt động như Eva
+muốn không?@footnote{Những người hiện thực @abbr{MIT} của Scheme ủng hộ
+Alyssa vì những lý do sau: Eva về nguyên tắc là đúng---các định nghĩa nên
+được coi là đồng thời. Nhưng có vẻ khó hiện thực một cơ chế tổng quát, hiệu
+quả làm những gì Eva yêu cầu. Trong trường hợp không có cơ chế như vậy, tốt
+hơn là tạo ra lỗi trong các trường hợp khó của định nghĩa đồng thời (quan
+điểm của Alyssa) hơn là tạo ra câu trả lời không đúng (như Ben sẽ làm).}
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.20}Exercise 4.20:} Vì các định nghĩa nội bộ có vẻ
+tuần tự nhưng thực sự đồng thời, một số người thích tránh chúng hoàn toàn,
+và dùng dạng đặc biệt @code{letrec} thay thế. @code{Letrec} trông giống như
+@code{let}, vì vậy không có gì ngạc nhiên khi các biến nó ràng buộc được ràng
+buộc đồng thời và có cùng phạm vi với nhau. Thủ tục mẫu @code{f} ở trên có
+thể được viết không có các định nghĩa nội bộ, nhưng với hoàn toàn cùng ý nghĩa,
+như
+
+@lisp
+(define (f x)
+  (letrec
+      ((even?
+        (lambda (n)
+          (if (= n 0)
+              true
+              (odd? (- n 1)))))
+       (odd?
+        (lambda (n)
+          (if (= n 0)
+              false
+              (even? (- n 1))))))
+    ⟨@var{rest of body of @code{f}}⟩))
+@end lisp
+
+Các biểu thức @code{letrec}, có dạng
+
+@lisp
+(letrec ((⟨@var{var₁}⟩ ⟨@var{exp₁}⟩) @r{…} (⟨@var{varₙ}⟩ ⟨@var{expₙ}⟩))
+  ⟨@var{body}⟩)
+@end lisp
+
+@noindent
+là một biến thể của @code{let} trong đó các biểu thức
+@math{{⟨\kern0.1em exp_k⟩}} cung cấp các giá trị ban đầu cho các biến
+@math{{⟨\kern0.06em var_k⟩}} được định giá trong một môi trường bao gồm tất
+cả các ràng buộc @code{letrec}. Điều này cho phép đệ quy trong các ràng buộc,
+chẳng hạn như đệ quy lẫn nhau của @code{even?} và @code{odd?} trong ví dụ ở
+trên, hoặc định giá 10 giai thừa với
+
+@lisp
+(letrec
+    ((fact
+      (lambda (n)
+        (if (= n 1)
+            1
+            (* n (fact (- n 1)))))))
+  (fact 10))
+@end lisp
+
+@enumerate a
+
+@item
+Hiện thực @code{letrec} như một biểu thức dẫn xuất, bằng cách biến đổi một
+biểu thức @code{letrec} thành một biểu thức @code{let} như được thể hiện
+trong văn bản ở trên hoặc trong @ref{Exercise 4.18}. Tức là, các biến
+@code{letrec} nên được tạo với @code{let} và sau đó được gán các giá trị
+của chúng với @code{set!}.
+
+@item
+Louis Reasoner bị nhầm lẫn bởi tất cả những ầm ĩ này về các định nghĩa nội
+bộ. Theo cách anh nhìn nhận, nếu bạn không thích dùng @code{define} bên trong
+một thủ tục, bạn có thể chỉ dùng @code{let}. Minh họa điều gì lỏng lẻo trong
+lý luận của anh bằng cách vẽ một sơ đồ môi trường cho thấy môi trường mà
+@code{⟨}@var{rest of body of @code{f}}@code{⟩} được định giá trong khi định
+giá biểu thức @code{(f 5)}, với @code{f} được định nghĩa như trong bài tập
+này. Vẽ một sơ đồ môi trường cho cùng việc định giá, nhưng với @code{let}
+thay cho @code{letrec} trong định nghĩa của @code{f}.
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.21}Exercise 4.21:} Thật ngạc nhiên, trực giác của
+Louis trong @ref{Exercise 4.20} là đúng. Thực sự có thể chỉ định các thủ tục
+đệ quy mà không dùng @code{letrec} (hoặc thậm chí @code{define}), mặc dù
+phương pháp để thực hiện điều này tinh tế hơn nhiều so với Louis tưởng tượng.
+Biểu thức sau tính 10 giai thừa bằng cách áp dụng một thủ tục giai thừa đệ
+quy:@footnote{Ví dụ này minh họa một thủ thuật lập trình để công thức hóa
+các thủ tục đệ quy mà không dùng @code{define}. Thủ thuật tổng quát nhất loại
+này là @newterm{toán tử} @math{Y}, có thể được dùng để cho một hiện thực
+``λ-tính thuần túy'' của đệ quy. (Xem @ref{Stoy 1977} để biết chi tiết về
+λ-tính, và @ref{Gabriel 1988} để có cách trình bày toán tử @math{Y} trong
+Scheme.)}
+
+@lisp
+((lambda (n)
+   ((lambda (fact) (fact fact n))
+    (lambda (ft k)
+      (if (= k 1)
+          1
+          (* k (ft ft (- k 1)))))))
+ 10)
+@end lisp
+
+@enumerate a
+
+@item
+Kiểm tra (bằng cách định giá biểu thức) rằng điều này thực sự tính giai thừa.
+Nghĩ ra một biểu thức tương tự để tính các số Fibonacci.
+
+@item
+Hãy xem xét thủ tục sau, bao gồm các định nghĩa nội bộ đệ quy lẫn nhau:
+
+@lisp
+(define (f x)
+  (define (even? n)
+    (if (= n 0)
+        true
+        (odd? (- n 1))))
+  (define (odd? n)
+    (if (= n 0)
+        false
+        (even? (- n 1))))
+  (even? x))
+@end lisp
+
+Điền vào các biểu thức còn thiếu để hoàn thiện một định nghĩa thay thế của
+@code{f}, không dùng định nghĩa nội bộ hay @code{letrec}:
+
+@lisp
+(define (f x)
+  ((lambda (even? odd?)
+     (even? even? odd? x))
+   (lambda (ev? od? n)
+     (if (= n 0)
+         true
+         (od? ⟨??⟩ ⟨??⟩ ⟨??⟩)))
+   (lambda (ev? od? n)
+     (if (= n 0)
+         false
+         (ev? ⟨??⟩ ⟨??⟩ ⟨??⟩)))))
+@end lisp
+@end enumerate
+@end quotation

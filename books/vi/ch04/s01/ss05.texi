@@ -1,0 +1,210 @@
+@node	4.1.5, 4.1.6, 4.1.4, 4.1
+@subsection Dữ Liệu Như Các Chương Trình
+
+Khi suy nghĩ về một chương trình Lisp định giá các biểu thức Lisp, một phép
+tương tự có thể hữu ích. Một quan điểm vận hành về ý nghĩa của một chương
+trình là một chương trình là mô tả của một máy trừu tượng (có thể vô hạn lớn).
+Ví dụ, hãy xem xét chương trình quen thuộc để tính giai thừa:
+
+@lisp
+(define (factorial n)
+  (if (= n 1)
+      1
+      (* (factorial (- n 1)) n)))
+@end lisp
+
+@noindent
+Chúng ta có thể coi chương trình này là mô tả của một máy chứa các phần giảm
+dần, nhân và kiểm tra bằng nhau, cùng với một công tắc hai vị trí và một máy
+giai thừa khác. (Máy giai thừa là vô hạn vì nó chứa một máy giai thừa khác
+bên trong nó.) @ref{Figure 4.2} là sơ đồ luồng cho máy giai thừa, cho thấy
+cách các phần được nối với nhau.
+
+@float
+@anchor{Figure 4.2}
+@ifinfo
+@strong{Figure 4.2:} The factorial program, viewed as an abstract machine.
+
+@example
+    +-----------------------------------+
+    | factorial                   |1    |
+    |              |1             V     |
+    |              |           +-----+  |
+    |              V           | #   |  |
+    |           +-----+        |     |  |
+6 --------*-----|  =  |------->|   #-+-----> 720
+    |     |     +-----+        |  /  |  |
+    |     |                    | #   |  |
+    |     |                    +-----+  |
+    |     |                       ^     |
+    |     |                       |     |
+    |     |                    +--+--+  |
+    |     *------------------->|  *  |  |
+    |     |                    +-----+  |
+    |     V                       ^     |
+    |  +-----+    +-----------+   |     |
+    |  |  -  +--->| factorial +---+     |
+    |  +-----+    +-----------+         |
+    |     ^                             |
+    |     |1                            |
+    +-----------------------------------+
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap4/Fig4.2a,143mm,,,.std.svg}
+@caption{@strong{Figure 4.2:} The factorial program, viewed as an abstract machine.}
+@end iftex
+@end float
+
+Theo cách tương tự, chúng ta có thể coi trình định giá như một máy rất đặc
+biệt nhận một mô tả của một máy làm đầu vào. Với đầu vào này, trình định giá
+tự cấu hình để mô phỏng máy được mô tả. Ví dụ, nếu chúng ta đưa cho trình
+định giá định nghĩa của @code{factorial}, như được thể hiện trong
+@ref{Figure 4.3}, trình định giá sẽ có thể tính giai thừa.
+
+@float
+@anchor{Figure 4.3}
+@ifinfo
+@strong{Figure 4.3:} The evaluator emulating a factorial machine.
+
+@example
+                   +--------+
+            6 ---->|  eval  |----> 720
+                   +--------+
+                       /
+             . . .    /  . . .
+       . . .       ../. .      .
+     .                           ..
+    .   (define (factorial n)      . . .
+   .      (if (= n 1)                   . .
+    .         1                            .
+    .         (* (factorial (- n 1)) n)))   .
+      . .                       . .        .
+          . .  . .      . . . .     . . . .
+                   . ..
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap4/Fig4.3,117mm,,,.std.svg}
+@caption{@strong{Figure 4.3:} The evaluator emulating a factorial machine.}
+@end iftex
+@end float
+
+Từ góc độ này, trình định giá của chúng ta được thấy là một @newterm{máy vạn
+năng}. Nó mô phỏng các máy khác khi chúng được mô tả như các chương trình
+Lisp.@footnote{Thực tế là các máy được mô tả bằng Lisp không quan trọng. Nếu
+chúng ta đưa cho trình định giá của chúng ta một chương trình Lisp hoạt động
+như một trình định giá cho một ngôn ngữ khác, chẳng hạn C, trình định giá
+Lisp sẽ mô phỏng trình định giá C, đến lượt nó có thể mô phỏng bất kỳ máy
+nào được mô tả như một chương trình C. Tương tự, việc viết một trình định
+giá Lisp bằng C tạo ra một chương trình C có thể thực thi bất kỳ chương
+trình Lisp nào. Ý tưởng sâu sắc ở đây là bất kỳ trình định giá nào cũng có
+thể mô phỏng bất kỳ trình định giá nào khác. Như vậy, khái niệm ``những gì
+có thể được tính toán về nguyên tắc'' (bỏ qua tính thực tiễn về thời gian và
+bộ nhớ cần thiết) không phụ thuộc vào ngôn ngữ hay máy tính, và thay vào đó
+phản ánh một khái niệm cơ bản về @newterm{tính tính toán được}. Điều này lần
+đầu tiên được chứng minh rõ ràng bởi Alan M. Turing (1912-1954), bài báo năm
+1936 của ông đặt nền tảng cho khoa học máy tính lý thuyết. Trong bài báo,
+Turing trình bày một mô hình tính toán đơn giản---nay được gọi là
+@newterm{máy Turing}---và lập luận rằng bất kỳ ``quá trình hiệu quả'' nào
+cũng có thể được công thức hóa như một chương trình cho máy như vậy. (Lập
+luận này được gọi là @newterm{luận đề Church-Turing}.) Turing sau đó đã hiện
+thực một máy vạn năng, tức là một máy Turing hoạt động như một trình định
+giá cho các chương trình máy Turing. Ông đã dùng khung này để chứng minh
+rằng có các bài toán được đặt ra tốt mà không thể được tính toán bởi các máy
+Turing (xem @ref{Exercise 4.15}), và do đó theo ngụ ý không thể được công
+thức hóa như ``các quá trình hiệu quả.'' Turing tiếp tục có những đóng góp
+cơ bản cho khoa học máy tính thực tế. Ví dụ, ông đã phát minh ra ý tưởng cấu
+trúc các chương trình sử dụng các chương trình con đa mục đích. Xem
+@ref{Hodges 1983} để có tiểu sử của Turing.} Điều này thật ấn tượng. Hãy
+cố tưởng tượng một trình định giá tương tự cho các mạch điện. Đây sẽ là một
+mạch nhận làm đầu vào một tín hiệu mã hóa các bản vẽ của một mạch khác,
+chẳng hạn như bộ lọc. Với đầu vào này, trình định giá mạch sau đó sẽ hoạt
+động như một bộ lọc với cùng mô tả. Một mạch điện vạn năng như vậy hầu như
+không thể tưởng tượng được về sự phức tạp. Điều đáng chú ý là trình định
+giá chương trình là một chương trình khá đơn giản.@footnote{Một số người
+thấy khó hiểu khi một trình định giá, được hiện thực bởi một thủ tục tương
+đối đơn giản, có thể mô phỏng các chương trình phức tạp hơn bản thân trình
+định giá. Sự tồn tại của một máy trình định giá vạn năng là một đặc tính sâu
+sắc và kỳ diệu của tính toán. @newterm{Lý thuyết đệ quy}, một nhánh của
+logic toán học, quan tâm đến các giới hạn logic của tính toán. Cuốn sách đẹp
+của Douglas Hofstadter @cite{G@"odel, Escher, Bach} khám phá một số ý tưởng
+này (@ref{Hofstadter 1979}).}
+
+@noindent
+Một khía cạnh ấn tượng khác của trình định giá là nó hoạt động như một cầu
+nối giữa các đối tượng dữ liệu được thao tác bởi ngôn ngữ lập trình của
+chúng ta và bản thân ngôn ngữ lập trình. Hãy tưởng tượng chương trình trình
+định giá (được hiện thực bằng Lisp) đang chạy, và người dùng đang nhập các
+biểu thức vào trình định giá và quan sát kết quả. Từ góc độ của người dùng,
+một biểu thức đầu vào như @code{(* x x)} là một biểu thức trong ngôn ngữ
+lập trình, mà trình định giá nên thực thi. Tuy nhiên, từ góc độ của trình
+định giá, biểu thức đơn giản là một danh sách (trong trường hợp này, một
+danh sách ba ký hiệu: @code{*}, @code{x} và @code{x}) cần được thao tác theo
+một tập hợp các quy tắc được xác định rõ ràng.
+
+Thực tế là các chương trình của người dùng là dữ liệu của trình định giá
+không cần phải là nguồn gây nhầm lẫn. Trên thực tế, đôi khi thuận tiện khi
+bỏ qua sự phân biệt này và cung cấp cho người dùng khả năng định giá tường
+minh một đối tượng dữ liệu như một biểu thức Lisp, bằng cách làm cho
+@code{eval} có sẵn để dùng trong các chương trình. Nhiều phương ngữ Lisp cung
+cấp một thủ tục nguyên thủy @code{eval} nhận một biểu thức và một môi trường
+làm đối số và định giá biểu thức theo môi trường.@footnote{Cảnh báo: Nguyên
+thủy @code{eval} này không giống hệt với thủ tục @code{eval} chúng ta đã
+hiện thực trong @ref{4.1.1}, vì nó dùng các môi trường Scheme @emph{thực sự}
+thay vì các cấu trúc môi trường mẫu chúng ta đã xây dựng trong @ref{4.1.3}.
+Các môi trường thực sự này không thể được thao tác bởi người dùng như các
+danh sách thông thường; chúng phải được truy cập thông qua @code{eval} hoặc
+các phép toán đặc biệt khác. Tương tự, nguyên thủy @code{apply} mà chúng ta
+đã thấy trước đây không giống hệt với @code{apply} siêu vòng, vì nó dùng
+các thủ tục Scheme thực sự thay vì các đối tượng thủ tục chúng ta đã xây
+dựng trong @ref{4.1.3} và @ref{4.1.4}.} Như vậy,
+
+@lisp
+(eval '(* 5 5) user-initial-environment)
+@end lisp
+
+@noindent
+và
+
+@lisp
+(eval (cons '* (list 5 5))
+      user-initial-environment)
+@end lisp
+
+@noindent
+đều sẽ trả về 25.@footnote{Hiện thực @abbr{MIT} của Scheme bao gồm
+@code{eval}, cũng như một ký hiệu @code{user-initial-environment} được ràng
+buộc với môi trường ban đầu mà các biểu thức đầu vào của người dùng được
+định giá.}
+
+@quotation
+@strong{@anchor{Exercise 4.15}Exercise 4.15:} Cho một thủ tục một đối số
+@code{p} và một đối tượng @code{a}, @code{p} được gọi là ``dừng lại'' trên
+@code{a} nếu việc định giá biểu thức @code{(p a)} trả về một giá trị (trái
+ngược với kết thúc bằng thông báo lỗi hoặc chạy mãi mãi). Chứng minh rằng
+không thể viết một thủ tục @code{halts?} xác định đúng đắn liệu @code{p}
+có dừng lại trên @code{a} hay không cho bất kỳ thủ tục @code{p} và đối
+tượng @code{a} nào. Dùng lý luận sau: Nếu bạn có thủ tục @code{halts?}
+như vậy, bạn có thể hiện thực chương trình sau:
+
+@lisp
+(define (run-forever)
+  (run-forever))
+
+(define (try p)
+  (if (halts? p p)
+      (run-forever)
+      'halted))
+@end lisp
+
+Bây giờ hãy xem xét việc định giá biểu thức @code{(try try)} và chứng minh
+rằng bất kỳ kết quả nào có thể xảy ra (dừng lại hoặc chạy mãi mãi) đều vi
+phạm hành vi dự định của @code{halts?}.@footnote{Mặc dù chúng ta quy định
+rằng @code{halts?} được trao một đối tượng thủ tục, chú ý rằng lý luận này
+vẫn áp dụng ngay cả khi @code{halts?} có thể truy cập vào văn bản của thủ
+tục và môi trường của nó. Đây là @newterm{Định lý Dừng} nổi tiếng của Turing,
+đưa ra ví dụ đầu tiên rõ ràng về một bài toán @newterm{không tính toán được},
+tức là một nhiệm vụ được đặt ra tốt không thể thực hiện như một thủ tục tính
+toán.}
+@end quotation

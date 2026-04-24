@@ -1,0 +1,273 @@
+@node	4.1.1, 4.1.2, 4.1, 4.1
+@subsection Lõi của Trình Định Giá
+
+Quá trình định giá có thể được mô tả như sự tương tác giữa hai thủ tục:
+@code{eval} và @code{apply}.
+
+@subsubheading Eval
+
+@code{Eval} nhận một biểu thức và một môi trường làm đối số. Nó phân loại
+biểu thức và điều khiển việc định giá của nó. @code{Eval} được cấu trúc như
+một phân tích trường hợp của kiểu cú pháp của biểu thức cần định giá. Để
+giữ cho thủ tục có tính tổng quát, chúng ta diễn đạt việc xác định kiểu của
+biểu thức một cách trừu tượng, không cam kết với bất kỳ cách biểu diễn cụ
+thể nào cho các kiểu biểu thức khác nhau. Mỗi kiểu biểu thức có một vị từ
+kiểm tra nó và một phương tiện trừu tượng để chọn các phần của nó.
+@newterm{Cú pháp trừu tượng} này giúp dễ dàng thấy cách chúng ta có thể
+thay đổi cú pháp của ngôn ngữ bằng cách dùng cùng trình định giá, nhưng với
+một bộ các thủ tục cú pháp khác nhau.
+
+@noindent
+@b{Các biểu thức nguyên thủy}
+
+@itemize @bullet
+
+@item
+Với các biểu thức tự định giá, chẳng hạn như số, @code{eval} trả về chính
+biểu thức đó.
+
+@item
+@code{Eval} phải tra cứu các biến trong môi trường để tìm giá trị của chúng.
+
+@end itemize
+
+@noindent
+@b{Các dạng đặc biệt}
+
+@itemize @bullet
+
+@item
+Với các biểu thức trích dẫn, @code{eval} trả về biểu thức đã được trích dẫn.
+
+@item
+Một phép gán cho (hoặc định nghĩa) một biến phải gọi đệ quy @code{eval} để
+tính giá trị mới được liên kết với biến. Môi trường phải được sửa đổi để
+thay đổi (hoặc tạo) ràng buộc của biến.
+
+@item
+Một biểu thức @code{if} đòi hỏi xử lý đặc biệt các phần của nó, để định giá
+hệ quả nếu vị từ là đúng, và nếu không thì định giá biểu thức thay thế.
+
+@item
+Một biểu thức @code{lambda} phải được biến đổi thành một thủ tục có thể áp
+dụng bằng cách đóng gói các tham số và thân được chỉ định bởi biểu thức
+@code{lambda} với môi trường của việc định giá.
+
+@item
+Một biểu thức @code{begin} yêu cầu định giá dãy các biểu thức của nó theo
+thứ tự chúng xuất hiện.
+
+@item
+Một phân tích trường hợp (@code{cond}) được biến đổi thành một tổ các biểu
+thức @code{if} và sau đó được định giá.
+
+@end itemize
+
+@noindent
+@b{Các tổ hợp}
+
+@itemize @bullet
+
+@item
+Với một ứng dụng thủ tục, @code{eval} phải đệ quy định giá phần toán tử và
+các toán hạng của tổ hợp. Thủ tục và các đối số kết quả được truyền cho
+@code{apply}, xử lý việc áp dụng thủ tục thực sự.
+
+@end itemize
+
+@noindent
+Đây là định nghĩa của @code{eval}:
+
+@lisp
+(define (eval exp env)
+  (cond ((self-evaluating? exp)
+         exp)
+        ((variable? exp)
+         (lookup-variable-value exp env))
+        ((quoted? exp)
+         (text-of-quotation exp))
+        ((assignment? exp)
+         (eval-assignment exp env))
+        ((definition? exp)
+         (eval-definition exp env))
+        ((if? exp)
+         (eval-if exp env))
+        ((lambda? exp)
+         (make-procedure
+          (lambda-parameters exp)
+          (lambda-body exp)
+          env))
+        ((begin? exp)
+         (eval-sequence
+          (begin-actions exp)
+          env))
+        ((cond? exp)
+         (eval (cond->if exp) env))
+        ((application? exp)
+         (apply (eval (operator exp) env)
+                (list-of-values
+                 (operands exp)
+                 env)))
+        (else
+         (error "Unknown expression
+                 type: EVAL" exp))))
+@end lisp
+
+@noindent
+Để rõ ràng, @code{eval} đã được hiện thực như một phân tích trường hợp
+dùng @code{cond}. Nhược điểm của điều này là thủ tục của chúng ta chỉ xử
+lý một vài kiểu biểu thức phân biệt được, và không thể định nghĩa các kiểu
+mới mà không chỉnh sửa định nghĩa của @code{eval}. Trong hầu hết các hiện
+thực Lisp, việc điều phối theo kiểu của biểu thức được thực hiện theo kiểu
+hướng dữ liệu. Điều này cho phép người dùng thêm các kiểu biểu thức mới mà
+@code{eval} có thể phân biệt, mà không sửa đổi định nghĩa của chính
+@code{eval}. (Xem @ref{Exercise 4.3}.)
+
+@subsubheading Apply
+
+@code{Apply} nhận hai đối số, một thủ tục và một danh sách các đối số mà
+thủ tục sẽ được áp dụng. @code{Apply} phân loại các thủ tục thành hai loại:
+Nó gọi @code{apply-primitive-procedure} để áp dụng các nguyên thủy; nó áp
+dụng các thủ tục phức hợp bằng cách định giá tuần tự các biểu thức tạo nên
+thân của thủ tục. Môi trường để định giá thân của một thủ tục phức hợp được
+xây dựng bằng cách mở rộng môi trường cơ sở được mang bởi thủ tục để đưa
+vào một khung ràng buộc các tham số của thủ tục với các đối số mà thủ tục
+sẽ được áp dụng. Đây là định nghĩa của @code{apply}:
+
+@lisp
+(define (apply procedure arguments)
+  (cond ((primitive-procedure? procedure)
+         (apply-primitive-procedure
+          procedure
+          arguments))
+        ((compound-procedure? procedure)
+         (eval-sequence
+           (procedure-body procedure)
+           (extend-environment
+             (procedure-parameters
+              procedure)
+             arguments
+             (procedure-environment
+              procedure))))
+        (else
+         (error "Unknown procedure
+                 type: APPLY"
+                procedure))))
+@end lisp
+
+@subsubheading Các đối số thủ tục
+
+Khi @code{eval} xử lý một ứng dụng thủ tục, nó dùng @code{list-of-values}
+để tạo ra danh sách các đối số mà thủ tục sẽ được áp dụng.
+@code{List-of-values} nhận các toán hạng của tổ hợp làm đối số. Nó định giá
+mỗi toán hạng và trả về danh sách các giá trị tương ứng:@footnote{Chúng ta
+có thể đã đơn giản hóa mệnh đề @code{application?} trong @code{eval} bằng
+cách dùng @code{map} (và quy định rằng @code{operands} trả về một danh sách)
+thay vì viết một thủ tục @code{list-of-values} tường minh. Chúng ta đã
+chọn không dùng @code{map} ở đây để nhấn mạnh thực tế rằng trình định giá
+có thể được hiện thực mà không cần dùng bất kỳ thủ tục bậc cao nào (và do
+đó có thể được viết bằng một ngôn ngữ không có thủ tục bậc cao), mặc dù
+ngôn ngữ mà nó hỗ trợ sẽ bao gồm các thủ tục bậc cao.}
+
+@lisp
+(define (list-of-values exps env)
+  (if (no-operands? exps)
+      '()
+      (cons (eval (first-operand exps) env)
+            (list-of-values
+             (rest-operands exps)
+             env))))
+@end lisp
+
+@subsubheading Các điều kiện
+
+@code{Eval-if} định giá phần vị từ của một biểu thức @code{if} trong môi
+trường cho trước. Nếu kết quả là đúng, @code{eval-if} định giá hệ quả, nếu
+không thì nó định giá biểu thức thay thế:
+
+@lisp
+(define (eval-if exp env)
+  (if (true? (eval (if-predicate exp) env))
+      (eval (if-consequent exp) env)
+      (eval (if-alternative exp) env)))
+@end lisp
+
+@noindent
+Việc dùng @code{true?} trong @code{eval-if} nêu bật vấn đề kết nối giữa
+ngôn ngữ được hiện thực và ngôn ngữ hiện thực. @code{if-predicate} được định
+giá trong ngôn ngữ đang được hiện thực và do đó cho ra một giá trị trong
+ngôn ngữ đó. Vị từ thông dịch @code{true?} chuyển đổi giá trị đó thành một
+giá trị có thể được kiểm tra bởi @code{if} trong ngôn ngữ hiện thực: Biểu
+diễn siêu vòng của sự thật có thể không giống với biểu diễn của Scheme
+nền.@footnote{Trong trường hợp này, ngôn ngữ đang được hiện thực và ngôn
+ngữ hiện thực là như nhau. Suy ngẫm về ý nghĩa của @code{true?} ở đây mang
+lại sự mở rộng ý thức mà không cần lạm dụng bất kỳ chất nào.}
+
+@subsubheading Các dãy
+
+@code{Eval-sequence} được dùng bởi @code{apply} để định giá dãy các biểu
+thức trong thân thủ tục và bởi @code{eval} để định giá dãy các biểu thức
+trong một biểu thức @code{begin}. Nó nhận một dãy biểu thức và một môi
+trường làm đối số, và định giá các biểu thức theo thứ tự chúng xuất hiện.
+Giá trị trả về là giá trị của biểu thức cuối cùng.
+
+@lisp
+(define (eval-sequence exps env)
+  (cond ((last-exp? exps)
+         (eval (first-exp exps) env))
+        (else
+         (eval (first-exp exps) env)
+         (eval-sequence (rest-exps exps)
+                        env))))
+@end lisp
+
+@subsubheading Các phép gán và định nghĩa
+
+Thủ tục sau xử lý các phép gán cho các biến. Nó gọi @code{eval} để tìm giá
+trị cần gán và truyền biến và giá trị kết quả cho @code{set-variable-value!}
+để được cài đặt trong môi trường được chỉ định.
+
+@lisp
+(define (eval-assignment exp env)
+  (set-variable-value!
+   (assignment-variable exp)
+   (eval (assignment-value exp) env)
+   env)
+  'ok)
+@end lisp
+
+@noindent
+Các định nghĩa biến được xử lý theo cách tương tự.@footnote{Hiện thực
+@code{define} này bỏ qua một vấn đề tinh tế trong việc xử lý các định nghĩa
+nội bộ, mặc dù nó hoạt động đúng trong hầu hết các trường hợp. Chúng ta sẽ
+thấy vấn đề là gì và cách giải quyết nó trong @ref{4.1.6}.}
+
+@lisp
+(define (eval-definition exp env)
+  (define-variable!
+    (definition-variable exp)
+    (eval (definition-value exp) env)
+    env)
+  'ok)
+@end lisp
+
+@noindent
+Chúng ta đã chọn ở đây trả về ký hiệu @code{ok} làm giá trị của một phép
+gán hoặc một định nghĩa.@footnote{Như chúng ta đã nói khi giới thiệu
+@code{define} và @code{set!}, các giá trị này phụ thuộc vào hiện thực trong
+Scheme---tức là người hiện thực có thể chọn giá trị nào để trả về.}
+
+@quotation
+@strong{@anchor{Exercise 4.1}Exercise 4.1:} Chú ý rằng chúng ta không thể
+biết liệu trình định giá siêu vòng có định giá các toán hạng từ trái sang
+phải hay từ phải sang trái. Thứ tự định giá của nó được kế thừa từ Lisp
+nền: Nếu các đối số của @code{cons} trong @code{list-of-values} được định
+giá từ trái sang phải, thì @code{list-of-values} sẽ định giá các toán hạng
+từ trái sang phải; và nếu các đối số của @code{cons} được định giá từ phải
+sang trái, thì @code{list-of-values} sẽ định giá các toán hạng từ phải sang
+trái.
+
+Viết một phiên bản @code{list-of-values} định giá các toán hạng từ trái sang
+phải bất kể thứ tự định giá trong Lisp nền. Cũng viết một phiên bản của
+@code{list-of-values} định giá các toán hạng từ phải sang trái.
+@end quotation

@@ -1,0 +1,285 @@
+@node	4.1.7, 4.2, Chapter 4, 4.1
+@subsection Tách Phân Tích Cú Pháp Khỏi Thực Thi
+
+Trình định giá được hiện thực ở trên là đơn giản, nhưng rất không hiệu quả,
+vì việc phân tích cú pháp của các biểu thức được xen kẽ với việc thực thi
+của chúng. Do đó, nếu một chương trình được thực thi nhiều lần, cú pháp của
+nó được phân tích nhiều lần. Hãy xem xét, ví dụ, định giá @code{(factorial 4)}
+sử dụng định nghĩa sau của @code{factorial}:
+
+@lisp
+(define (factorial n)
+  (if (= n 1)
+      1
+      (* (factorial (- n 1)) n)))
+@end lisp
+
+@noindent
+Mỗi lần @code{factorial} được gọi, trình định giá phải xác định rằng thân là
+một biểu thức @code{if} và trích xuất vị từ. Chỉ sau đó nó mới có thể định
+giá vị từ và điều phối theo giá trị của nó. Mỗi lần nó định giá biểu thức
+@code{(* (factorial (- n 1)) n)}, hoặc các biểu thức con @code{(factorial
+(- n 1))} và @code{(- n 1)}, trình định giá phải thực hiện phân tích trường
+hợp trong @code{eval} để xác định rằng biểu thức là một ứng dụng, và phải
+trích xuất toán tử và toán hạng của nó. Phân tích này tốn kém. Thực hiện nó
+nhiều lần là lãng phí.
+
+Chúng ta có thể biến đổi trình định giá để hiệu quả hơn đáng kể bằng cách
+sắp xếp sao cho phân tích cú pháp chỉ được thực hiện một lần.@footnote{Kỹ
+thuật này là một phần không thể thiếu của quá trình biên dịch, mà chúng ta
+sẽ thảo luận trong @ref{Chapter 5}. Jonathan Rees đã viết một trình thông
+dịch Scheme như vậy vào khoảng năm 1982 cho dự án T (@ref{Rees and Adams 1982}).
+Marc @ref{Feeley (1986)} (xem thêm @ref{Feeley and Lapalme 1987}) đã độc lập
+phát minh ra kỹ thuật này trong luận văn thạc sĩ của ông.} Chúng ta tách
+@code{eval}, nhận một biểu thức và một môi trường, thành hai phần. Thủ tục
+@code{analyze} chỉ nhận biểu thức. Nó thực hiện phân tích cú pháp và trả về
+một thủ tục mới, @newterm{thủ tục thực thi}, đóng gói công việc cần thực hiện
+khi thực thi biểu thức đã phân tích. Thủ tục thực thi nhận một môi trường
+làm đối số và hoàn thành việc định giá. Điều này tiết kiệm công việc vì
+@code{analyze} sẽ chỉ được gọi một lần trên một biểu thức, trong khi thủ tục
+thực thi có thể được gọi nhiều lần.
+
+Với việc tách thành phân tích và thực thi, @code{eval} bây giờ trở thành
+
+@lisp
+(define (eval exp env) ((analyze exp) env))
+@end lisp
+
+@noindent
+Kết quả của việc gọi @code{analyze} là thủ tục thực thi được áp dụng cho
+môi trường. Thủ tục @code{analyze} là cùng phân tích trường hợp như được
+thực hiện bởi @code{eval} ban đầu của @ref{4.1.1}, ngoại trừ các thủ tục mà
+chúng ta điều phối đến chỉ thực hiện phân tích, không phải định giá đầy đủ:
+
+@lisp
+(define (analyze exp)
+  (cond ((self-evaluating? exp)
+         (analyze-self-evaluating exp))
+        ((quoted? exp)
+         (analyze-quoted exp))
+        ((variable? exp)
+         (analyze-variable exp))
+        ((assignment? exp)
+         (analyze-assignment exp))
+        ((definition? exp)
+         (analyze-definition exp))
+        ((if? exp)
+         (analyze-if exp))
+        ((lambda? exp)
+         (analyze-lambda exp))
+        ((begin? exp)
+         (analyze-sequence
+          (begin-actions exp)))
+        ((cond? exp)
+         (analyze (cond->if exp)))
+        ((application? exp)
+         (analyze-application exp))
+        (else
+         (error "Unknown expression
+                 type: ANALYZE"
+                exp))))
+@end lisp
+
+@noindent
+Đây là thủ tục phân tích cú pháp đơn giản nhất, xử lý các biểu thức tự định
+giá. Nó trả về một thủ tục thực thi bỏ qua đối số môi trường của nó và chỉ
+trả về biểu thức:
+
+@lisp
+(define (analyze-self-evaluating exp)
+  (lambda (env) exp))
+@end lisp
+
+@noindent
+Với biểu thức trích dẫn, chúng ta có thể đạt được một chút hiệu quả bằng
+cách trích xuất văn bản của trích dẫn chỉ một lần, trong giai đoạn phân tích,
+thay vì trong giai đoạn thực thi.
+
+@lisp
+(define (analyze-quoted exp)
+  (let ((qval (text-of-quotation exp)))
+    (lambda (env) qval)))
+@end lisp
+
+@noindent
+Việc tra cứu giá trị biến vẫn phải được thực hiện trong giai đoạn thực thi,
+vì điều này phụ thuộc vào việc biết môi trường.@footnote{Tuy nhiên, có một
+phần quan trọng của việc tìm kiếm biến @emph{có thể} được thực hiện như một
+phần của phân tích cú pháp. Như chúng ta sẽ thể hiện trong @ref{5.5.6}, người
+ta có thể xác định vị trí trong cấu trúc môi trường nơi giá trị của biến sẽ
+được tìm thấy, do đó loại bỏ sự cần thiết phải quét môi trường để tìm mục
+khớp với biến.}
+
+@lisp
+(define (analyze-variable exp)
+  (lambda (env)
+    (lookup-variable-value exp env)))
+@end lisp
+
+@noindent
+@code{Analyze-assignment} cũng phải hoãn việc thực sự đặt biến cho đến khi
+thực thi, khi môi trường đã được cung cấp. Tuy nhiên, thực tế là biểu thức
+@code{assignment-value} có thể được phân tích (đệ quy) trong quá trình phân
+tích là một lợi ích lớn về hiệu quả, vì biểu thức @code{assignment-value}
+bây giờ sẽ chỉ được phân tích một lần. Điều tương tự cũng đúng cho các định
+nghĩa.
+
+@lisp
+(define (analyze-assignment exp)
+  (let ((var (assignment-variable exp))
+        (vproc (analyze
+                (assignment-value exp))))
+    (lambda (env)
+      (set-variable-value!
+       var (vproc env) env)
+      'ok)))
+
+(define (analyze-definition exp)
+  (let ((var (definition-variable exp))
+        (vproc (analyze
+                (definition-value exp))))
+    (lambda (env)
+      (define-variable! var (vproc env) env)
+      'ok)))
+@end lisp
+
+@noindent
+Với các biểu thức @code{if}, chúng ta trích xuất và phân tích vị từ, hệ quả
+và biểu thức thay thế tại thời điểm phân tích.
+
+@lisp
+(define (analyze-if exp)
+  (let ((pproc (analyze (if-predicate exp)))
+        (cproc (analyze (if-consequent exp)))
+        (aproc (analyze (if-alternative exp))))
+    (lambda (env)
+      (if (true? (pproc env))
+          (cproc env)
+          (aproc env)))))
+@end lisp
+
+@noindent
+Phân tích một biểu thức @code{lambda} cũng đạt được lợi ích lớn về hiệu quả:
+Chúng ta phân tích thân @code{lambda} chỉ một lần, mặc dù các thủ tục kết
+quả từ việc định giá @code{lambda} có thể được áp dụng nhiều lần.
+
+@lisp
+(define (analyze-lambda exp)
+  (let ((vars (lambda-parameters exp))
+        (bproc (analyze-sequence
+                (lambda-body exp))))
+    (lambda (env)
+      (make-procedure vars bproc env))))
+@end lisp
+
+@noindent
+Phân tích một dãy biểu thức (như trong @code{begin} hoặc thân của biểu thức
+@code{lambda}) phức tạp hơn.@footnote{Xem @ref{Exercise 4.23} để hiểu thêm
+về việc xử lý các dãy.} Mỗi biểu thức trong dãy được phân tích, cho ra một
+thủ tục thực thi. Các thủ tục thực thi này được kết hợp để tạo ra một thủ
+tục thực thi nhận một môi trường làm đối số và tuần tự gọi từng thủ tục thực
+thi riêng lẻ với môi trường làm đối số.
+
+@lisp
+(define (analyze-sequence exps)
+  (define (sequentially proc1 proc2)
+    (lambda (env) (proc1 env) (proc2 env)))
+  (define (loop first-proc rest-procs)
+    (if (null? rest-procs)
+        first-proc
+        (loop (sequentially first-proc
+                            (car rest-procs))
+              (cdr rest-procs))))
+  (let ((procs (map analyze exps)))
+    (if (null? procs)
+        (error "Empty sequence: ANALYZE"))
+    (loop (car procs) (cdr procs))))
+@end lisp
+
+@noindent
+Để phân tích một ứng dụng, chúng ta phân tích toán tử và các toán hạng và
+xây dựng một thủ tục thực thi gọi thủ tục thực thi toán tử (để lấy thủ tục
+thực sự cần áp dụng) và các thủ tục thực thi toán hạng (để lấy các đối số
+thực sự). Sau đó chúng ta truyền chúng cho @code{execute-application}, là
+tương tự của @code{apply} trong @ref{4.1.1}. @code{Execute-application} khác
+với @code{apply} ở chỗ thân thủ tục cho một thủ tục phức hợp đã được phân
+tích, vì vậy không cần phân tích thêm. Thay vào đó, chúng ta chỉ gọi thủ
+tục thực thi cho thân trên môi trường mở rộng.
+
+@lisp
+(define (analyze-application exp)
+  (let ((fproc (analyze (operator exp)))
+        (aprocs (map analyze (operands exp))))
+    (lambda (env)
+      (execute-application
+       (fproc env)
+       (map (lambda (aproc) (aproc env))
+            aprocs)))))
+
+(define (execute-application proc args)
+  (cond ((primitive-procedure? proc)
+         (apply-primitive-procedure proc args))
+        ((compound-procedure? proc)
+         ((procedure-body proc)
+          (extend-environment
+           (procedure-parameters proc)
+           args
+           (procedure-environment proc))))
+        (else (error "Unknown procedure type:
+                      EXECUTE-APPLICATION"
+                     proc))))
+@end lisp
+
+@noindent
+Trình định giá mới của chúng ta dùng cùng cấu trúc dữ liệu, thủ tục cú pháp
+và thủ tục hỗ trợ chạy thời gian như trong @ref{4.1.2}, @ref{4.1.3} và
+@ref{4.1.4}.
+
+@quotation
+@strong{@anchor{Exercise 4.22}Exercise 4.22:} Mở rộng trình định giá trong
+phần này để hỗ trợ dạng đặc biệt @code{let}. (Xem @ref{Exercise 4.6}.)
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.23}Exercise 4.23:} Alyssa P. Hacker không hiểu
+tại sao @code{analyze-sequence} cần phải phức tạp như vậy. Tất cả các thủ
+tục phân tích khác là các phép biến đổi đơn giản của các thủ tục định giá
+tương ứng (hoặc các mệnh đề @code{eval}) trong @ref{4.1.1}. Cô mong đợi
+@code{analyze-sequence} trông như thế này:
+
+@lisp
+(define (analyze-sequence exps)
+  (define (execute-sequence procs env)
+    (cond ((null? (cdr procs))
+           ((car procs) env))
+          (else ((car procs) env)
+                (execute-sequence
+                 (cdr procs) env))))
+  (let ((procs (map analyze exps)))
+    (if (null? procs)
+        (error "Empty sequence:
+                ANALYZE"))
+    (lambda (env)
+      (execute-sequence procs env))))
+@end lisp
+
+Eva Lu Ator giải thích cho Alyssa rằng phiên bản trong văn bản thực hiện
+nhiều công việc định giá dãy hơn tại thời điểm phân tích. Thủ tục thực thi
+dãy của Alyssa, thay vì có các lời gọi đến các thủ tục thực thi riêng lẻ
+được tích hợp sẵn, lặp qua các thủ tục theo thứ tự để gọi chúng: Thực chất,
+mặc dù các biểu thức riêng lẻ trong dãy đã được phân tích, nhưng bản thân
+dãy thì chưa được phân tích.
+
+So sánh hai phiên bản @code{analyze-sequence}. Ví dụ, hãy xem xét trường
+hợp phổ biến (điển hình của thân thủ tục) mà dãy chỉ có một biểu thức. Thủ
+tục thực thi được tạo ra bởi chương trình của Alyssa sẽ làm gì? Còn thủ tục
+thực thi được tạo ra bởi chương trình trong văn bản ở trên? Hai phiên bản so
+sánh như thế nào với một dãy có hai biểu thức?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 4.24}Exercise 4.24:} Thiết kế và thực hiện một số
+thử nghiệm để so sánh tốc độ của trình định giá siêu vòng ban đầu với phiên
+bản trong phần này. Dùng kết quả của bạn để ước tính tỷ lệ thời gian được
+dành cho phân tích so với thực thi cho các thủ tục khác nhau.
+@end quotation

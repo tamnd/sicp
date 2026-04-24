@@ -1,0 +1,148 @@
+@node	4.1, 4.2, Chapter 4, Chapter 4
+@section Trình Định Giá Siêu Vòng
+
+Trình định giá Lisp của chúng ta sẽ được hiện thực như một chương trình
+Lisp. Có vẻ vòng quanh khi nghĩ về việc định giá các chương trình Lisp bằng
+một trình định giá mà bản thân nó được hiện thực bằng Lisp. Tuy nhiên, định
+giá là một quá trình, vì vậy việc mô tả quá trình định giá bằng Lisp là
+thích hợp, vì suy cho cùng, Lisp là công cụ để mô tả các quá trình của
+chúng ta.@footnote{Dù vậy, vẫn còn các khía cạnh quan trọng của quá trình
+định giá không được làm sáng tỏ bởi trình định giá của chúng ta. Quan trọng
+nhất trong số đó là các cơ chế chi tiết mà các thủ tục gọi các thủ tục khác
+và trả về các giá trị cho người gọi của chúng. Chúng ta sẽ giải quyết các
+vấn đề này trong @ref{Chapter 5}, nơi chúng ta xem xét kỹ hơn quá trình
+định giá bằng cách hiện thực trình định giá như một máy thanh ghi đơn giản.}
+Một trình định giá được viết trong cùng ngôn ngữ mà nó định giá được gọi là
+@newterm{siêu vòng}.
+
+Trình định giá siêu vòng về cơ bản là một cách diễn đạt Scheme của mô hình
+môi trường định giá được mô tả trong @ref{3.2}. Nhắc lại rằng mô hình có
+hai phần cơ bản:
+
+@enumerate 1
+
+@item
+Để định giá một tổ hợp (một biểu thức phức hợp không phải là dạng đặc biệt),
+định giá các biểu thức con và sau đó áp dụng giá trị của biểu thức con toán
+tử cho các giá trị của các biểu thức con toán hạng.
+
+@item
+Để áp dụng một thủ tục phức hợp cho một tập hợp các đối số, định giá thân
+của thủ tục trong một môi trường mới. Để xây dựng môi trường này, mở rộng
+phần môi trường của đối tượng thủ tục bằng một khung trong đó các tham số
+hình thức của thủ tục được ràng buộc với các đối số mà thủ tục được áp dụng.
+
+@end enumerate
+
+@noindent
+Hai quy tắc này mô tả bản chất của quá trình định giá, một chu kỳ cơ bản
+trong đó các biểu thức cần định giá trong các môi trường được rút gọn thành
+các thủ tục cần áp dụng cho các đối số, đến lượt chúng lại được rút gọn
+thành các biểu thức mới cần định giá trong các môi trường mới, v.v., cho
+đến khi chúng ta đến các ký hiệu, có giá trị được tra cứu trong môi trường,
+và các thủ tục nguyên thủy, được áp dụng trực tiếp (xem @ref{Figure 4.1}).@footnote{Nếu
+chúng ta được trao khả năng áp dụng các nguyên thủy, thì còn gì cho chúng
+ta hiện thực trong trình định giá? Công việc của trình định giá không phải
+là chỉ định các nguyên thủy của ngôn ngữ, mà là cung cấp mô liên kết---các
+phương tiện kết hợp và các phương tiện trừu tượng hóa---ràng buộc một tập
+hợp các nguyên thủy để tạo thành một ngôn ngữ. Cụ thể:
+
+@itemize @bullet
+
+@item
+Trình định giá cho phép chúng ta xử lý các biểu thức lồng nhau. Ví dụ, mặc
+dù chỉ áp dụng các nguyên thủy sẽ đủ để định giá biểu thức @code{(+ 1 6)},
+nhưng không đủ để xử lý @code{(+ 1 (* 2 3))}. Theo quan điểm của thủ tục
+nguyên thủy @code{+}, các đối số của nó phải là các số, và nó sẽ bị lỗi nếu
+chúng ta truyền biểu thức @code{(* 2 3)} làm đối số. Một vai trò quan trọng
+của trình định giá là điều phối việc kết hợp thủ tục sao cho @code{(* 2 3)}
+được rút gọn thành 6 trước khi được truyền làm đối số cho @code{+}.
+
+@item
+Trình định giá cho phép chúng ta dùng các biến. Ví dụ, thủ tục nguyên thủy
+cộng không có cách để xử lý các biểu thức như @code{(+ x 1)}. Chúng ta cần
+một trình định giá để theo dõi các biến và lấy giá trị của chúng trước khi
+gọi các thủ tục nguyên thủy.
+
+@item
+Trình định giá cho phép chúng ta định nghĩa các thủ tục phức hợp. Điều này
+liên quan đến việc theo dõi các định nghĩa thủ tục, biết cách dùng các định
+nghĩa này trong khi định giá các biểu thức, và cung cấp một cơ chế cho phép
+các thủ tục nhận đối số.
+
+@item
+Trình định giá cung cấp các dạng đặc biệt, phải được định giá khác với các
+lời gọi thủ tục.
+
+@end itemize
+}
+Chu kỳ định giá này sẽ được thể hiện bởi sự tương tác giữa hai thủ tục quan
+trọng trong trình định giá, @code{eval} và @code{apply}, được mô tả trong
+@ref{4.1.1} (xem @ref{Figure 4.1}).
+
+@float
+@anchor{Figure 4.1}
+@ifinfo
+@strong{Figure 4.1:} The @code{eval}-@code{apply} cycle exposes the essence of a computer language.
+
+@example
+                           .,ad88888888baa,
+                  _    ,d8P"""        ""9888ba.      _
+                 /  .a8"          ,ad88888888888a   |\
+               /   aP'          ,88888888888888888a   \
+              /  ,8"           ,88888888888888888888,  \
+             |  ,8'            (888888888888888888888, |
+            /  ,8'             `8888888888888888888888  \
+            |  8)               `888888888888888888888, |
+Procedure,  |  8                  "88888 Apply 8888888) | Expression
+Arguments   |  8     Eval          `888888888888888888) | Environment
+            |  8)                    "8888888888888888  |
+            \  (b                     "88888888888888'  /
+             | `8,                     8888888888888)  |
+             \  "8a                   ,888888888888)  /
+              \   V8,                 d88888888888"  /
+              _\| `8b,             ,d8888888888P' _/
+                     `V8a,       ,ad8888888888P'
+                        ""88888888888888888P"
+                             """"""""""""
+
+                               [graphic by Normand Veillux, modified]
+@end example
+@end ifinfo
+@iftex
+@image{fig/chap4/Fig4.1a,147mm,,,.std.svg}
+@caption{@strong{Figure 4.1:} The @code{eval}-@code{apply} cycle exposes the essence of a computer language.}
+@end iftex
+@end float
+
+Hiện thực của trình định giá sẽ phụ thuộc vào các thủ tục xác định
+@newterm{cú pháp} của các biểu thức cần định giá. Chúng ta sẽ dùng trừu
+tượng hóa dữ liệu để làm cho trình định giá độc lập với cách biểu diễn của
+ngôn ngữ. Ví dụ, thay vì cam kết với lựa chọn rằng một phép gán được biểu
+diễn bằng một danh sách bắt đầu với ký hiệu @code{set!}, chúng ta dùng một
+vị từ trừu tượng @code{assignment?} để kiểm tra phép gán, và chúng ta dùng
+các bộ chọn trừu tượng @code{assignment-variable} và @code{assignment-value}
+để truy cập các phần của phép gán. Hiện thực các biểu thức sẽ được mô tả
+chi tiết trong @ref{4.1.2}. Ngoài ra còn có các phép toán, được mô tả trong
+@ref{4.1.3}, xác định cách biểu diễn các thủ tục và môi trường. Ví dụ,
+@code{make-procedure} xây dựng các thủ tục phức hợp, @code{lookup-variable-value}
+truy cập các giá trị của biến, và @code{apply-primitive-procedure} áp dụng
+một thủ tục nguyên thủy cho một danh sách đối số cho trước.
+
+@menu
+* 4.1.1::            The Core of the Evaluator
+* 4.1.2::            Representing Expressions
+* 4.1.3::            Evaluator Data Structures
+* 4.1.4::            Running the Evaluator as a Program
+* 4.1.5::            Data as Programs
+* 4.1.6::            Internal Definitions
+* 4.1.7::            Separating Syntactic Analysis from Execution
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi
+@include ss05.texi
+@include ss06.texi
+@include ss07.texi

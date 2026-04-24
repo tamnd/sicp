@@ -1,0 +1,195 @@
+@node	4.1.4, 4.1.5, 4.1.3, 4.1
+@subsection Chạy Trình Định Giá Như Một Chương Trình
+
+Với trình định giá trong tay, chúng ta có một mô tả (được diễn đạt bằng Lisp)
+về quá trình định giá các biểu thức Lisp. Một ưu điểm của việc diễn đạt trình
+định giá như một chương trình là chúng ta có thể chạy chương trình. Điều này
+cho chúng ta, đang chạy trong Lisp, một mô hình hoạt động về cách Lisp tự
+định giá các biểu thức. Điều này có thể phục vụ như một khung để thử nghiệm
+các quy tắc định giá, như chúng ta sẽ làm sau trong chương này.
+
+Chương trình trình định giá của chúng ta rút gọn các biểu thức cuối cùng
+thành ứng dụng của các thủ tục nguyên thủy. Do đó, tất cả những gì chúng ta
+cần để chạy trình định giá là tạo ra một cơ chế gọi hệ thống Lisp nền để mô
+hình hóa ứng dụng của các thủ tục nguyên thủy.
+
+Phải có một ràng buộc cho mỗi tên thủ tục nguyên thủy, để khi @code{eval}
+định giá toán tử của một ứng dụng của nguyên thủy, nó sẽ tìm thấy một đối
+tượng để truyền cho @code{apply}. Như vậy chúng ta thiết lập một môi trường
+toàn cục liên kết các đối tượng duy nhất với các tên của các thủ tục nguyên
+thủy có thể xuất hiện trong các biểu thức chúng ta sẽ định giá. Môi trường
+toàn cục cũng bao gồm các ràng buộc cho các ký hiệu @code{true} và
+@code{false}, để chúng có thể được dùng như các biến trong các biểu thức
+cần định giá.
+
+@lisp
+(define (setup-environment)
+  (let ((initial-env
+         (extend-environment
+          (primitive-procedure-names)
+          (primitive-procedure-objects)
+          the-empty-environment)))
+    (define-variable! 'true true initial-env)
+    (define-variable! 'false false initial-env)
+    initial-env))
+
+(define the-global-environment
+  (setup-environment))
+@end lisp
+
+@noindent
+Không quan trọng cách chúng ta biểu diễn các đối tượng thủ tục nguyên thủy,
+miễn là @code{apply} có thể nhận biết và áp dụng chúng bằng cách dùng các
+thủ tục @code{primitive-procedure?} và @code{apply-primitive-procedure}.
+Chúng ta đã chọn biểu diễn một thủ tục nguyên thủy như một danh sách bắt đầu
+với ký hiệu @code{primitive} và chứa một thủ tục trong Lisp nền hiện thực
+nguyên thủy đó.
+
+@lisp
+(define (primitive-procedure? proc)
+  (tagged-list? proc 'primitive))
+
+(define (primitive-implementation proc)
+  (cadr proc))
+@end lisp
+
+@noindent
+@code{Setup-environment} sẽ lấy các tên và thủ tục hiện thực nguyên thủy từ
+một danh sách:@footnote{Bất kỳ thủ tục nào được định nghĩa trong Lisp nền
+đều có thể được dùng như một nguyên thủy cho trình định giá siêu vòng. Tên
+của một nguyên thủy được cài đặt trong trình định giá không cần phải giống
+với tên hiện thực của nó trong Lisp nền; các tên ở đây giống nhau vì trình
+định giá siêu vòng hiện thực chính Scheme. Như vậy, ví dụ, chúng ta có thể
+đặt @code{(list 'first car)} hoặc @code{(list 'square (lambda (x) (* x x)))}
+vào danh sách @code{primitive-procedures}.}
+
+@lisp
+(define primitive-procedures
+  (list (list 'car car)
+        (list 'cdr cdr)
+        (list 'cons cons)
+        (list 'null? null?)
+        ⟨@var{more primitives}⟩ ))
+
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
+
+(define (primitive-procedure-objects)
+  (map (lambda (proc)
+         (list 'primitive (cadr proc)))
+       primitive-procedures))
+@end lisp
+
+@noindent
+Để áp dụng một thủ tục nguyên thủy, chúng ta đơn giản áp dụng thủ tục hiện
+thực cho các đối số, dùng hệ thống Lisp nền:@footnote{@code{Apply-in-underlying-scheme}
+là thủ tục @code{apply} mà chúng ta đã dùng trong các chương trước. Thủ tục
+@code{apply} của trình định giá siêu vòng (@ref{4.1.1}) mô hình hóa cách
+hoạt động của nguyên thủy này. Có hai thứ khác nhau gọi là @code{apply} dẫn
+đến một vấn đề kỹ thuật khi chạy trình định giá siêu vòng, vì việc định
+nghĩa @code{apply} của trình định giá siêu vòng sẽ che khuất định nghĩa của
+nguyên thủy. Một cách để giải quyết điều này là đổi tên @code{apply} siêu
+vòng để tránh xung đột với tên của thủ tục nguyên thủy. Thay vào đó chúng
+ta đã giả định rằng chúng ta đã lưu một tham chiếu đến @code{apply} nền bằng
+cách thực hiện
+
+@lisp
+(define apply-in-underlying-scheme apply)
+@end lisp
+
+@noindent
+trước khi định nghĩa @code{apply} siêu vòng. Điều này cho phép chúng ta truy
+cập phiên bản gốc của @code{apply} với một tên khác.}
+
+@lisp
+(define (apply-primitive-procedure proc args)
+  (apply-in-underlying-scheme
+   (primitive-implementation proc) args))
+@end lisp
+
+@noindent
+Để thuận tiện khi chạy trình định giá siêu vòng, chúng ta cung cấp một
+@newterm{vòng điều khiển} mô hình hóa vòng đọc-định giá-in của hệ thống Lisp
+nền. Nó in một @newterm{lời nhắc}, đọc một biểu thức đầu vào, định giá biểu
+thức này trong môi trường toàn cục, và in kết quả. Chúng ta đặt trước mỗi
+kết quả in bằng một @newterm{lời nhắc đầu ra} để phân biệt giá trị của biểu
+thức với các đầu ra khác có thể được in.@footnote{Thủ tục nguyên thủy
+@code{read} chờ đầu vào từ người dùng, và trả về biểu thức hoàn chỉnh tiếp
+theo được nhập. Ví dụ, nếu người dùng nhập @code{(+ 23 x)}, @code{read} trả
+về một danh sách ba phần tử chứa ký hiệu @code{+}, số 23 và ký hiệu @code{x}.
+Nếu người dùng nhập @code{'x}, @code{read} trả về một danh sách hai phần tử
+chứa ký hiệu @code{quote} và ký hiệu @code{x}.}
+
+@lisp
+(define input-prompt  ";;; M-Eval input:")
+(define output-prompt ";;; M-Eval value:")
+
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output
+           (eval input
+                 the-global-environment)))
+      (announce-output output-prompt)
+      (user-print output)))
+  (driver-loop))
+
+(define (prompt-for-input string)
+  (newline) (newline)
+  (display string) (newline))
+
+(define (announce-output string)
+  (newline) (display string) (newline))
+@end lisp
+
+@noindent
+Chúng ta dùng một thủ tục in đặc biệt, @code{user-print}, để tránh in phần
+môi trường của một thủ tục phức hợp, có thể là một danh sách rất dài (hoặc
+thậm chí có thể chứa các chu kỳ).
+
+@lisp
+(define (user-print object)
+  (if (compound-procedure? object)
+      (display
+       (list 'compound-procedure
+             (procedure-parameters object)
+             (procedure-body object)
+             '<procedure-env>))
+      (display object)))
+@end lisp
+
+@noindent
+Bây giờ tất cả những gì chúng ta cần để chạy trình định giá là khởi tạo môi
+trường toàn cục và khởi động vòng điều khiển. Đây là một tương tác mẫu:
+
+@lisp
+(define the-global-environment
+  (setup-environment))
+
+(driver-loop)
+
+@i{;;; M-Eval input:}
+(define (append x y)
+  (if (null? x)
+      y
+      (cons (car x) (append (cdr x) y))))
+
+@i{;;; M-Eval value:}
+@i{ok}
+
+@i{;;; M-Eval input:}
+(append '(a b c) '(d e f))
+
+@i{;;; M-Eval value:}
+@i{(a b c d e f)}
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 4.14}Exercise 4.14:} Eva Lu Ator và Louis Reasoner
+đều đang thử nghiệm với trình định giá siêu vòng. Eva nhập định nghĩa của
+@code{map} và chạy một số chương trình thử nghiệm dùng nó. Chúng hoạt động
+tốt. Louis, ngược lại, đã cài đặt phiên bản hệ thống của @code{map} như một
+nguyên thủy cho trình định giá siêu vòng. Khi anh thử nó, mọi thứ trở nên
+rất tồi tệ. Giải thích tại sao @code{map} của Louis thất bại mặc dù @code{map}
+của Eva hoạt động.
+@end quotation
