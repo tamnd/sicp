@@ -24,12 +24,9 @@ JS     = $(DIR)js/*.js
 # en_US uses the custom ./texi2any wrapper + local HTML.pm (Texinfo 5.x-compatible).
 # Other languages use system texi2any directly to avoid prototype mismatches in Texinfo 7.x.
 ifeq ($(LANG),en_US)
-TEXI2ANY_CMD = ./texi2any --no-warn --html --split=section --no-headers --iftex
-CONV         = texi2any lib/Texinfo/Convert/HTML.pm
+CONV = texi2any lib/Texinfo/Convert/HTML.pm
 else
-TEXI2ANY_CMD = texi2any --no-warn --html --split=section --no-headers --iftex \
-               --set-customization-variable EXTENSION=xhtml
-CONV         =
+CONV =
 endif
 MATH   = get-math.js put-math.js mathcell.xhtml
 HIGHL  = en_US/js/highlight/
@@ -89,7 +86,17 @@ endif
 
 $(NEXUS): $(SRC) $(CONV) $(MATH)
 	@echo "Converting Texinfo to HTML (LANG=$(LANG))..."
-	@$(TEXI2ANY_CMD) --output $(DIR) $(SRC)
+ifeq ($(LANG),en_US)
+	@./texi2any --no-warn --html --split=section --no-headers --iftex \
+	  --output $(DIR) $(SRC)
+else
+	@# cd into book dir so nested @include paths resolve relative to the includer.
+	@# --force writes output even with errors (e.g., @ref to untranslated nodes).
+	@cd ../books/$(LANG) && texi2any --no-warn --html --split=section \
+	  --no-headers --iftex --force \
+	  --set-customization-variable EXTENSION=xhtml \
+	  --output $(abspath $(DIR)) sicp.texi
+endif
 	@grep -lZ 'This file redirects' $(HTML) | xargs -0 rm -f --
 	@echo "Replacing LaTeX with MathML..."
 	@./get-math.js db.json $(HTML)
