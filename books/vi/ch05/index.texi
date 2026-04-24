@@ -1,0 +1,32 @@
+@node    Chapter 5, 5.1, 4.4, Top
+@chapter Tính Toán với Các Máy Thanh Ghi
+
+@quotation
+Mục tiêu của tôi là chứng minh rằng cỗ máy thiên thể không phải là một loại sinh vật thiêng liêng, sống động, mà là một loại đồng hồ cơ (và người tin rằng một chiếc đồng hồ có linh hồn sẽ gán vinh quang của người tạo ra cho tác phẩm), đến mức gần như tất cả các chuyển động đa dạng đều do một lực cực kỳ đơn giản và vật chất gây ra, giống như tất cả các chuyển động của đồng hồ đều do một quả nặng duy nhất gây ra.
+
+---Johannes Kepler (thư gửi Herwart von Hohenburg, 1605)
+@end quotation
+
+
+@noindent
+Ta đã bắt đầu cuốn sách này bằng cách nghiên cứu các quá trình và mô tả các quá trình theo các thủ tục được viết bằng Lisp. Để giải thích ý nghĩa của các thủ tục này, ta đã sử dụng một loạt các mô hình định giá: mô hình thay thế của @ref{Chapter 1}, mô hình môi trường của @ref{Chapter 3}, và trình định giá siêu vòng của @ref{Chapter 4}. Đặc biệt, việc kiểm tra trình định giá siêu vòng đã giải tỏa phần lớn bí ẩn về cách các ngôn ngữ giống Lisp được diễn giải. Nhưng ngay cả trình định giá siêu vòng cũng để lại các câu hỏi quan trọng chưa được trả lời, vì nó không làm sáng tỏ các cơ chế điều khiển trong một hệ thống Lisp. Ví dụ, trình định giá không giải thích cách định giá một biểu thức con quản lý để trả về một giá trị cho biểu thức sử dụng giá trị này, cũng không giải thích tại sao một số thủ tục đệ quy tạo ra các quá trình lặp (tức là được định giá sử dụng không gian hằng số) trong khi các thủ tục đệ quy khác tạo ra các quá trình đệ quy. Những câu hỏi này vẫn còn chưa được trả lời vì trình định giá siêu vòng tự nó là một chương trình Lisp và do đó kế thừa cấu trúc điều khiển của hệ thống Lisp cơ sở. Để cung cấp một mô tả đầy đủ hơn về cấu trúc điều khiển của trình định giá Lisp, ta phải làm việc ở một mức độ nguyên thủy hơn chính Lisp.
+
+Trong chương này ta sẽ mô tả các quá trình theo hoạt động từng bước của một máy tính truyền thống. Một máy tính như vậy, hay @newterm{máy thanh ghi}, tuần tự thực thi các @newterm{lệnh} thao túng nội dung của một tập hợp cố định các phần tử lưu trữ gọi là @newterm{các thanh ghi}. Một lệnh máy thanh ghi điển hình áp dụng một phép toán nguyên thủy cho nội dung của một số thanh ghi và gán kết quả cho một thanh ghi khác. Các mô tả của ta về các quá trình được thực thi bởi các máy thanh ghi sẽ trông rất giống các chương trình ``ngôn ngữ máy'' cho các máy tính truyền thống. Tuy nhiên, thay vì tập trung vào ngôn ngữ máy của bất kỳ máy tính cụ thể nào, ta sẽ kiểm tra một số thủ tục Lisp và thiết kế một máy thanh ghi cụ thể để thực thi từng thủ tục. Do đó, ta sẽ tiếp cận nhiệm vụ của mình từ góc độ của một kiến trúc sư phần cứng hơn là từ góc độ của một lập trình viên ngôn ngữ máy. Trong việc thiết kế các máy thanh ghi, ta sẽ phát triển các cơ chế để hiện thực hóa các cấu trúc lập trình quan trọng như đệ quy. Ta cũng sẽ trình bày một ngôn ngữ để mô tả các thiết kế cho các máy thanh ghi. Trong @ref{5.2} ta sẽ hiện thực hóa một chương trình Lisp sử dụng các mô tả này để mô phỏng các máy ta thiết kế.
+
+Hầu hết các phép toán nguyên thủy của các máy thanh ghi của ta đều rất đơn giản. Ví dụ, một phép toán có thể cộng các số được lấy từ hai thanh ghi, tạo ra một kết quả để được lưu trữ vào một thanh ghi thứ ba. Một phép toán như vậy có thể được thực hiện bởi phần cứng được mô tả dễ dàng. Tuy nhiên, để xử lý cấu trúc danh sách, ta cũng sẽ sử dụng các phép toán bộ nhớ @code{car}, @code{cdr}, và @code{cons}, đòi hỏi một cơ chế cấp phát lưu trữ phức tạp. Trong @ref{5.3} ta nghiên cứu việc hiện thực hóa chúng theo các phép toán cơ bản hơn.
+
+Trong @ref{5.4}, sau khi ta đã tích lũy kinh nghiệm xây dựng các thủ tục đơn giản như các máy thanh ghi, ta sẽ thiết kế một máy thực hiện thuật toán được mô tả bởi trình định giá siêu vòng của @ref{4.1}. Điều này sẽ lấp đầy khoảng trống trong hiểu biết của ta về cách các biểu thức Scheme được diễn giải, bằng cách cung cấp một mô hình rõ ràng cho các cơ chế điều khiển trong trình định giá. Trong @ref{5.5} ta sẽ nghiên cứu một trình biên dịch đơn giản dịch các chương trình Scheme thành các chuỗi lệnh có thể được thực thi trực tiếp với các thanh ghi và phép toán của máy thanh ghi trình định giá.
+
+@menu
+* 5.1::              Thiết Kế Các Máy Thanh Ghi
+* 5.2::              Bộ Mô Phỏng Máy Thanh Ghi
+* 5.3::              Cấp Phát Lưu Trữ và Thu Gom Rác
+* 5.4::              Trình Định Giá Điều Khiển Tường Minh
+* 5.5::              Biên Dịch
+@end menu
+
+@include s01/index.texi
+@include s02/index.texi
+@include s03/index.texi
+@include s04/index.texi
+@include s05/index.texi

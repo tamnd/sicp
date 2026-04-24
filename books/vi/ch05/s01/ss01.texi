@@ -1,0 +1,175 @@
+@node	5.1.1, 5.1.2, 5.1, 5.1
+@subsection Ngôn Ngữ Mô Tả Các Máy Thanh Ghi
+
+Các sơ đồ đường dữ liệu và bộ điều khiển đủ để biểu diễn các máy đơn giản như @abbr{GCD}, nhưng chúng cồng kềnh để mô tả các máy lớn như trình thông dịch Lisp. Để có thể xử lý các máy phức tạp, ta sẽ tạo ra một ngôn ngữ trình bày, dưới dạng văn bản, tất cả thông tin được cung cấp bởi các sơ đồ đường dữ liệu và bộ điều khiển. Ta sẽ bắt đầu với một ký hiệu phản ánh trực tiếp các sơ đồ.
+
+Ta định nghĩa các đường dữ liệu của một máy bằng cách mô tả các thanh ghi và phép toán. Để mô tả một thanh ghi, ta đặt tên cho nó và chỉ định các nút điều khiển việc gán cho nó. Ta đặt tên cho mỗi nút này và chỉ định nguồn dữ liệu vào thanh ghi dưới sự điều khiển của nút. (Nguồn là một thanh ghi, một hằng số, hoặc một phép toán.) Để mô tả một phép toán, ta đặt tên cho nó và chỉ định các đầu vào của nó (các thanh ghi hoặc hằng số).
+
+Ta định nghĩa bộ điều khiển của một máy là một chuỗi @newterm{lệnh} cùng với @newterm{nhãn} xác định các @newterm{điểm vào} trong chuỗi. Một lệnh là một trong các loại sau:
+
+@itemize @bullet
+
+@item
+Tên của một nút đường dữ liệu cần nhấn để gán một giá trị cho một thanh ghi. (Điều này tương ứng với một hộp trong sơ đồ bộ điều khiển.)
+
+@item
+Một lệnh @code{test}, thực hiện một phép kiểm tra được chỉ định.
+
+@item
+Một nhánh có điều kiện (lệnh @code{branch}) đến một vị trí được chỉ định bởi một nhãn bộ điều khiển, dựa trên kết quả của phép kiểm tra trước đó. (Phép kiểm tra và nhánh cùng tương ứng với một hình thoi trong sơ đồ bộ điều khiển.) Nếu phép kiểm tra là sai, bộ điều khiển nên tiếp tục với lệnh tiếp theo trong chuỗi. Nếu không, bộ điều khiển nên tiếp tục với lệnh sau nhãn.
+
+@item
+Một nhánh vô điều kiện (lệnh @code{goto}) đặt tên một nhãn bộ điều khiển để tiếp tục thực thi.
+
+@end itemize
+
+@noindent
+Máy bắt đầu ở đầu chuỗi lệnh bộ điều khiển và dừng khi thực thi đến cuối chuỗi. Ngoại trừ khi một nhánh thay đổi luồng điều khiển, các lệnh được thực thi theo thứ tự chúng được liệt kê.
+
+@noindent
+@ref{Figure 5.3} cho thấy máy @abbr{GCD} được mô tả theo cách này. Ví dụ này chỉ gợi ý tính tổng quát của các mô tả này, vì máy @abbr{GCD} là một trường hợp rất đơn giản: Mỗi thanh ghi chỉ có một nút, và mỗi nút và phép kiểm tra chỉ được sử dụng một lần trong bộ điều khiển.
+
+@quotation
+@strong{@anchor{Figure 5.3}Figure 5.3:} @math{\downarrow} A specification of the @abbr{GCD} machine.
+
+@lisp
+(data-paths
+ (registers
+  ((name a)
+   (buttons ((name a<-b)
+             (source (register b)))))
+  ((name b)
+   (buttons ((name b<-t)
+             (source (register t)))))
+  ((name t)
+   (buttons ((name t<-r)
+             (source (operation rem))))))
+ (operations
+  ((name rem)
+   (inputs (register a) (register b)))
+  ((name =)
+   (inputs (register b) (constant 0)))))
+
+(controller
+ test-b                @r{; label}
+   (test =)            @r{; test}
+   (branch
+    (label gcd-done))  @r{; conditional branch}
+   (t<-r)              @r{; button push}
+   (a<-b)              @r{; button push}
+   (b<-t)              @r{; button push}
+   (goto
+    (label test-b))    @r{; unconditional branch}
+ gcd-done)             @r{; label}
+@end lisp
+
+@end quotation
+
+Thật không may, khó đọc một mô tả như vậy. Để hiểu các lệnh bộ điều khiển, ta phải liên tục tham chiếu lại các định nghĩa tên nút và tên phép toán, và để hiểu các nút làm gì, ta có thể phải tham chiếu các định nghĩa tên phép toán. Do đó ta sẽ biến đổi ký hiệu của mình để kết hợp thông tin từ các mô tả đường dữ liệu và bộ điều khiển để ta có thể thấy tất cả cùng một lúc.
+
+Để có được dạng mô tả này, ta sẽ thay thế các tên nút và phép toán tùy ý bằng các định nghĩa về hành vi của chúng. Tức là, thay vì nói (trong bộ điều khiển) ``Nhấn nút @code{t<-r}'' và riêng biệt nói (trong các đường dữ liệu) ``Nút @code{t<-r} gán giá trị của phép toán @code{rem} cho thanh ghi @code{t}'' và ``Các đầu vào của phép toán @code{rem} là nội dung của các thanh ghi @code{a} và @code{b},'' ta sẽ nói (trong bộ điều khiển) ``Nhấn nút gán cho thanh ghi @code{t} giá trị của phép toán @code{rem} trên nội dung của các thanh ghi @code{a} và @code{b}.'' Tương tự, thay vì nói (trong bộ điều khiển) ``Thực hiện phép kiểm tra @code{=}'' và riêng biệt nói (trong các đường dữ liệu) ``Phép kiểm tra @code{=} hoạt động trên nội dung của thanh ghi @code{b} và hằng số 0,'' ta sẽ nói ``Thực hiện phép kiểm tra @code{=} trên nội dung của thanh ghi @code{b} và hằng số 0.'' Ta sẽ bỏ qua mô tả đường dữ liệu, chỉ để lại chuỗi bộ điều khiển. Do đó, máy @abbr{GCD} được mô tả như sau:
+
+@lisp
+(controller
+ test-b
+   (test (op =) (reg b) (const 0))
+   (branch (label gcd-done))
+   (assign t (op rem) (reg a) (reg b))
+   (assign a (reg b))
+   (assign b (reg t))
+   (goto (label test-b))
+ gcd-done)
+@end lisp
+
+@noindent
+Dạng mô tả này dễ đọc hơn loại được minh họa trong @ref{Figure 5.3}, nhưng nó cũng có nhược điểm:
+
+@itemize @bullet
+
+@item
+Nó dài dòng hơn cho các máy lớn, vì các mô tả đầy đủ về các phần tử đường dữ liệu được lặp lại mỗi khi các phần tử được đề cập trong chuỗi lệnh bộ điều khiển. (Đây không phải là vấn đề trong ví dụ @abbr{GCD}, vì mỗi phép toán và nút chỉ được sử dụng một lần.) Hơn nữa, việc lặp lại các mô tả đường dữ liệu che khuất cấu trúc đường dữ liệu thực tế của máy; không rõ ràng đối với một máy lớn có bao nhiêu thanh ghi, phép toán và nút và cách chúng kết nối với nhau.
+
+@item
+Vì các lệnh bộ điều khiển trong định nghĩa máy trông giống các biểu thức Lisp, nên dễ quên rằng chúng không phải là các biểu thức Lisp tùy ý. Chúng chỉ có thể biểu thị các phép toán máy hợp lệ. Ví dụ, các phép toán chỉ có thể hoạt động trực tiếp trên các hằng số và nội dung của các thanh ghi, không phải trên kết quả của các phép toán khác.
+
+@end itemize
+
+@noindent
+Mặc dù có những nhược điểm này, ta sẽ sử dụng ngôn ngữ máy thanh ghi này xuyên suốt chương này, vì ta sẽ quan tâm hơn đến việc hiểu các bộ điều khiển hơn là hiểu các phần tử và kết nối trong các đường dữ liệu. Tuy nhiên ta nên nhớ rằng thiết kế đường dữ liệu rất quan trọng trong việc thiết kế các máy thực tế.
+
+@quotation
+@strong{@anchor{Exercise 5.2}Bài tập 5.2:} Dùng ngôn ngữ máy thanh ghi để mô tả máy giai thừa lặp của @ref{Exercise 5.1}.
+@end quotation
+
+@subsubheading Các hành động
+
+Hãy sửa đổi máy @abbr{GCD} để ta có thể nhập các số mà ta muốn tính @abbr{GCD} và in kết quả ra terminal. Ta sẽ không thảo luận về cách tạo ra một máy có thể đọc và in, nhưng sẽ giả sử (như ta làm khi sử dụng @code{read} và @code{display} trong Scheme) rằng chúng có sẵn như các phép toán nguyên thủy.@footnote{Giả thiết này bỏ qua rất nhiều độ phức tạp. Thông thường một phần lớn của việc hiện thực hóa hệ thống Lisp được dành để làm cho đọc và in hoạt động.}
+
+@code{Read} giống như các phép toán ta đã sử dụng ở chỗ nó tạo ra một giá trị có thể được lưu trữ trong một thanh ghi. Nhưng @code{read} không lấy đầu vào từ bất kỳ thanh ghi nào; giá trị của nó phụ thuộc vào điều gì đó xảy ra bên ngoài các phần của máy ta đang thiết kế. Ta sẽ cho phép các phép toán của máy có hành vi như vậy, và do đó sẽ vẽ và ghi lại việc sử dụng @code{read} giống như ta làm với bất kỳ phép toán nào khác tính một giá trị.
+
+@code{Print}, mặt khác, khác với các phép toán ta đã sử dụng theo một cách cơ bản: Nó không tạo ra một giá trị đầu ra để lưu trữ trong một thanh ghi. Mặc dù nó có hiệu ứng, hiệu ứng này không phải là trên một phần của máy ta đang thiết kế. Ta sẽ gọi loại phép toán này là @newterm{hành động}. Ta sẽ biểu diễn một hành động trong sơ đồ đường dữ liệu giống như ta biểu diễn một phép toán tính một giá trị---như một hình thang chứa tên của hành động. Các mũi tên chỉ đến hộp hành động từ bất kỳ đầu vào nào (thanh ghi hoặc hằng số). Ta cũng liên kết một nút với hành động. Nhấn nút làm cho hành động xảy ra. Để bộ điều khiển nhấn một nút hành động ta sử dụng một loại lệnh mới gọi là @code{perform}. Do đó, hành động in nội dung của thanh ghi @code{a} được biểu diễn trong một chuỗi bộ điều khiển bởi lệnh
+
+@lisp
+(perform (op print) (reg a))
+@end lisp
+
+@noindent
+@ref{Figure 5.4} cho thấy các đường dữ liệu và bộ điều khiển cho máy @abbr{GCD} mới. Thay vì để máy dừng sau khi in kết quả, ta đã khiến nó bắt đầu lại, để nó liên tục đọc một cặp số, tính @abbr{GCD} của chúng và in kết quả. Cấu trúc này giống như các vòng lặp điều khiển ta đã sử dụng trong các trình thông dịch của @ref{Chapter 4}.
+
+@float
+@anchor{Figure 5.4}
+@ifinfo
+@strong{Figure 5.4:} A @abbr{GCD} machine that reads inputs and prints results.
+
+@example
+                   .--------.
+                    \ read /
+                     \____/
+                       |
+               +-------*------+
+               |              |
+        a<-rd (X)            (X) b<-rd
+               |              |
+               V              V           ___
+            +-----+        +-----+       /   \
+            |  a  |<--(X)--+  b  +----->|  =  |
+            +-+-+-+  a<-b  +-+---+       \___/
+              | |            |  ^          ^
+           +--+ +----+    +--+  |          |
+           |         |    |    (X) b<-t   / \
+           V         V    V     |        / O \
+      .---------.  .---------.  |       /_____\
+--(X)->\ print /    \  rem  /   |
+   P    \_____/      \_____/    |
+                        |       |
+                       (X) t<-r |
+                        |       |
+                        V       |
+                     +-----+    |
+                     |  t  +----+
+                     +-----+
+@end example
+
+@lisp
+ (controller
+  gcd-loop
+    (assign a (op read))
+    (assign b (op read))
+  test-b
+    (test (op =) (reg b) (const 0))
+    (branch (label gcd-done))
+    (assign t (op rem) (reg a) (reg b))
+    (assign a (reg b))
+    (assign b (reg t))
+    (goto (label test-b))
+  gcd-done
+    (perform (op print) (reg a))
+    (goto (label gcd-loop)))
+@end lisp
+
+@end ifinfo
+@iftex
+@image{fig/chap5/Fig5.4c,147mm,,,.std.svg}
+@caption{@strong{Figure 5.4:} A @abbr{GCD} machine that reads inputs and prints results.}
+@end iftex
+@end float

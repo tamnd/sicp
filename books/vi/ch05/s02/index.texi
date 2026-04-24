@@ -1,0 +1,96 @@
+@node	5.2, 5.3, 5.1, Chapter 5
+@section Bộ Mô Phỏng Máy Thanh Ghi
+
+Để có được sự hiểu biết tốt về thiết kế của các máy thanh ghi, ta phải kiểm tra các máy ta thiết kế để xem chúng hoạt động như mong đợi không. Một cách để kiểm tra một thiết kế là mô phỏng thủ công hoạt động của bộ điều khiển, như trong @ref{Exercise 5.5}. Nhưng điều này cực kỳ tẻ nhạt đối với tất cả ngoại trừ các máy đơn giản nhất. Trong phần này ta xây dựng một bộ mô phỏng cho các máy được mô tả trong ngôn ngữ máy thanh ghi. Bộ mô phỏng là một chương trình Scheme với bốn thủ tục giao diện. Cái đầu tiên sử dụng mô tả của một máy thanh ghi để xây dựng mô hình của máy (một cấu trúc dữ liệu có các phần tương ứng với các phần của máy cần mô phỏng), và ba cái còn lại cho phép ta mô phỏng máy bằng cách thao tác mô hình:
+
+@quotation
+
+@lisp
+(make-machine ⟨@var{register-names}⟩
+              ⟨@var{operations}⟩
+              ⟨@var{controller}⟩)
+@end lisp
+
+@noindent
+xây dựng và trả về mô hình của máy với các thanh ghi, phép toán và bộ điều khiển đã cho.
+
+@lisp
+(set-register-contents! ⟨@var{machine-model}⟩
+                        ⟨@var{register-name}⟩
+                        ⟨@var{value}⟩)
+@end lisp
+
+@noindent
+lưu trữ một giá trị trong một thanh ghi mô phỏng trong máy đã cho.
+
+@lisp
+(get-register-contents ⟨@var{machine-model}⟩
+                       ⟨@var{register-name}⟩)
+@end lisp
+
+@noindent
+trả về nội dung của một thanh ghi mô phỏng trong máy đã cho.
+
+@lisp
+(start ⟨@var{machine-model}⟩)
+@end lisp
+
+@noindent
+mô phỏng việc thực thi của máy đã cho, bắt đầu từ đầu chuỗi bộ điều khiển và dừng khi đến cuối chuỗi.
+@end quotation
+
+@noindent
+Là ví dụ về cách các thủ tục này được sử dụng, ta có thể định nghĩa @code{gcd-machine} là mô hình của máy @abbr{GCD} trong @ref{5.1.1} như sau:
+
+@lisp
+(define gcd-machine
+  (make-machine
+   '(a b t)
+   (list (list 'rem remainder) (list '= =))
+   '(test-b
+       (test (op =) (reg b) (const 0))
+       (branch (label gcd-done))
+       (assign t (op rem) (reg a) (reg b))
+       (assign a (reg b))
+       (assign b (reg t))
+       (goto (label test-b))
+     gcd-done)))
+@end lisp
+
+@noindent
+Đối số đầu tiên cho @code{make-machine} là danh sách tên thanh ghi. Đối số tiếp theo là một bảng (danh sách các danh sách hai phần tử) ghép đôi tên mỗi phép toán với một thủ tục Scheme hiện thực hóa phép toán (tức là tạo ra cùng giá trị đầu ra với cùng giá trị đầu vào). Đối số cuối chỉ định bộ điều khiển như là danh sách các nhãn và lệnh máy, như trong @ref{5.1}.
+
+Để tính @abbr{GCD} với máy này, ta đặt các thanh ghi đầu vào, khởi động máy, và kiểm tra kết quả khi mô phỏng kết thúc:
+
+@lisp
+(set-register-contents! gcd-machine 'a 206)
+@i{done}
+
+(set-register-contents! gcd-machine 'b 40)
+@i{done}
+
+(start gcd-machine)
+@i{done}
+
+(get-register-contents gcd-machine 'a)
+@i{2}
+@end lisp
+
+@noindent
+Phép tính này sẽ chạy chậm hơn nhiều so với một thủ tục @code{gcd} được viết bằng Scheme, vì ta sẽ mô phỏng các lệnh máy cấp thấp, chẳng hạn như @code{assign}, bằng các phép toán phức tạp hơn nhiều.
+
+@quotation
+@strong{@anchor{Exercise 5.7}Bài tập 5.7:} Dùng bộ mô phỏng để kiểm tra các máy bạn đã thiết kế trong @ref{Exercise 5.4}.
+@end quotation
+
+@menu
+* 5.2.1::            Mô Hình Máy
+* 5.2.2::            Trình Hợp Dịch
+* 5.2.3::            Tạo Các Thủ Tục Thực Thi cho Lệnh
+* 5.2.4::            Giám Sát Hiệu Suất Máy
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi

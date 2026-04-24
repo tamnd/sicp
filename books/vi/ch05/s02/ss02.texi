@@ -1,0 +1,163 @@
+@node	5.2.2, 5.2.3, 5.2.1, 5.2
+@subsection Trình Hợp Dịch
+
+Trình hợp dịch biến đổi chuỗi các biểu thức bộ điều khiển cho một máy thành danh sách tương ứng các lệnh máy, mỗi lệnh có thủ tục thực thi của nó. Nhìn chung, trình hợp dịch rất giống với các trình định giá ta đã nghiên cứu trong @ref{Chapter 4}---có một ngôn ngữ đầu vào (trong trường hợp này là ngôn ngữ máy thanh ghi) và ta phải thực hiện một hành động phù hợp cho mỗi loại biểu thức trong ngôn ngữ.
+
+Kỹ thuật tạo ra một thủ tục thực thi cho mỗi lệnh chính xác là những gì ta đã sử dụng trong @ref{4.1.7} để tăng tốc trình định giá bằng cách tách phân tích khỏi thực thi runtime. Như ta đã thấy trong @ref{Chapter 4}, nhiều phân tích hữu ích của các biểu thức Scheme có thể được thực hiện mà không cần biết các giá trị thực sự của các biến. Ở đây, tương tự, nhiều phân tích hữu ích của các biểu thức ngôn ngữ máy thanh ghi có thể được thực hiện mà không cần biết nội dung thực sự của các thanh ghi máy. Ví dụ, ta có thể thay thế các tham chiếu đến thanh ghi bằng các con trỏ đến các đối tượng thanh ghi, và ta có thể thay thế các tham chiếu đến nhãn bằng các con trỏ đến vị trí trong chuỗi lệnh mà nhãn chỉ định.
+
+Trước khi có thể tạo ra các thủ tục thực thi lệnh, trình hợp dịch phải biết tất cả các nhãn tham chiếu đến đâu, vì vậy nó bắt đầu bằng cách quét văn bản bộ điều khiển để tách nhãn khỏi lệnh. Khi quét văn bản, nó xây dựng cả danh sách các lệnh và bảng liên kết mỗi nhãn với một con trỏ vào danh sách đó. Sau đó trình hợp dịch tăng cường danh sách lệnh bằng cách chèn thủ tục thực thi cho mỗi lệnh.
+
+Thủ tục @code{assemble} là điểm vào chính của trình hợp dịch. Nó nhận văn bản bộ điều khiển và mô hình máy làm đối số và trả về chuỗi lệnh để lưu trữ trong mô hình. @code{Assemble} gọi @code{extract-labels} để xây dựng danh sách lệnh ban đầu và bảng nhãn từ văn bản bộ điều khiển đã cung cấp. Đối số thứ hai cho @code{extract-labels} là một thủ tục được gọi để xử lý các kết quả này: Thủ tục này sử dụng @code{update-insts!} để tạo ra các thủ tục thực thi lệnh và chèn chúng vào danh sách lệnh, và trả về danh sách đã được sửa đổi.
+
+@lisp
+(define (assemble controller-text machine)
+  (extract-labels controller-text
+    (lambda (insts labels)
+      (update-insts! insts labels machine)
+      insts)))
+@end lisp
+
+@noindent
+@code{Extract-labels} nhận làm đối số một danh sách @code{text} (chuỗi các biểu thức lệnh bộ điều khiển) và một thủ tục @code{receive}. @code{Receive} sẽ được gọi với hai giá trị: (1) một danh sách @code{insts} của các cấu trúc dữ liệu lệnh, mỗi cái chứa một lệnh từ @code{text}; và (2) một bảng gọi là @code{labels}, liên kết mỗi nhãn từ @code{text} với vị trí trong danh sách @code{insts} mà nhãn chỉ định.
+
+@lisp
+(define (extract-labels text receive)
+  (if (null? text)
+      (receive '() '())
+      (extract-labels
+       (cdr text)
+       (lambda (insts labels)
+         (let ((next-inst (car text)))
+           (if (symbol? next-inst)
+               (receive
+                   insts
+                   (cons
+                    (make-label-entry
+                     next-inst
+                     insts)
+                    labels))
+               (receive
+                   (cons (make-instruction
+                          next-inst)
+                         insts)
+                   labels)))))))
+@end lisp
+
+@noindent
+@code{Extract-labels} hoạt động bằng cách quét tuần tự các phần tử của @code{text} và tích lũy @code{insts} và @code{labels}. Nếu một phần tử là một ký hiệu (và do đó là nhãn) thì một mục phù hợp được thêm vào bảng @code{labels}. Nếu không phần tử đó được tích lũy vào danh sách @code{insts}.@footnote{Việc sử dụng thủ tục @code{receive} ở đây là cách để @code{extract-labels} hiệu quả trả về hai giá trị---@code{labels} và @code{insts}---mà không cần tạo ra một cấu trúc dữ liệu ghép để giữ chúng. Một hiện thực hóa thay thế, trả về một cặp giá trị rõ ràng, là
+
+@lisp
+(define (extract-labels text)
+  (if (null? text)
+      (cons '() '())
+      (let ((result
+             (extract-labels (cdr text))))
+        (let ((insts (car result))
+              (labels (cdr result)))
+          (let ((next-inst (car text)))
+            (if (symbol? next-inst)
+                (cons
+                 insts
+                 (cons
+                  (make-label-entry
+                   next-inst insts)
+                  labels))
+                (cons
+                 (cons
+                  (make-instruction next-inst)
+                  insts)
+                 labels)))))))
+@end lisp
+
+@noindent
+sẽ được gọi bởi @code{assemble} như sau:
+
+@lisp
+(define (assemble controller-text machine)
+  (let ((result
+         (extract-labels controller-text)))
+    (let ((insts (car result))
+          (labels (cdr result)))
+      (update-insts! insts labels machine)
+      insts)))
+@end lisp
+
+Bạn có thể coi việc sử dụng @code{receive} của ta như là minh họa một cách thanh lịch để trả về nhiều giá trị, hoặc đơn giản là cái cớ để thể hiện một thủ thuật lập trình. Một đối số như @code{receive} là thủ tục tiếp theo được gọi được gọi là ``tiếp nối.'' Hãy nhớ lại rằng ta cũng đã sử dụng các tiếp nối để hiện thực hóa cấu trúc điều khiển quay lui trong trình định giá @code{amb} trong @ref{4.3.3}.}
+
+@code{Update-insts!} sửa đổi danh sách lệnh, ban đầu chỉ chứa văn bản của các lệnh, để bao gồm các thủ tục thực thi tương ứng:
+
+@lisp
+(define (update-insts! insts labels machine)
+  (let ((pc (get-register machine 'pc))
+        (flag (get-register machine 'flag))
+        (stack (machine 'stack))
+        (ops (machine 'operations)))
+    (for-each
+     (lambda (inst)
+       (set-instruction-execution-proc!
+        inst
+        (make-execution-procedure
+         (instruction-text inst)
+         labels
+         machine
+         pc
+         flag
+         stack
+         ops)))
+     insts)))
+@end lisp
+
+@noindent
+Cấu trúc dữ liệu lệnh máy chỉ đơn giản ghép văn bản lệnh với thủ tục thực thi tương ứng. Thủ tục thực thi chưa có sẵn khi @code{extract-labels} xây dựng lệnh, và được chèn sau đó bởi @code{update-insts!}.
+
+@lisp
+(define (make-instruction text)
+  (cons text '()))
+(define (instruction-text inst) (car inst))
+(define (instruction-execution-proc inst)
+  (cdr inst))
+(define (set-instruction-execution-proc!
+         inst
+         proc)
+  (set-cdr! inst proc))
+@end lisp
+
+@noindent
+Văn bản lệnh không được bộ mô phỏng của ta sử dụng, nhưng tiện lợi khi giữ lại để gỡ lỗi (xem @ref{Exercise 5.16}).
+
+Các phần tử của bảng nhãn là các cặp:
+
+@lisp
+(define (make-label-entry label-name insts)
+  (cons label-name insts))
+@end lisp
+
+@noindent
+Các mục sẽ được tra cứu trong bảng với
+
+@lisp
+(define (lookup-label labels label-name)
+  (let ((val (assoc label-name labels)))
+    (if val
+        (cdr val)
+        (error "Undefined label: ASSEMBLE"
+               label-name))))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 5.8}Bài tập 5.8:} Mã máy thanh ghi sau đây mơ hồ, vì nhãn @code{here} được định nghĩa nhiều hơn một lần:
+
+@lisp
+start
+  (goto (label here))
+here
+  (assign a (const 3))
+  (goto (label there))
+here
+  (assign a (const 4))
+  (goto (label there))
+there
+@end lisp
+
+Với bộ mô phỏng như được viết, nội dung của thanh ghi @code{a} sẽ là gì khi điều khiển đến @code{there}? Sửa đổi thủ tục @code{extract-labels} để trình hợp dịch sẽ báo hiệu lỗi nếu cùng tên nhãn được dùng để chỉ định hai vị trí khác nhau.
+@end quotation

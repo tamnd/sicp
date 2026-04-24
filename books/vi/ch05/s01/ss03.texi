@@ -1,0 +1,156 @@
+@node	5.1.3, 5.1.4, 5.1.2, 5.1
+@subsection Các Chương Con
+
+Khi thiết kế một máy để thực hiện một phép tính, ta thường muốn sắp xếp cho các thành phần được chia sẻ bởi các phần khác nhau của phép tính hơn là sao chép các thành phần. Hãy xem xét một máy bao gồm hai phép tính @abbr{GCD}---một phép tìm @abbr{GCD} của nội dung của các thanh ghi @code{a} và @code{b} và một phép tìm @abbr{GCD} của nội dung của các thanh ghi @code{c} và @code{d}. Ta có thể bắt đầu bằng cách giả sử ta có phép toán @code{gcd} nguyên thủy, sau đó mở rộng hai thể hiện của @code{gcd} theo các phép toán nguyên thủy hơn. @ref{Figure 5.7} chỉ cho thấy phần @abbr{GCD} của các đường dữ liệu của máy kết quả, mà không chỉ ra cách chúng kết nối với phần còn lại của máy. Hình cũng cho thấy các phần tương ứng của chuỗi bộ điều khiển của máy.
+
+@float
+@anchor{Figure 5.7}
+@ifinfo
+@strong{Figure 5.7:} Portions of the data paths and controller sequence for a machine with two @abbr{GCD} computations.
+
+@example
+                            ___                                 ___
++-----+        +-----+     /   \    +-----+        +-----+     /   \
+|  a  |<-(X)---+  b  |--->|  =  |   |  c  |<-(X)---+  d  |--->|  =  |
++--+--+  a<-b  ++----+     \___/    +--+--+  c<-d  ++----+     \___/
+   |            |  ^         ^         |            |  ^         ^
+   `----.   .---'  |         |         `----.   .---'  |         |
+        V   V     (X) b<-t   |              V   V     (X) d<-t   |
+       -------     |        / \            -------     |        / \
+       \ rem /     |       /_0_\           \ rem /     |       /_0_\
+        --+--      |                        --+--      |
+          |        |                          |        |
+         (X) t<-r  |                         (X) s<-r  |
+          |        |                          |        |
+          V        |                          V        |
+       +-----+     |                       +-----+     |
+       |  t  +-----'                       |  s  +-----'
+       +-----+                             +-----+
+@end example
+
+@lisp
+gcd-1
+ (test (op =) (reg b) (const 0))
+ (branch (label after-gcd-1))
+ (assign t (op rem) (reg a) (reg b))
+ (assign a (reg b))
+ (assign b (reg t))
+ (goto (label gcd-1))
+after-gcd-1
+  @r{…}
+gcd-2
+ (test (op =) (reg d) (const 0))
+ (branch (label after-gcd-2))
+ (assign s (op rem) (reg c) (reg d))
+ (assign c (reg d))
+ (assign d (reg s))
+ (goto (label gcd-2))
+after-gcd-2
+@end lisp
+
+@end ifinfo
+@iftex
+@image{fig/chap5/Fig5.7b,145mm,,,.std.svg}
+@caption{@strong{Figure 5.7:} Portions of the data paths and controller @w{sequence} for a machine with two @abbr{GCD} computations.}
+@end iftex
+@end float
+
+Máy này có hai hộp phép toán phần dư và hai hộp để kiểm tra bằng nhau. Nếu các thành phần bị trùng lặp phức tạp, như hộp phần dư, thì đây sẽ không phải là cách kinh tế để xây dựng máy. Ta có thể tránh trùng lặp các thành phần đường dữ liệu bằng cách sử dụng cùng các thành phần cho cả hai phép tính @abbr{GCD}, với điều kiện làm như vậy sẽ không ảnh hưởng đến phần còn lại của phép tính của máy lớn hơn. Nếu các giá trị trong các thanh ghi @code{a} và @code{b} không cần thiết khi bộ điều khiển đến @code{gcd-2} (hoặc nếu các giá trị này có thể được chuyển sang các thanh ghi khác để bảo quản), ta có thể thay đổi máy để nó sử dụng các thanh ghi @code{a} và @code{b}, thay vì các thanh ghi @code{c} và @code{d}, để tính @abbr{GCD} thứ hai cũng như @abbr{GCD} thứ nhất. Nếu ta làm điều này, ta có được chuỗi bộ điều khiển được thể hiện trong @ref{Figure 5.8}.
+
+@quotation
+@strong{@anchor{Figure 5.8}Figure 5.8:} @math{\downarrow} Portions of the controller sequence for a machine that uses the same data-path components for two different @abbr{GCD} computations.
+
+@lisp
+gcd-1
+ (test (op =) (reg b) (const 0))
+ (branch (label after-gcd-1))
+ (assign t (op rem) (reg a) (reg b))
+ (assign a (reg b))
+ (assign b (reg t))
+ (goto (label gcd-1))
+after-gcd-1
+  @r{…}
+gcd-2
+ (test (op =) (reg b) (const 0))
+ (branch (label after-gcd-2))
+ (assign t (op rem) (reg a) (reg b))
+ (assign a (reg b))
+ (assign b (reg t))
+ (goto (label gcd-2))
+after-gcd-2
+@end lisp
+
+@end quotation
+
+@noindent
+Ta đã loại bỏ các thành phần đường dữ liệu trùng lặp (để các đường dữ liệu lại như trong @ref{Figure 5.1}), nhưng bộ điều khiển bây giờ có hai chuỗi @abbr{GCD} chỉ khác nhau ở các nhãn điểm vào. Sẽ tốt hơn nếu thay thế hai chuỗi này bằng các nhánh đến một chuỗi duy nhất---một @newterm{chương con} @code{gcd}---ở cuối đó ta nhánh trở lại đúng nơi trong chuỗi lệnh chính. Ta có thể thực hiện điều này như sau: Trước khi nhánh đến @code{gcd}, ta đặt một giá trị phân biệt (chẳng hạn như 0 hoặc 1) vào một thanh ghi đặc biệt, @code{continue}. Ở cuối chương con @code{gcd} ta quay trở lại @code{after-gcd-1} hoặc @code{after-gcd-2}, tùy thuộc vào giá trị của thanh ghi @code{continue}. @ref{Figure 5.9} cho thấy phần liên quan của chuỗi bộ điều khiển kết quả, chỉ bao gồm một bản sao duy nhất của các lệnh @code{gcd}.
+
+@quotation
+@strong{@anchor{Figure 5.9}Figure 5.9:} @math{\downarrow} Using a @code{continue} register to avoid the duplicate controller sequence in @ref{Figure 5.8}.
+
+@lisp
+gcd
+ (test (op =) (reg b) (const 0))
+ (branch (label gcd-done))
+ (assign t (op rem) (reg a) (reg b))
+ (assign a (reg b))
+ (assign b (reg t))
+ (goto (label gcd))
+gcd-done
+ (test (op =) (reg continue) (const 0))
+ (branch (label after-gcd-1))
+ (goto (label after-gcd-2))
+  @r{…}
+@r{;; Before branching to @code{gcd} from}
+@r{;; the first place where it is needed,}
+@r{;; we place 0 in the @code{continue} register}
+ (assign continue (const 0))
+ (goto (label gcd))
+after-gcd-1
+  @r{…}
+@r{;; Before the second use of @code{gcd},}
+@r{;; we place 1 in the @code{continue} register}
+ (assign continue (const 1))
+ (goto (label gcd))
+after-gcd-2
+@end lisp
+
+@end quotation
+
+@noindent
+Đây là một cách tiếp cận hợp lý để xử lý các vấn đề nhỏ, nhưng sẽ khó xử nếu có nhiều thể hiện của phép tính @abbr{GCD} trong chuỗi bộ điều khiển. Để quyết định tiếp tục thực thi ở đâu sau chương con @code{gcd}, ta sẽ cần các phép kiểm tra trong các đường dữ liệu và các lệnh nhánh trong bộ điều khiển cho tất cả các nơi sử dụng @code{gcd}. Một phương pháp mạnh mẽ hơn để hiện thực hóa các chương con là để thanh ghi @code{continue} giữ nhãn của điểm vào trong chuỗi bộ điều khiển mà tại đó thực thi nên tiếp tục khi chương con kết thúc. Việc hiện thực hóa chiến lược này đòi hỏi một loại kết nối mới giữa các đường dữ liệu và bộ điều khiển của một máy thanh ghi: Phải có cách gán cho một thanh ghi một nhãn trong chuỗi bộ điều khiển theo cách mà giá trị này có thể được lấy từ thanh ghi và được sử dụng để tiếp tục thực thi tại điểm vào được chỉ định.
+
+Để phản ánh khả năng này, ta sẽ mở rộng lệnh @code{assign} của ngôn ngữ máy thanh ghi để cho phép một thanh ghi được gán một nhãn từ chuỗi bộ điều khiển như một giá trị (như một loại hằng số đặc biệt). Ta cũng sẽ mở rộng lệnh @code{goto} để cho phép thực thi tiếp tục tại điểm vào được mô tả bởi nội dung của một thanh ghi thay vì chỉ tại một điểm vào được mô tả bởi một nhãn hằng số. Sử dụng các cấu trúc mới này ta có thể kết thúc chương con @code{gcd} bằng một nhánh đến vị trí được lưu trữ trong thanh ghi @code{continue}. Điều này dẫn đến chuỗi bộ điều khiển được thể hiện trong @ref{Figure 5.10}.
+
+@quotation
+@strong{@anchor{Figure 5.10}Figure 5.10:} @math{\downarrow} Assigning labels to the @code{continue} register simplifies and generalizes the strategy shown in @ref{Figure 5.9}.
+
+@lisp
+gcd
+ (test (op =) (reg b) (const 0))
+ (branch (label gcd-done))
+ (assign t (op rem) (reg a) (reg b))
+ (assign a (reg b))
+ (assign b (reg t))
+ (goto (label gcd))
+gcd-done
+ (goto (reg continue))
+  @r{…}
+@r{;; Before calling @code{gcd},}
+@r{;; we assign to @code{continue} the label}
+@r{;; to which @code{gcd} should return.}
+ (assign continue (label after-gcd-1))
+ (goto (label gcd))
+after-gcd-1
+  @r{…}
+@r{;; Here is the second call to @code{gcd},}
+@r{;; with a different continuation.}
+ (assign continue (label after-gcd-2))
+ (goto (label gcd))
+after-gcd-2
+@end lisp
+
+@end quotation
+
+@noindent
+Một máy với nhiều hơn một chương con có thể sử dụng nhiều thanh ghi tiếp nối (ví dụ: @code{gcd-continue}, @code{factorial-continue}) hoặc ta có thể để tất cả các chương con chia sẻ một thanh ghi @code{continue} duy nhất. Chia sẻ tiết kiệm hơn, nhưng ta phải cẩn thận nếu ta có một chương con (@code{sub1}) gọi một chương con khác (@code{sub2}). Trừ khi @code{sub1} lưu nội dung của @code{continue} vào một thanh ghi khác trước khi thiết lập @code{continue} cho cuộc gọi đến @code{sub2}, @code{sub1} sẽ không biết phải đến đâu khi nó hoàn thành. Cơ chế được phát triển trong phần tiếp theo để xử lý đệ quy cũng cung cấp một giải pháp tốt hơn cho vấn đề gọi lồng nhau chương con này.

@@ -1,0 +1,120 @@
+@node	5.1.2, 5.1.3, 5.1.1, 5.1
+@subsection Trừu Tượng hóa trong Thiết Kế Máy
+
+Ta thường sẽ định nghĩa một máy bao gồm các phép toán ``nguyên thủy'' mà thực ra rất phức tạp. Ví dụ, trong @ref{5.4} và @ref{5.5} ta sẽ coi các thao tác môi trường của Scheme là nguyên thủy. Sự trừu tượng hóa như vậy là có giá trị vì nó cho phép ta bỏ qua các chi tiết của các phần của máy để ta có thể tập trung vào các khía cạnh khác của thiết kế. Tuy nhiên, thực tế là ta đã giấu đi rất nhiều độ phức tạp không có nghĩa là thiết kế máy là không thực tế. Ta luôn có thể thay thế các ``nguyên thủy'' phức tạp bằng các phép toán nguyên thủy đơn giản hơn.
+
+@noindent
+Hãy xem xét máy @abbr{GCD}. Máy có một lệnh tính phần dư của nội dung của các thanh ghi @code{a} và @code{b} và gán kết quả cho thanh ghi @code{t}. Nếu ta muốn xây dựng máy @abbr{GCD} mà không sử dụng phép toán phần dư nguyên thủy, ta phải chỉ định cách tính phần dư theo các phép toán đơn giản hơn, chẳng hạn như phép trừ. Thực vậy, ta có thể viết một thủ tục Scheme tìm phần dư theo cách này:
+
+@lisp
+(define (remainder n d)
+  (if (< n d) n (remainder (- n d) d)))
+@end lisp
+
+Do đó ta có thể thay thế phép toán phần dư trong các đường dữ liệu của máy @abbr{GCD} bằng một phép trừ và một phép kiểm tra so sánh. @ref{Figure 5.5} cho thấy các đường dữ liệu và bộ điều khiển cho máy phức tạp hơn. Lệnh
+
+@lisp
+(assign t (op rem) (reg a) (reg b))
+@end lisp
+
+@noindent
+trong định nghĩa bộ điều khiển @abbr{GCD} được thay thế bằng một chuỗi lệnh chứa một vòng lặp, như được thể hiện trong @ref{Figure 5.6}.
+
+@float
+@anchor{Figure 5.5}
+@ifinfo
+@quotation
+@strong{Figure 5.5:} Data paths and controller for the elaborated @abbr{GCD} machine.
+
+@example
+                                    ___
++-----+         +-----+            /   \
+|  a  |<--(X)---+  b  +-------*-->|  =  |
++--+--+   a<-b  +-+---+       |    \___/
+   |              |  ^        |
+  (X) t<-a        |  |        |
+   |              | (X) b<-t  |
+   V              |  |       _V_
++-----+           |  |      /   \
+|  t  +-------*---|--*-----|  <  |
++-----+       |   |         \___/
+   ^          V   V
+   |        ---------
+  (X) t<-d   \  -  /
+   |          --+--
+   |            |
+   +------------+
+
+
+   start
+     |
+     V
+    / \ yes            +-------+
++->< = >----> done     | t<-d  |<--+
+|   \ /                +---+---+   |
+|    | no                  |       |
+|    |                     V       |
+|    |   +------+         / \ no   |
+|    +-->| t<-a +------->< < >-----+
+|        +------+         \ /
+|                          | yes
+|      +-------------------+
+|      V
+|  +-------+
+|  | a<-b  |
+|  +---+---+
+|      |
+|      V
+|  +-------+
++--+ b<-t  |
+   +-------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap5/Fig5.5b,109mm,,,.std.svg}
+@caption{@strong{Figure 5.5:} Data paths and controller for the elaborated @abbr{GCD} machine.}
+@end iftex
+@end float
+
+@quotation
+@strong{@anchor{Figure 5.6}Figure 5.6:} @math{\downarrow} Controller instruction sequence for the @abbr{GCD} machine in @ref{Figure 5.5}.
+
+@lisp
+(controller
+ test-b
+   (test (op =) (reg b) (const 0))
+   (branch (label gcd-done))
+   (assign t (reg a))
+ rem-loop
+   (test (op <) (reg t) (reg b))
+   (branch (label rem-done))
+   (assign t (op -) (reg t) (reg b))
+   (goto (label rem-loop))
+ rem-done
+   (assign a (reg b))
+   (assign b (reg t))
+   (goto (label test-b))
+ gcd-done)
+@end lisp
+
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.3}Bài tập 5.3:} Thiết kế một máy để tính căn bậc hai sử dụng phương pháp Newton, như được mô tả trong @ref{Sec.1.1.7,,1.1.7}:
+
+@lisp
+(define (sqrt x)
+  (define (good-enough? guess)
+    (< (abs (- (square guess) x)) 0.001))
+  (define (improve guess)
+    (average guess (/ x guess)))
+  (define (sqrt-iter guess)
+    (if (good-enough? guess)
+        guess
+        (sqrt-iter (improve guess))))
+  (sqrt-iter 1.0))
+@end lisp
+
+Bắt đầu bằng cách giả sử rằng các phép toán @code{good-enough?} và @code{improve} có sẵn như nguyên thủy. Sau đó chỉ ra cách mở rộng chúng theo các phép toán số học. Mô tả từng phiên bản của thiết kế máy @code{sqrt} bằng cách vẽ sơ đồ đường dữ liệu và viết định nghĩa bộ điều khiển trong ngôn ngữ máy thanh ghi.
+@end quotation

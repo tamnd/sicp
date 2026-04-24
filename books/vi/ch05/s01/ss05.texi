@@ -1,0 +1,47 @@
+@node	5.1.5, 5.2, Chapter 5, 5.1
+@subsection Tóm Tắt Lệnh
+
+Một lệnh bộ điều khiển trong ngôn ngữ máy thanh ghi của ta có một trong các dạng sau, trong đó mỗi @math{{⟨\kern0.06em input_i⟩}} là @code{(reg ⟨@var{register-name}⟩)} hoặc @code{(const ⟨@var{constant-value}⟩)}. Các lệnh này được giới thiệu trong @ref{5.1.1}:
+
+@lisp
+(assign ⟨@var{register-name}⟩ (reg ⟨@var{register-name}⟩))
+(assign ⟨@var{register-name}⟩
+        (const ⟨@var{constant-value}⟩))
+(assign ⟨@var{register-name}⟩
+        (op ⟨@var{operation-name}⟩)
+        ⟨@var{input₁}⟩ @r{…} ⟨@var{inputₙ}⟩)
+(perform (op ⟨@var{operation-name}⟩)
+         ⟨@var{input₁}⟩
+         @r{…}
+         ⟨@var{inputₙ}⟩)
+(test (op ⟨@var{operation-name}⟩)
+      ⟨@var{input₁}⟩
+      @r{…}
+      ⟨@var{inputₙ}⟩)
+(branch (label ⟨@var{label-name}⟩))
+(goto (label ⟨@var{label-name}⟩))
+@end lisp
+
+@noindent
+Việc sử dụng các thanh ghi để giữ các nhãn được giới thiệu trong @ref{5.1.3}:
+
+@lisp
+(assign ⟨@var{register-name}⟩ (label ⟨@var{label-name}⟩))
+(goto (reg ⟨@var{register-name}⟩))
+@end lisp
+
+@noindent
+Các lệnh sử dụng ngăn xếp được giới thiệu trong @ref{5.1.4}:
+
+@lisp
+(save ⟨@var{register-name}⟩)
+(restore ⟨@var{register-name}⟩)
+@end lisp
+
+@noindent
+Loại @code{⟨}@var{constant-value}@code{⟩} duy nhất ta đã thấy cho đến nay là một số, nhưng sau đó ta sẽ sử dụng các chuỗi, ký hiệu và danh sách.
+Ví dụ,@*
+@code{(const "abc")} là chuỗi @code{"abc"},@*
+@code{(const abc)} là ký hiệu @code{abc},@*
+@code{(const (a b c))} là danh sách @code{(a b c)},@*
+và @code{(const ())} là danh sách rỗng.

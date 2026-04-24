@@ -1,0 +1,362 @@
+@node	5.2.3, 5.2.4, 5.2.2, 5.2
+@subsection Tạo Các Thủ Tục Thực Thi cho Lệnh
+
+Trình hợp dịch gọi @code{make-execution-procedure} để tạo ra thủ tục thực thi cho một lệnh. Giống như thủ tục @code{analyze} trong trình định giá của @ref{4.1.7}, nó phân phối theo loại lệnh để tạo ra thủ tục thực thi phù hợp.
+
+@lisp
+(define (make-execution-procedure
+         inst labels machine pc flag stack ops)
+  (cond ((eq? (car inst) 'assign)
+         (make-assign
+          inst machine labels ops pc))
+        ((eq? (car inst) 'test)
+         (make-test
+          inst machine labels ops flag pc))
+        ((eq? (car inst) 'branch)
+         (make-branch
+          inst machine labels flag pc))
+        ((eq? (car inst) 'goto)
+         (make-goto inst machine labels pc))
+        ((eq? (car inst) 'save)
+         (make-save inst machine stack pc))
+        ((eq? (car inst) 'restore)
+         (make-restore inst machine stack pc))
+        ((eq? (car inst) 'perform)
+         (make-perform
+          inst machine labels ops pc))
+        (else (error "Unknown instruction
+                      type: ASSEMBLE"
+                     inst))))
+@end lisp
+
+@noindent
+Với mỗi loại lệnh trong ngôn ngữ máy thanh ghi, có một trình tạo xây dựng một thủ tục thực thi phù hợp. Các chi tiết của các thủ tục này xác định cả cú pháp và ý nghĩa của các lệnh riêng lẻ trong ngôn ngữ máy thanh ghi. Ta sử dụng trừu tượng hóa dữ liệu để cô lập cú pháp chi tiết của các biểu thức máy thanh ghi khỏi cơ chế thực thi chung, như ta đã làm cho các trình định giá trong @ref{4.1.2}, bằng cách sử dụng các thủ tục cú pháp để trích xuất và phân loại các phần của một lệnh.
+
+@subsubheading Lệnh @code{Assign}
+
+Thủ tục @code{make-assign} xử lý các lệnh @code{assign}:
+
+@lisp
+(define (make-assign
+         inst machine labels operations pc)
+  (let ((target
+         (get-register
+          machine
+          (assign-reg-name inst)))
+        (value-exp (assign-value-exp inst)))
+    (let ((value-proc
+           (if (operation-exp? value-exp)
+               (make-operation-exp
+                value-exp
+                machine
+                labels
+                operations)
+               (make-primitive-exp
+                (car value-exp)
+                machine
+                labels))))
+      (lambda ()   @r{; execution procedure}
+                   @r{; for @code{assign}}
+        (set-contents! target (value-proc))
+        (advance-pc pc)))))
+@end lisp
+
+@noindent
+@code{Make-assign} trích xuất tên thanh ghi đích (phần tử thứ hai của lệnh) và biểu thức giá trị (phần còn lại của danh sách tạo thành lệnh) từ lệnh @code{assign} sử dụng các bộ chọn
+
+@lisp
+(define (assign-reg-name assign-instruction)
+  (cadr assign-instruction))
+(define (assign-value-exp assign-instruction)
+  (cddr assign-instruction))
+@end lisp
+
+@noindent
+Tên thanh ghi được tra cứu với @code{get-register} để tạo ra đối tượng thanh ghi đích. Biểu thức giá trị được truyền cho @code{make-operation-exp} nếu giá trị là kết quả của một phép toán, và cho @code{make-primitive-exp} nếu không. Các thủ tục này (được thể hiện bên dưới) phân tích biểu thức giá trị và tạo ra một thủ tục thực thi cho giá trị. Đây là thủ tục không có đối số, gọi là @code{value-proc}, sẽ được định giá trong quá trình mô phỏng để tạo ra giá trị thực sự cần được gán cho thanh ghi. Lưu ý rằng công việc tra cứu tên thanh ghi và phân tích biểu thức giá trị được thực hiện chỉ một lần, vào thời điểm hợp dịch, không phải mỗi khi lệnh được mô phỏng. Việc tiết kiệm công sức này là lý do ta sử dụng các thủ tục thực thi, và tương ứng trực tiếp với sự tiết kiệm công sức ta thu được bằng cách tách phân tích chương trình khỏi thực thi trong trình định giá của @ref{4.1.7}.
+
+Kết quả được trả về bởi @code{make-assign} là thủ tục thực thi cho lệnh @code{assign}. Khi thủ tục này được gọi (bởi thủ tục @code{execute} của mô hình máy), nó đặt nội dung của thanh ghi đích thành kết quả thu được bằng cách thực thi @code{value-proc}. Sau đó nó tiến @code{pc} đến lệnh tiếp theo bằng cách chạy thủ tục
+
+@lisp
+(define (advance-pc pc)
+  (set-contents! pc (cdr (get-contents pc))))
+@end lisp
+
+@noindent
+@code{Advance-pc} là sự kết thúc bình thường cho tất cả các lệnh ngoại trừ @code{branch} và @code{goto}.
+
+@subsubheading Lệnh @code{Test}, @code{branch}, và @code{goto}
+
+@code{Make-test} xử lý các lệnh @code{test} theo cách tương tự. Nó trích xuất biểu thức chỉ định điều kiện cần kiểm tra và tạo ra một thủ tục thực thi cho nó. Tại thời điểm mô phỏng, thủ tục cho điều kiện được gọi, kết quả được gán cho thanh ghi @code{flag}, và @code{pc} được tiến:
+
+@lisp
+(define
+  (make-test
+   inst machine labels operations flag pc)
+  (let ((condition (test-condition inst)))
+    (if (operation-exp? condition)
+        (let ((condition-proc
+               (make-operation-exp
+                condition
+                machine
+                labels
+                operations)))
+          (lambda ()
+            (set-contents!
+             flag (condition-proc))
+            (advance-pc pc)))
+        (error "Bad TEST instruction:
+                ASSEMBLE" inst))))
+
+(define (test-condition test-instruction)
+  (cdr test-instruction))
+@end lisp
+
+@noindent
+Thủ tục thực thi cho lệnh @code{branch} kiểm tra nội dung của thanh ghi @code{flag} và đặt nội dung của @code{pc} thành đích nhánh (nếu nhánh được thực hiện) hoặc chỉ tiến @code{pc} (nếu nhánh không được thực hiện). Lưu ý rằng đích được chỉ định trong lệnh @code{branch} phải là một nhãn, và thủ tục @code{make-branch} thực thi điều này. Cũng lưu ý rằng nhãn được tra cứu vào thời điểm hợp dịch, không phải mỗi khi lệnh @code{branch} được mô phỏng.
+
+@lisp
+(define
+  (make-branch
+   inst machine labels flag pc)
+  (let ((dest (branch-dest inst)))
+    (if (label-exp? dest)
+        (let ((insts
+               (lookup-label
+                labels
+                (label-exp-label dest))))
+          (lambda ()
+            (if (get-contents flag)
+                (set-contents! pc insts)
+                (advance-pc pc))))
+        (error "Bad BRANCH instruction:
+                ASSEMBLE"
+               inst))))
+
+(define (branch-dest branch-instruction)
+  (cadr branch-instruction))
+@end lisp
+
+@noindent
+Lệnh @code{goto} tương tự như nhánh, ngoại trừ đích có thể được chỉ định bằng nhãn hoặc thanh ghi, và không có điều kiện nào cần kiểm tra---@code{pc} luôn được đặt thành đích mới.
+
+@lisp
+(define (make-goto inst machine labels pc)
+  (let ((dest (goto-dest inst)))
+    (cond ((label-exp? dest)
+           (let ((insts
+                  (lookup-label
+                   labels
+                   (label-exp-label dest))))
+             (lambda ()
+               (set-contents! pc insts))))
+          ((register-exp? dest)
+           (let ((reg
+                  (get-register
+                   machine
+                   (register-exp-reg dest))))
+             (lambda ()
+               (set-contents!
+                pc
+                (get-contents reg)))))
+          (else (error "Bad GOTO instruction:
+                        ASSEMBLE"
+                       inst)))))
+
+(define (goto-dest goto-instruction)
+  (cadr goto-instruction))
+@end lisp
+
+@subsubheading Các lệnh khác
+
+Các lệnh ngăn xếp @code{save} và @code{restore} chỉ đơn giản sử dụng ngăn xếp với thanh ghi được chỉ định và tiến @code{pc}:
+
+@lisp
+(define (make-save inst machine stack pc)
+  (let ((reg (get-register
+              machine
+              (stack-inst-reg-name inst))))
+    (lambda ()
+      (push stack (get-contents reg))
+      (advance-pc pc))))
+
+(define (make-restore inst machine stack pc)
+  (let ((reg (get-register
+              machine
+              (stack-inst-reg-name inst))))
+    (lambda ()
+      (set-contents! reg (pop stack))
+      (advance-pc pc))))
+
+(define (stack-inst-reg-name
+         stack-instruction)
+  (cadr stack-instruction))
+@end lisp
+
+@noindent
+Loại lệnh cuối cùng, được xử lý bởi @code{make-perform}, tạo ra một thủ tục thực thi cho hành động cần thực hiện. Tại thời điểm mô phỏng, thủ tục hành động được thực thi và @code{pc} được tiến.
+
+@lisp
+(define (make-perform
+         inst machine labels operations pc)
+  (let ((action (perform-action inst)))
+    (if (operation-exp? action)
+        (let ((action-proc
+               (make-operation-exp
+                action
+                machine
+                labels
+                operations)))
+          (lambda ()
+            (action-proc)
+            (advance-pc pc)))
+        (error "Bad PERFORM instruction:
+                ASSEMBLE"
+               inst))))
+
+(define (perform-action inst) (cdr inst))
+@end lisp
+
+@subsubheading Các thủ tục thực thi cho các biểu thức con
+
+Giá trị của biểu thức @code{reg}, @code{label}, hoặc @code{const} có thể cần cho việc gán cho một thanh ghi (@code{make-assign}) hoặc làm đầu vào cho một phép toán (@code{make-operation-exp}, bên dưới). Thủ tục sau tạo ra các thủ tục thực thi để tạo ra giá trị cho các biểu thức này trong quá trình mô phỏng:
+
+@lisp
+(define (make-primitive-exp exp machine labels)
+  (cond ((constant-exp? exp)
+         (let ((c (constant-exp-value exp)))
+           (lambda () c)))
+        ((label-exp? exp)
+         (let ((insts
+                (lookup-label
+                 labels
+                 (label-exp-label exp))))
+           (lambda () insts)))
+        ((register-exp? exp)
+         (let ((r (get-register
+                   machine
+                   (register-exp-reg exp))))
+           (lambda () (get-contents r))))
+        (else (error "Unknown expression type:
+                      ASSEMBLE"
+                     exp))))
+@end lisp
+
+@noindent
+Cú pháp của các biểu thức @code{reg}, @code{label}, và @code{const} được xác định bởi
+
+@lisp
+(define (register-exp? exp)
+  (tagged-list? exp 'reg))
+(define (register-exp-reg exp)
+  (cadr exp))
+(define (constant-exp? exp)
+  (tagged-list? exp 'const))
+(define (constant-exp-value exp)
+  (cadr exp))
+(define (label-exp? exp)
+  (tagged-list? exp 'label))
+(define (label-exp-label exp)
+  (cadr exp))
+@end lisp
+
+@noindent
+Các lệnh @code{Assign}, @code{perform}, và @code{test} có thể bao gồm việc áp dụng một phép toán máy (được chỉ định bởi biểu thức @code{op}) cho một số toán hạng (được chỉ định bởi các biểu thức @code{reg} và @code{const}). Thủ tục sau tạo ra một thủ tục thực thi cho một ``biểu thức phép toán''---danh sách chứa phép toán và các biểu thức toán hạng từ lệnh:
+
+@lisp
+(define (make-operation-exp
+         exp machine labels operations)
+  (let ((op (lookup-prim
+             (operation-exp-op exp)
+             operations))
+        (aprocs
+         (map (lambda (e)
+                (make-primitive-exp
+                 e machine labels))
+              (operation-exp-operands exp))))
+    (lambda () (apply op (map (lambda (p) (p))
+                              aprocs)))))
+@end lisp
+
+@noindent
+Cú pháp của các biểu thức phép toán được xác định bởi
+
+@lisp
+(define (operation-exp? exp)
+  (and (pair? exp)
+       (tagged-list? (car exp) 'op)))
+(define (operation-exp-op operation-exp)
+  (cadr (car operation-exp)))
+(define (operation-exp-operands operation-exp)
+  (cdr operation-exp))
+@end lisp
+
+@noindent
+Lưu ý rằng việc xử lý các biểu thức phép toán rất giống với việc xử lý các áp dụng thủ tục bởi thủ tục @code{analyze-application} trong trình định giá của @ref{4.1.7} ở chỗ ta tạo ra một thủ tục thực thi cho mỗi toán hạng. Tại thời điểm mô phỏng, ta gọi các thủ tục toán hạng và áp dụng thủ tục Scheme mô phỏng phép toán cho các giá trị kết quả. Thủ tục mô phỏng được tìm thấy bằng cách tra cứu tên phép toán trong bảng phép toán của máy:
+
+@lisp
+(define (lookup-prim symbol operations)
+  (let ((val (assoc symbol operations)))
+    (if val
+        (cadr val)
+        (error "Unknown operation: ASSEMBLE"
+               symbol))))
+@end lisp
+
+@quotation
+@strong{@anchor{Exercise 5.9}Bài tập 5.9:} Việc xử lý các phép toán máy ở trên cho phép chúng hoạt động trên các nhãn cũng như trên các hằng số và nội dung của các thanh ghi. Sửa đổi các thủ tục xử lý biểu thức để thực thi điều kiện rằng các phép toán chỉ có thể được sử dụng với các thanh ghi và hằng số.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.10}Bài tập 5.10:} Thiết kế một cú pháp mới cho các lệnh máy thanh ghi và sửa đổi bộ mô phỏng để sử dụng cú pháp mới của bạn. Bạn có thể hiện thực hóa cú pháp mới của mình mà không thay đổi bất kỳ phần nào của bộ mô phỏng ngoại trừ các thủ tục cú pháp trong phần này không?
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.11}Bài tập 5.11:} Khi ta giới thiệu @code{save} và @code{restore} trong @ref{5.1.4}, ta không chỉ định điều gì sẽ xảy ra nếu bạn cố gắng khôi phục một thanh ghi không phải là cái cuối cùng được lưu, như trong chuỗi
+
+@lisp
+(save y)
+(save x)
+(restore y)
+@end lisp
+
+Có một số khả năng hợp lý cho ý nghĩa của @code{restore}:
+
+@enumerate a
+
+@item
+@code{(restore y)} đặt vào @code{y} giá trị cuối cùng được lưu trên ngăn xếp, bất kể giá trị đó đến từ thanh ghi nào. Đây là cách bộ mô phỏng của ta hoạt động. Chỉ ra cách tận dụng hành vi này để loại bỏ một lệnh từ máy Fibonacci của @ref{5.1.4} (@ref{Figure 5.12}).
+
+@item
+@code{(restore y)} đặt vào @code{y} giá trị cuối cùng được lưu trên ngăn xếp, nhưng chỉ khi giá trị đó được lưu từ @code{y}; nếu không, nó báo hiệu lỗi. Sửa đổi bộ mô phỏng để hoạt động theo cách này. Bạn sẽ phải thay đổi @code{save} để đặt tên thanh ghi lên ngăn xếp cùng với giá trị.
+
+@item
+@code{(restore y)} đặt vào @code{y} giá trị cuối cùng được lưu từ @code{y} bất kể các thanh ghi nào khác được lưu sau @code{y} và không được khôi phục. Sửa đổi bộ mô phỏng để hoạt động theo cách này. Bạn sẽ phải liên kết một ngăn xếp riêng biệt với mỗi thanh ghi. Bạn nên làm cho phép toán @code{initialize-stack} khởi tạo tất cả các ngăn xếp thanh ghi.
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.12}Bài tập 5.12:} Bộ mô phỏng có thể được dùng để giúp xác định các đường dữ liệu cần thiết để hiện thực hóa một máy với một bộ điều khiển đã cho. Mở rộng trình hợp dịch để lưu trữ thông tin sau trong mô hình máy:
+
+@itemize
+
+@item
+danh sách tất cả các lệnh, với các bản sao trùng lặp được loại bỏ, được sắp xếp theo loại lệnh (@code{assign}, @code{goto}, v.v.);
+
+@item
+danh sách (không có bản sao trùng lặp) của các thanh ghi được dùng để giữ các điểm vào (đây là các thanh ghi được tham chiếu bởi các lệnh @code{goto});
+
+@item
+danh sách (không có bản sao trùng lặp) của các thanh ghi được @code{save}d hoặc @code{restore}d;
+
+@item
+với mỗi thanh ghi, danh sách (không có bản sao trùng lặp) các nguồn mà nó được gán từ (ví dụ: các nguồn cho thanh ghi @code{val} trong máy giai thừa của @ref{Figure 5.11} là @code{(const 1)} và @code{((op *) (reg n) (reg val))}).
+
+@end itemize
+
+Mở rộng giao diện truyền thông điệp cho máy để cung cấp quyền truy cập vào thông tin mới này. Để kiểm tra trình phân tích của bạn, định nghĩa máy Fibonacci từ @ref{Figure 5.12} và kiểm tra các danh sách bạn đã xây dựng.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.13}Bài tập 5.13:} Sửa đổi bộ mô phỏng để nó sử dụng chuỗi bộ điều khiển để xác định các thanh ghi mà máy có thay vì yêu cầu danh sách các thanh ghi làm đối số cho @code{make-machine}. Thay vì cấp phát trước các thanh ghi trong @code{make-machine}, bạn có thể cấp phát chúng mỗi lần khi chúng lần đầu tiên được thấy trong quá trình hợp dịch các lệnh.
+@end quotation

@@ -1,0 +1,204 @@
+@node	5.2.1, 5.2.2, 5.2, 5.2
+@subsection Mô Hình Máy
+
+Mô hình máy được tạo ra bởi @code{make-machine} được biểu diễn như một thủ tục với trạng thái cục bộ sử dụng các kỹ thuật truyền thông điệp được phát triển trong @ref{Chapter 3}. Để xây dựng mô hình này, @code{make-machine} bắt đầu bằng cách gọi thủ tục @code{make-new-machine} để xây dựng các phần của mô hình máy chung cho tất cả các máy thanh ghi. Mô hình máy cơ bản này được xây dựng bởi @code{make-new-machine} về cơ bản là một vùng chứa cho một số thanh ghi và một ngăn xếp, cùng với một cơ chế thực thi xử lý các lệnh bộ điều khiển lần lượt.
+
+@code{Make-machine} sau đó mở rộng mô hình cơ bản này (bằng cách gửi thông điệp cho nó) để bao gồm các thanh ghi, phép toán và bộ điều khiển của máy cụ thể đang được định nghĩa. Đầu tiên nó cấp phát một thanh ghi trong máy mới cho mỗi tên thanh ghi được cung cấp và cài đặt các phép toán được chỉ định trong máy. Sau đó nó sử dụng một @newterm{trình hợp dịch} (được mô tả bên dưới trong @ref{5.2.2}) để biến đổi danh sách bộ điều khiển thành các lệnh cho máy mới và cài đặt chúng như là chuỗi lệnh của máy. @code{Make-machine} trả về mô hình máy đã được sửa đổi như giá trị của nó.
+
+@lisp
+(define (make-machine register-names
+                      ops
+                      controller-text)
+  (let ((machine (make-new-machine)))
+    (for-each (lambda (register-name)
+                ((machine 'allocate-register)
+                 register-name))
+              register-names)
+    ((machine 'install-operations) ops)
+    ((machine 'install-instruction-sequence)
+     (assemble controller-text machine))
+    machine))
+@end lisp
+
+@subsubheading Các thanh ghi
+
+Ta sẽ biểu diễn một thanh ghi như một thủ tục với trạng thái cục bộ, như trong @ref{Chapter 3}. Thủ tục @code{make-register} tạo ra một thanh ghi giữ một giá trị có thể được truy cập hoặc thay đổi:
+
+@lisp
+(define (make-register name)
+  (let ((contents '*unassigned*))
+    (define (dispatch message)
+      (cond ((eq? message 'get) contents)
+            ((eq? message 'set)
+             (lambda (value)
+               (set! contents value)))
+            (else
+             (error "Unknown request:
+                     REGISTER"
+                    message))))
+    dispatch))
+@end lisp
+
+@noindent
+Các thủ tục sau được dùng để truy cập các thanh ghi:
+
+@lisp
+(define (get-contents register)
+  (register 'get))
+
+(define (set-contents! register value)
+  ((register 'set) value))
+@end lisp
+
+@subsubheading Ngăn xếp
+
+Ta cũng có thể biểu diễn một ngăn xếp như một thủ tục với trạng thái cục bộ. Thủ tục @code{make-stack} tạo ra một ngăn xếp có trạng thái cục bộ bao gồm danh sách các mục trên ngăn xếp. Một ngăn xếp chấp nhận các yêu cầu để @code{push} một mục lên ngăn xếp, để @code{pop} mục trên cùng ra khỏi ngăn xếp và trả về nó, và để @code{initialize} ngăn xếp về rỗng.
+
+@lisp
+(define (make-stack)
+  (let ((s '()))
+    (define (push x)
+      (set! s (cons x s)))
+    (define (pop)
+      (if (null? s)
+          (error "Empty stack: POP")
+          (let ((top (car s)))
+            (set! s (cdr s))
+            top)))
+    (define (initialize)
+      (set! s '())
+      'done)
+    (define (dispatch message)
+      (cond ((eq? message 'push) push)
+            ((eq? message 'pop) (pop))
+            ((eq? message 'initialize)
+             (initialize))
+            (else
+             (error "Unknown request: STACK"
+                    message))))
+    dispatch))
+@end lisp
+
+@noindent
+Các thủ tục sau được dùng để truy cập các ngăn xếp:
+
+@lisp
+(define (pop stack) (stack 'pop))
+(define (push stack value)
+  ((stack 'push) value))
+@end lisp
+
+@subsubheading Máy cơ bản
+
+Thủ tục @code{make-new-machine}, được thể hiện trong @ref{Figure 5.13,,@w{Figure 5.13}}, xây dựng một đối tượng có trạng thái cục bộ bao gồm một ngăn xếp, một chuỗi lệnh ban đầu rỗng, danh sách các phép toán ban đầu chứa một phép toán để khởi tạo ngăn xếp, và một @newterm{bảng thanh ghi} ban đầu chứa hai thanh ghi, được đặt tên là @code{flag} và @code{pc} (viết tắt của ``program counter'' - bộ đếm chương trình). Thủ tục nội bộ @code{allocate-register} thêm các mục mới vào bảng thanh ghi, và thủ tục nội bộ @code{lookup-register} tra cứu các thanh ghi trong bảng.
+
+@noindent
+@strong{@anchor{Figure 5.13}Figure 5.13:} @math{\downarrow} The @code{make-new-machine} procedure, which implements the basic machine model.
+
+@lisp
+(define (make-new-machine)
+  (let ((pc (make-register 'pc))
+        (flag (make-register 'flag))
+        (stack (make-stack))
+        (the-instruction-sequence '()))
+    (let ((the-ops
+           (list
+            (list 'initialize-stack
+                  (lambda ()
+                    (stack 'initialize)))))
+          (register-table
+           (list (list 'pc pc)
+                 (list 'flag flag))))
+      (define (allocate-register name)
+        (if (assoc name register-table)
+            (error
+             "Multiply defined register: "
+             name)
+            (set! register-table
+                  (cons
+                   (list name
+                         (make-register name))
+                   register-table)))
+        'register-allocated)
+      (define (lookup-register name)
+        (let ((val
+               (assoc name register-table)))
+          (if val
+              (cadr val)
+              (error "Unknown register:"
+                     name))))
+      (define (execute)
+        (let ((insts (get-contents pc)))
+          (if (null? insts)
+              'done
+              (begin
+                ((instruction-execution-proc
+                  (car insts)))
+                (execute)))))
+      (define (dispatch message)
+        (cond ((eq? message 'start)
+               (set-contents!
+                pc
+                the-instruction-sequence)
+               (execute))
+              ((eq?
+                message
+                'install-instruction-sequence)
+               (lambda (seq)
+                 (set!
+                  the-instruction-sequence
+                  seq)))
+              ((eq? message
+                    'allocate-register)
+               allocate-register)
+              ((eq? message 'get-register)
+               lookup-register)
+              ((eq? message
+                    'install-operations)
+               (lambda (ops)
+                 (set! the-ops
+                       (append the-ops ops))))
+              ((eq? message 'stack) stack)
+              ((eq? message 'operations)
+               the-ops)
+              (else (error "Unknown request:
+                            MACHINE"
+                           message))))
+      dispatch)))
+@end lisp
+
+Thanh ghi @code{flag} được dùng để điều khiển việc nhánh trong máy mô phỏng. Các lệnh @code{Test} đặt nội dung của @code{flag} thành kết quả của phép kiểm tra (true hay false). Các lệnh @code{Branch} quyết định có nhánh hay không bằng cách kiểm tra nội dung của @code{flag}.
+
+Thanh ghi @code{pc} xác định trình tự các lệnh khi máy chạy. Trình tự này được hiện thực hóa bởi thủ tục nội bộ @code{execute}. Trong mô hình mô phỏng, mỗi lệnh máy là một cấu trúc dữ liệu bao gồm một thủ tục không có đối số, gọi là @newterm{thủ tục thực thi lệnh}, sao cho việc gọi thủ tục này mô phỏng việc thực thi lệnh. Khi mô phỏng chạy, @code{pc} trỏ đến nơi trong chuỗi lệnh bắt đầu với lệnh tiếp theo cần thực thi. @code{Execute} lấy lệnh đó, thực thi nó bằng cách gọi thủ tục thực thi lệnh, và lặp lại chu kỳ này cho đến khi không còn lệnh nào để thực thi (tức là cho đến khi @code{pc} trỏ đến cuối chuỗi lệnh).
+
+@noindent
+Là một phần của hoạt động của nó, mỗi thủ tục thực thi lệnh sửa đổi @code{pc} để chỉ ra lệnh tiếp theo cần thực thi. Các lệnh @code{Branch} và @code{goto} thay đổi @code{pc} để trỏ đến đích mới. Tất cả các lệnh khác chỉ đơn giản là tiến @code{pc}, làm cho nó trỏ đến lệnh tiếp theo trong chuỗi. Lưu ý rằng mỗi lần gọi @code{execute} lại gọi @code{execute}, nhưng điều này không tạo ra vòng lặp vô hạn vì việc chạy thủ tục thực thi lệnh thay đổi nội dung của @code{pc}.
+
+@code{Make-new-machine} trả về một thủ tục @code{dispatch} hiện thực hóa quyền truy cập truyền thông điệp vào trạng thái nội bộ. Lưu ý rằng việc khởi động máy được thực hiện bằng cách đặt @code{pc} ở đầu chuỗi lệnh và gọi @code{execute}.
+
+Để thuận tiện, ta cung cấp một giao diện thủ tục thay thế cho phép toán @code{start} của máy, cũng như các thủ tục để đặt và kiểm tra nội dung thanh ghi, như được chỉ định ở đầu @ref{5.2}:
+
+@lisp
+(define (start machine)
+  (machine 'start))
+
+(define (get-register-contents
+         machine register-name)
+  (get-contents
+   (get-register machine register-name)))
+
+(define (set-register-contents!
+         machine register-name value)
+  (set-contents!
+   (get-register machine register-name)
+   value)
+  'done)
+@end lisp
+
+@noindent
+Các thủ tục này (và nhiều thủ tục trong @ref{5.2.2} và @ref{5.2.3}) sử dụng thủ tục sau để tra cứu thanh ghi với tên đã cho trong một máy đã cho:
+
+@lisp
+(define (get-register machine reg-name)
+  ((machine 'get-register) reg-name))
+@end lisp

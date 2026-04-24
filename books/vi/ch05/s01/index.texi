@@ -1,0 +1,120 @@
+@node	5.1, 5.2, Chapter 5, Chapter 5
+@section Thiết Kế Các Máy Thanh Ghi
+
+Để thiết kế một máy thanh ghi, ta phải thiết kế các @newterm{đường dữ liệu} (các thanh ghi và phép toán) và @newterm{bộ điều khiển} điều phối các phép toán này. Để minh họa việc thiết kế một máy thanh ghi đơn giản, hãy xem xét Thuật Toán Euclid, được dùng để tính ước chung lớn nhất (@abbr{GCD}) của hai số nguyên. Như ta thấy trong @ref{1.2.5}, Thuật Toán Euclid có thể được thực hiện bởi một quá trình lặp, như được đặc tả bởi thủ tục sau:
+
+@lisp
+(define (gcd a b)
+  (if (= b 0)
+      a
+      (gcd b (remainder a b))))
+@end lisp
+
+@noindent
+Một máy để thực hiện thuật toán này phải theo dõi hai số, @math{a} và @math{b}, vì vậy hãy giả sử rằng các số này được lưu trữ trong hai thanh ghi với những tên đó. Các phép toán cơ bản cần thiết là kiểm tra xem nội dung của thanh ghi @code{b} có bằng không và tính phần dư của nội dung thanh ghi @code{a} chia cho nội dung thanh ghi @code{b}. Phép toán phần dư là một quá trình phức tạp, nhưng hãy giả sử trong thời điểm này rằng ta có một thiết bị nguyên thủy tính toán các phần dư. Trong mỗi chu kỳ của thuật toán @abbr{GCD}, nội dung của thanh ghi @code{a} phải được thay thế bằng nội dung của thanh ghi @code{b}, và nội dung của @code{b} phải được thay thế bằng phần dư của nội dung cũ của @code{a} chia cho nội dung cũ của @code{b}. Sẽ thuận tiện nếu các thay thế này có thể được thực hiện đồng thời, nhưng trong mô hình của ta về máy thanh ghi, ta sẽ giả sử rằng chỉ một thanh ghi có thể được gán một giá trị mới tại mỗi bước. Để thực hiện các thay thế, máy của ta sẽ sử dụng một thanh ghi thứ ba ``tạm thời'', mà ta gọi là @code{t}. (Đầu tiên phần dư sẽ được đặt vào @code{t}, sau đó nội dung của @code{b} sẽ được đặt vào @code{a}, và cuối cùng phần dư được lưu trữ trong @code{t} sẽ được đặt vào @code{b}.)
+
+@noindent
+Ta có thể minh họa các thanh ghi và phép toán cần thiết cho máy này bằng cách sử dụng sơ đồ đường dữ liệu được thể hiện trong @ref{Figure 5.1}. Trong sơ đồ này, các thanh ghi (@code{a}, @code{b}, và @code{t}) được biểu diễn bằng các hình chữ nhật. Mỗi cách để gán một giá trị cho một thanh ghi được biểu thị bằng một mũi tên có @code{X} phía sau đầu mũi tên, chỉ từ nguồn dữ liệu đến thanh ghi. Ta có thể nghĩ @code{X} là một nút bấm mà khi được nhấn, cho phép giá trị tại nguồn ``chảy'' vào thanh ghi được chỉ định. Nhãn bên cạnh mỗi nút là tên ta sẽ dùng để chỉ nút đó. Các tên là tùy ý, và có thể được chọn để có giá trị gợi nhớ (ví dụ, @code{a<-b} biểu thị nhấn nút gán nội dung của thanh ghi @code{b} cho thanh ghi @code{a}). Nguồn dữ liệu cho một thanh ghi có thể là một thanh ghi khác (như trong phép gán @code{a<-b}), kết quả của một phép toán (như trong phép gán @code{t<-r}), hoặc một hằng số (một giá trị dựng sẵn không thể thay đổi, được biểu diễn trong sơ đồ đường dữ liệu bằng một tam giác chứa hằng số).
+
+@float
+@anchor{Figure 5.1}
+@ifinfo
+@quotation
+@strong{Figure 5.1:} Data paths for a @abbr{GCD} machine.
+
+@example
+                              ___
++-----+          +-----+     /   \
+|  a  |<--(X)----|  b  +--->|  =  |
++--+--+   a<-b   +-+---+     \___/
+   |               |  ^        ^
+   +------+   +----+  |        |
+          |   |      (X) b<-t  |
+       .--+---+--.    |       / \
+        \  rem  /     |      / O \
+         \_____/      |     +-----+
+            |         |
+           (X) t<-r   |
+            |         |
+            V         |
+         +-----+      |
+         |  t  +------+
+         +-----+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap5/Fig5.1a,105mm,,,.std.svg}
+@caption{@strong{Figure 5.1:} Data paths for a @abbr{GCD} machine.}
+@end iftex
+@end float
+
+Một phép toán tính một giá trị từ các hằng số và nội dung của các thanh ghi được biểu diễn trong sơ đồ đường dữ liệu bằng một hình thang chứa tên của phép toán. Ví dụ, hộp được đánh dấu @code{rem} trong @ref{Figure 5.1} biểu diễn một phép toán tính phần dư của nội dung của các thanh ghi @code{a} và @code{b} mà nó được gắn vào. Các mũi tên (không có nút) chỉ từ các thanh ghi và hằng số đầu vào đến hộp, và các mũi tên kết nối giá trị đầu ra của phép toán với các thanh ghi. Một phép kiểm tra được biểu diễn bằng một vòng tròn chứa tên của phép kiểm tra. Ví dụ, máy @abbr{GCD} của ta có một phép toán kiểm tra xem nội dung của thanh ghi @code{b} có bằng không. Một phép kiểm tra cũng có các mũi tên từ các thanh ghi và hằng số đầu vào của nó, nhưng nó không có mũi tên đầu ra; giá trị của nó được bộ điều khiển sử dụng chứ không phải bởi các đường dữ liệu. Nhìn chung, sơ đồ đường dữ liệu cho thấy các thanh ghi và phép toán cần thiết cho máy và cách chúng phải được kết nối. Nếu ta coi các mũi tên là dây và các nút @code{X} là công tắc, sơ đồ đường dữ liệu rất giống sơ đồ nối dây cho một máy có thể được xây dựng từ các linh kiện điện.
+
+@noindent
+Để các đường dữ liệu thực sự tính @abbr{GCD}, các nút phải được nhấn theo đúng thứ tự. Ta sẽ mô tả chuỗi này theo một sơ đồ bộ điều khiển, như được minh họa trong @ref{Figure 5.2}. Các phần tử của sơ đồ bộ điều khiển chỉ ra cách các thành phần đường dữ liệu nên được vận hành. Các hộp hình chữ nhật trong sơ đồ bộ điều khiển xác định các nút đường dữ liệu cần nhấn, và các mũi tên mô tả trình tự từ bước này sang bước tiếp theo. Hình thoi trong sơ đồ biểu diễn một quyết định. Một trong hai mũi tên trình tự sẽ được theo dõi, tùy thuộc vào giá trị của phép kiểm tra đường dữ liệu được xác định trong hình thoi. Ta có thể diễn giải bộ điều khiển theo một phép loại suy vật lý: Hãy nghĩ sơ đồ như một mê cung trong đó một viên bi đang lăn. Khi viên bi lăn vào một hộp, nó nhấn nút đường dữ liệu được đặt tên bởi hộp. Khi viên bi lăn vào một nút quyết định (chẳng hạn như phép kiểm tra cho @code{b} = 0), nó rời nút theo con đường được xác định bởi kết quả của phép kiểm tra được chỉ định. Cùng với nhau, các đường dữ liệu và bộ điều khiển hoàn toàn mô tả một máy để tính @abbr{GCD}. Ta bắt đầu bộ điều khiển (viên bi lăn) tại điểm được đánh dấu @code{start}, sau khi đặt các số vào thanh ghi @code{a} và @code{b}. Khi bộ điều khiển đến @code{done}, ta sẽ tìm thấy giá trị của @abbr{GCD} trong thanh ghi @code{a}.
+
+@float
+@anchor{Figure 5.2}
+@ifinfo
+@quotation
+@strong{Figure 5.2:} Controller for a @abbr{GCD} machine.
+
+@example
+     start
+       |
+       V
+      / \ yes
++--->< = >-----> done
+|     \ /
+|      | no
+|      V
+|  +------+
+|  | t<-r |
+|  +---+--+
+|      |
+|      V
+|  +------+
+|  | a<-b |
+|  +---+--+
+|      |
+|      V
+|  +------+
++--+ b<-t |
+   +------+
+@end example
+@end quotation
+@end ifinfo
+@iftex
+@image{fig/chap5/Fig5.2,75mm,,,.std.svg}
+@caption{@strong{Figure 5.2:} Controller for a @abbr{GCD} machine.}
+@end iftex
+@end float
+
+@quotation
+@strong{@anchor{Exercise 5.1}Bài tập 5.1:} Thiết kế một máy thanh ghi để tính giai thừa sử dụng thuật toán lặp được đặc tả bởi thủ tục sau. Vẽ sơ đồ đường dữ liệu và sơ đồ bộ điều khiển cho máy này.
+
+@lisp
+(define (factorial n)
+  (define (iter product counter)
+    (if (> counter n)
+        product
+        (iter (* counter product)
+              (+ counter 1))))
+  (iter 1 1))
+@end lisp
+@end quotation
+
+@menu
+* 5.1.1::            Ngôn Ngữ Mô Tả Các Máy Thanh Ghi
+* 5.1.2::            Trừu Tượng hóa trong Thiết Kế Máy
+* 5.1.3::            Các Chương Con
+* 5.1.4::            Dùng Ngăn Xếp để Hiện Thực Hóa Đệ Quy
+* 5.1.5::            Tóm Tắt Lệnh
+@end menu
+
+@include ss01.texi
+@include ss02.texi
+@include ss03.texi
+@include ss04.texi
+@include ss05.texi

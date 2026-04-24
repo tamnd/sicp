@@ -1,0 +1,208 @@
+@node	5.1.4, 5.1.5, 5.1.3, 5.1
+@subsection Dùng Ngăn Xếp để Hiện Thực Hóa Đệ Quy
+
+Với các ý tưởng được minh họa cho đến nay, ta có thể hiện thực hóa bất kỳ quá trình lặp nào bằng cách chỉ định một máy thanh ghi có một thanh ghi tương ứng với mỗi biến trạng thái của quá trình. Máy lặp đi lặp lại thực thi một vòng lặp bộ điều khiển, thay đổi nội dung của các thanh ghi, cho đến khi một số điều kiện kết thúc được thỏa mãn. Tại mỗi điểm trong chuỗi bộ điều khiển, trạng thái của máy (biểu diễn trạng thái của quá trình lặp) được xác định hoàn toàn bởi nội dung của các thanh ghi (các giá trị của các biến trạng thái).
+
+Tuy nhiên, việc hiện thực hóa các quá trình đệ quy đòi hỏi một cơ chế bổ sung. Hãy xem xét phương pháp đệ quy sau để tính giai thừa, mà ta đã xem xét lần đầu trong @ref{1.2.1}:
+
+@lisp
+(define (factorial n)
+  (if (= n 1)
+      1
+      (* (factorial (- n 1)) n)))
+@end lisp
+
+@noindent
+Như ta thấy từ thủ tục, tính @math{{n!}} đòi hỏi tính @math{{(n - 1)!}}. Máy @abbr{GCD} của ta, được mô hình hóa theo thủ tục
+
+@lisp
+(define (gcd a b)
+  (if (= b 0)
+      a
+      (gcd b (remainder a b))))
+@end lisp
+
+@noindent
+cũng phải tính một @abbr{GCD} khác. Nhưng có một sự khác biệt quan trọng giữa thủ tục @code{gcd}, rút gọn phép tính ban đầu thành một phép tính @abbr{GCD} mới, và @code{factorial}, đòi hỏi tính một giai thừa khác như bài toán con. Trong @abbr{GCD}, câu trả lời cho phép tính @abbr{GCD} mới là câu trả lời cho bài toán gốc. Để tính @abbr{GCD} tiếp theo, ta chỉ cần đặt các đối số mới vào các thanh ghi đầu vào của máy @abbr{GCD} và tái sử dụng các đường dữ liệu của máy bằng cách thực thi cùng chuỗi bộ điều khiển. Khi máy hoàn thành việc giải quyết bài toán @abbr{GCD} cuối cùng, nó đã hoàn thành toàn bộ phép tính.
+
+Trong trường hợp giai thừa (hay bất kỳ quá trình đệ quy nào), câu trả lời cho bài toán con giai thừa mới không phải là câu trả lời cho bài toán gốc. Giá trị thu được cho @math{{(n - 1)!}} phải được nhân với @math{n} để có câu trả lời cuối cùng. Nếu ta cố gắng bắt chước thiết kế @abbr{GCD}, và giải quyết bài toán con giai thừa bằng cách giảm thanh ghi @code{n} và chạy lại máy giai thừa, ta sẽ không còn có giá trị cũ của @code{n} để nhân với kết quả. Do đó ta cần một máy giai thừa thứ hai để làm việc trên bài toán con. Phép tính giai thừa thứ hai này tự nó có một bài toán con giai thừa, đòi hỏi một máy giai thừa thứ ba, v.v. Vì mỗi máy giai thừa chứa một máy giai thừa khác bên trong nó, tổng thể máy chứa một tổ lồng vô hạn của các máy tương tự và do đó không thể được xây dựng từ một số lượng cố định, hữu hạn các bộ phận.
+
+Tuy nhiên, ta có thể hiện thực hóa quá trình giai thừa như một máy thanh ghi nếu ta có thể sắp xếp để sử dụng cùng các thành phần cho mỗi thể hiện lồng nhau của máy. Cụ thể, máy tính @math{{n!}} nên sử dụng cùng các thành phần để làm việc trên bài toán con tính @math{{(n - 1)!}}, trên bài toán con cho @math{{(n - 2)!}}, v.v. Điều này có vẻ hợp lý vì, mặc dù quá trình giai thừa quy định rằng cần vô số bản sao của cùng một máy để thực hiện một phép tính, chỉ một trong số các bản sao này cần hoạt động tại bất kỳ thời điểm nào. Khi máy gặp một bài toán con đệ quy, nó có thể tạm dừng công việc trên bài toán chính, tái sử dụng cùng các bộ phận vật lý để làm việc trên bài toán con, sau đó tiếp tục phép tính đã tạm dừng.
+
+Trong bài toán con, nội dung của các thanh ghi sẽ khác so với trong bài toán chính. (Trong trường hợp này thanh ghi @code{n} được giảm đi.) Để có thể tiếp tục phép tính đã tạm dừng, máy phải lưu nội dung của bất kỳ thanh ghi nào sẽ cần sau khi bài toán con được giải quyết để chúng có thể được khôi phục để tiếp tục phép tính đã tạm dừng. Trong trường hợp giai thừa, ta sẽ lưu giá trị cũ của @code{n}, để được khôi phục khi ta hoàn thành việc tính giai thừa của thanh ghi @code{n} được giảm.@footnote{Người ta có thể lập luận rằng ta không cần lưu @code{n} cũ; sau khi ta giảm nó và giải quyết bài toán con, ta có thể đơn giản tăng nó để phục hồi giá trị cũ. Mặc dù chiến lược này hoạt động cho giai thừa, nó không thể hoạt động nói chung, vì giá trị cũ của một thanh ghi không phải lúc nào cũng có thể được tính từ giá trị mới.}
+
+Vì không có giới hạn @emph{a priori} về độ sâu của các cuộc gọi đệ quy lồng nhau, ta có thể cần lưu một số lượng tùy ý các giá trị thanh ghi. Các giá trị này phải được khôi phục theo thứ tự ngược lại so với thứ tự chúng được lưu, vì trong một tổ đệ quy, bài toán con cuối cùng được vào là bài toán con đầu tiên được hoàn thành. Điều này quy định việc sử dụng một @newterm{ngăn xếp}, hay cấu trúc dữ liệu ``vào sau ra trước'', để lưu các giá trị thanh ghi. Ta có thể mở rộng ngôn ngữ máy thanh ghi để bao gồm một ngăn xếp bằng cách thêm hai loại lệnh: Các giá trị được đặt trên ngăn xếp sử dụng lệnh @code{save} và được khôi phục từ ngăn xếp sử dụng lệnh @code{restore}. Sau một chuỗi các giá trị được @code{save}d trên ngăn xếp, một chuỗi @code{restore}s sẽ lấy lại các giá trị này theo thứ tự ngược lại.@footnote{Trong @ref{5.3} ta sẽ xem cách hiện thực hóa một ngăn xếp theo các phép toán nguyên thủy hơn.}
+
+Với sự trợ giúp của ngăn xếp, ta có thể tái sử dụng một bản sao duy nhất của các đường dữ liệu của máy giai thừa cho mỗi bài toán con giai thừa. Có một vấn đề thiết kế tương tự trong việc tái sử dụng chuỗi bộ điều khiển điều khiển các đường dữ liệu. Để thực thi lại phép tính giai thừa, bộ điều khiển không thể đơn giản lặp lại từ đầu, như với một quá trình lặp, vì sau khi giải quyết bài toán con @math{{(n - 1)!}} máy vẫn phải nhân kết quả với @math{n}. Bộ điều khiển phải tạm dừng việc tính @math{{n!}}, giải quyết bài toán con @math{{(n - 1)!}}, sau đó tiếp tục việc tính @math{{n!}}. Quan điểm này về phép tính giai thừa gợi ý việc sử dụng cơ chế chương con được mô tả trong @ref{5.1.3}, bộ điều khiển sử dụng một thanh ghi @code{continue} để chuyển đến phần của chuỗi giải quyết một bài toán con và sau đó tiếp tục từ nơi nó đã dừng lại trên bài toán chính. Do đó ta có thể tạo ra một chương con giai thừa trả về điểm vào được lưu trữ trong thanh ghi @code{continue}. Quanh mỗi lời gọi chương con, ta lưu và khôi phục @code{continue} cũng như ta làm với thanh ghi @code{n}, vì mỗi ``cấp'' của phép tính giai thừa sẽ sử dụng cùng thanh ghi @code{continue}. Tức là, chương con giai thừa phải đặt một giá trị mới vào @code{continue} khi nó tự gọi cho một bài toán con, nhưng nó sẽ cần giá trị cũ để quay trở lại nơi đã gọi nó để giải quyết một bài toán con.
+
+@noindent
+@ref{Figure 5.11} cho thấy các đường dữ liệu và bộ điều khiển cho một máy hiện thực hóa thủ tục @code{factorial} đệ quy. Máy có một ngăn xếp và ba thanh ghi, gọi là @code{n}, @code{val}, và @code{continue}. Để đơn giản hóa sơ đồ đường dữ liệu, ta không đặt tên các nút gán thanh ghi, chỉ đặt tên các nút phép toán ngăn xếp (@code{sc} và @code{sn} để lưu các thanh ghi, @code{rc} và @code{rn} để khôi phục các thanh ghi). Để vận hành máy, ta đặt vào thanh ghi @code{n} số có giai thừa ta muốn tính và khởi động máy. Khi máy đến @code{fact-done}, phép tính hoàn thành và câu trả lời sẽ được tìm thấy trong thanh ghi @code{val}. Trong chuỗi bộ điều khiển, @code{n} và @code{continue} được lưu trước mỗi cuộc gọi đệ quy và được khôi phục khi trả về từ cuộc gọi. Trả về từ một cuộc gọi được thực hiện bằng cách nhánh đến vị trí được lưu trữ trong @code{continue}. @code{Continue} được khởi tạo khi máy bắt đầu để lần trả về cuối cùng sẽ đến @code{fact-done}. Thanh ghi @code{val}, giữ kết quả của phép tính giai thừa, không được lưu trước cuộc gọi đệ quy, vì nội dung cũ của @code{val} không hữu ích sau khi chương con trả về. Chỉ giá trị mới, là giá trị được tạo ra bởi phép tính con, mới cần thiết.
+
+@float
+@anchor{Figure 5.11}
+@ifinfo
+@strong{Figure 5.11:} A recursive factorial machine.
+
+@example
+                             ___
+                            /   \
+    +----------*-----------|  =  |
+    |          |            \___/
+   (X)         |              ^
+    |          |              |
+    V          |          +---+---+   sn    +-------+
++-------+      |          |       +---(X)-->|       |
+|  val  |<-(X)-|----------+   n   |         | stack |
++-----+-+      |          |       |<--(X)---+       |
+  ^   |        |          +-------+   rn    +-+-----+
+  |   |        |            ^                 |   ^
+ (X)  |        |            |                 |   |
+  |   |   +----|--------*  (X)                |  (X) sc
+  |   |   |    |        |   |             rc (X)  |
+  |   |   |    *----.   |   |                 |   |
+  |   V   V    |    V   V   |                 V   |
+  |  -------   |   -------  |              +------+-+
+  |  \  *  /   |   \  -  /  |              |continue+--> controller
+  |   --+--    |    --+--   |              +--------+
+  |     |      |      |     |               ^      ^
+  +-----+      |      +-----+               |      |
+               |                           (X)    (X)
+               |                            |      |
+              / \                   after- / \    / \  fact-
+             /_1_\                  fact  /___\  /___\ done
+@end example
+
+@lisp
+(controller
+   (assign continue (label fact-done))     @r{; set up final return address}
+ fact-loop
+   (test (op =) (reg n) (const 1))
+   (branch (label base-case))
+   @r{;; Set up for the recursive call by saving @code{n} and @code{continue}.}
+   @r{;; Set up @code{continue} so that the computation will continue}
+   @r{;; at @code{after-fact} when the subroutine returns.}
+   (save continue)
+   (save n)
+   (assign n (op -) (reg n) (const 1))
+   (assign continue (label after-fact))
+   (goto (label fact-loop))
+ after-fact
+   (restore n)
+   (restore continue)
+   (assign val (op *) (reg n) (reg val))   @r{; @code{val} now contains @emph{n}(@emph{n} − 1)!}
+   (goto (reg continue))                   @r{; return to caller}
+ base-case
+   (assign val (const 1))                  @r{; base case: }1! = 1
+   (goto (reg continue))                   @r{; return to caller}
+ fact-done)
+@end lisp
+
+@end ifinfo
+@iftex
+@image{fig/chap5/Fig5.11b,147mm,,,.std.svg}
+@caption{@strong{Figure 5.11:} A recursive factorial machine.}
+@end iftex
+@end float
+
+Mặc dù về nguyên tắc phép tính giai thừa đòi hỏi một máy vô hạn, máy trong @ref{Figure 5.11} thực ra hữu hạn ngoại trừ ngăn xếp, có thể không bị giới hạn. Tuy nhiên, bất kỳ hiện thực hóa vật lý nào của một ngăn xếp cũng sẽ có kích thước hữu hạn, và điều này sẽ giới hạn độ sâu của các cuộc gọi đệ quy có thể được xử lý bởi máy. Việc hiện thực hóa giai thừa này minh họa chiến lược chung để thực hiện các thuật toán đệ quy như các máy thanh ghi thông thường được tăng cường bởi ngăn xếp. Khi gặp một bài toán con đệ quy, ta lưu vào ngăn xếp các thanh ghi có giá trị hiện tại sẽ cần sau khi bài toán con được giải quyết, giải quyết bài toán con đệ quy, sau đó khôi phục các thanh ghi đã lưu và tiếp tục thực thi trên bài toán chính. Thanh ghi @code{continue} phải luôn được lưu. Liệu có các thanh ghi khác cần lưu hay không tùy thuộc vào máy cụ thể, vì không phải tất cả các phép tính đệ quy đều cần các giá trị gốc của các thanh ghi được sửa đổi trong quá trình giải quyết bài toán con (xem @ref{Exercise 5.4}).
+
+@subsubheading Đệ quy đôi
+
+Hãy xem xét một quá trình đệ quy phức tạp hơn, phép tính đệ quy cây của các số Fibonacci, mà ta đã giới thiệu trong @ref{1.2.2}:
+
+@lisp
+(define (fib n)
+  (if (< n 2)
+      n
+      (+ (fib (- n 1)) (fib (- n 2)))))
+@end lisp
+
+@noindent
+Giống như với giai thừa, ta có thể hiện thực hóa phép tính Fibonacci đệ quy như một máy thanh ghi với các thanh ghi @code{n}, @code{val}, và @code{continue}. Máy phức tạp hơn máy cho giai thừa, vì có hai nơi trong chuỗi bộ điều khiển ta cần thực hiện các cuộc gọi đệ quy---một lần để tính @math{{\text{Fib}(n - 1)}} và một lần để tính @math{{\text{Fib}(n - 2)}}. Để thiết lập cho mỗi cuộc gọi này, ta lưu các thanh ghi có giá trị sẽ cần sau này, đặt thanh ghi @code{n} thành số có Fib ta cần tính đệ quy (@math{{n - 1}} hoặc @math{{n - 2}}), và gán cho @code{continue} điểm vào trong chuỗi chính để quay trở lại (@code{afterfib-n-1} hoặc @code{afterfib-n-2}, tương ứng). Sau đó ta đến @code{fib-loop}. Khi ta trở về từ cuộc gọi đệ quy, câu trả lời trong @code{val}. @ref{Figure 5.12} cho thấy chuỗi bộ điều khiển cho máy này.
+
+@quotation
+@strong{@anchor{Figure 5.12}Figure 5.12:} @math{\downarrow} Controller for a machine to compute Fibonacci numbers.
+
+@lisp
+(controller
+   (assign continue (label fib-done))
+ fib-loop
+   (test (op <) (reg n) (const 2))
+   (branch (label immediate-answer))
+   @r{;; set up to compute Fib(@emph{n} − 1)}
+   (save continue)
+   (assign continue (label afterfib-n-1))
+   (save n)           @r{; save old value of @code{n}}
+   (assign n
+           (op -)
+           (reg n)
+           (const 1)) @r{; clobber @code{n} to @code{n-1}}
+   (goto
+    (label fib-loop)) @r{; perform recursive call}
+ afterfib-n-1 @r{; upon return, @code{val} contains Fib(@emph{n} − 1)}
+   (restore n)
+   (restore continue)
+   @r{;; set up to compute Fib(@emph{n} − 2)}
+   (assign n (op -) (reg n) (const 2))
+   (save continue)
+   (assign continue (label afterfib-n-2))
+   (save val)         @r{; save Fib(@emph{n} − 1)}
+   (goto (label fib-loop))
+ afterfib-n-2 @r{; upon return, @code{val} contains Fib(@emph{n} − 2)}
+   (assign n
+           (reg val)) @r{; @code{n} now contains Fib(@emph{n} − 2)}
+   (restore val)      @r{; @code{val} now contains Fib(@emph{n} − 1)}
+   (restore continue)
+   (assign val        @r{; Fib(@emph{n} − 1) + Fib(@emph{n} − 2)}
+           (op +)
+           (reg val)
+           (reg n))
+   (goto              @r{; return to caller,}
+    (reg continue))   @r{; answer is in @code{val}}
+ immediate-answer
+   (assign val
+           (reg n))   @r{; base case: Fib(@emph{n}) = @emph{n}}
+   (goto (reg continue))
+ fib-done)
+@end lisp
+
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.4}Bài tập 5.4:} Đặc tả các máy thanh ghi hiện thực hóa từng thủ tục sau. Với mỗi máy, viết một chuỗi lệnh bộ điều khiển và vẽ sơ đồ cho thấy các đường dữ liệu.
+
+@enumerate a
+
+@item
+Lũy thừa đệ quy:
+
+@lisp
+(define (expt b n)
+  (if (= n 0)
+      1
+      (* b (expt b (- n 1)))))
+@end lisp
+
+@item
+Lũy thừa lặp:
+
+@lisp
+(define (expt b n)
+  (define (expt-iter counter product)
+    (if (= counter 0)
+        product
+        (expt-iter (- counter 1)
+                   (* b product))))
+  (expt-iter n 1))
+@end lisp
+
+@end enumerate
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.5}Bài tập 5.5:} Mô phỏng thủ công các máy giai thừa và Fibonacci, sử dụng một số đầu vào không tầm thường (đòi hỏi thực thi ít nhất một cuộc gọi đệ quy). Hiển thị nội dung của ngăn xếp tại mỗi điểm quan trọng trong quá trình thực thi.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.6}Bài tập 5.6:} Ben Bitdiddle nhận thấy rằng chuỗi bộ điều khiển của máy Fibonacci có một @code{save} thừa và một @code{restore} thừa, có thể được loại bỏ để tạo ra một máy nhanh hơn. Các lệnh này ở đâu?
+@end quotation

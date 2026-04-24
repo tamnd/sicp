@@ -1,0 +1,122 @@
+@node	5.2.4, 5.3, 5.1, 5.2
+@subsection Giám Sát Hiệu Suất Máy
+
+Mô phỏng không chỉ hữu ích để xác minh tính đúng đắn của một thiết kế máy được đề xuất mà còn để đo hiệu suất của máy. Ví dụ, ta có thể cài đặt trong chương trình mô phỏng của ta một ``đồng hồ đo'' để đo số lượng phép toán ngăn xếp được sử dụng trong một phép tính. Để làm điều này, ta sửa đổi ngăn xếp mô phỏng của ta để theo dõi số lần các thanh ghi được lưu trên ngăn xếp và độ sâu tối đa mà ngăn xếp đạt được, và thêm một thông điệp vào giao diện của ngăn xếp để in thống kê, như được thể hiện bên dưới. Ta cũng thêm một phép toán vào mô hình máy cơ bản để in thống kê ngăn xếp, bằng cách khởi tạo @code{the-ops} trong @code{make-new-machine} thành
+
+@lisp
+(list (list 'initialize-stack
+            (lambda ()
+              (stack 'initialize)))
+      (list 'print-stack-statistics
+            (lambda ()
+              (stack 'print-statistics))))
+@end lisp
+
+@noindent
+Đây là phiên bản mới của @code{make-stack}:
+
+@lisp
+(define (make-stack)
+  (let ((s '())
+        (number-pushes 0)
+        (max-depth 0)
+        (current-depth 0))
+    (define (push x)
+      (set! s (cons x s))
+      (set! number-pushes (+ 1 number-pushes))
+      (set! current-depth (+ 1 current-depth))
+      (set! max-depth
+            (max current-depth max-depth)))
+    (define (pop)
+      (if (null? s)
+          (error "Empty stack: POP")
+          (let ((top (car s)))
+            (set! s (cdr s))
+            (set! current-depth
+                  (- current-depth 1))
+            top)))
+    (define (initialize)
+      (set! s '())
+      (set! number-pushes 0)
+      (set! max-depth 0)
+      (set! current-depth 0)
+      'done)
+
+    (define (print-statistics)
+      (newline)
+      (display (list 'total-pushes
+                     '=
+                     number-pushes
+                     'maximum-depth
+                     '=
+                     max-depth)))
+    (define (dispatch message)
+      (cond ((eq? message 'push) push)
+            ((eq? message 'pop) (pop))
+            ((eq? message 'initialize)
+             (initialize))
+            ((eq? message 'print-statistics)
+             (print-statistics))
+            (else
+             (error "Unknown request: STACK"
+                    message))))
+    dispatch))
+@end lisp
+
+@noindent
+@ref{Exercise 5.15} đến @ref{Exercise 5.19} mô tả các tính năng giám sát và gỡ lỗi hữu ích khác có thể được thêm vào bộ mô phỏng máy thanh ghi.
+
+@quotation
+@strong{@anchor{Exercise 5.14}Bài tập 5.14:} Đo số lần đẩy và độ sâu ngăn xếp tối đa cần thiết để tính @math{{n!}} với các giá trị nhỏ khác nhau của @math{n} bằng cách sử dụng máy tính giai thừa được thể hiện trong @ref{Figure 5.11}. Từ dữ liệu của bạn hãy xác định các công thức theo @math{n} cho tổng số phép toán đẩy và độ sâu ngăn xếp tối đa được sử dụng khi tính @math{{n!}} với bất kỳ @math{{n > 1}}. Lưu ý rằng mỗi cái trong số này là hàm tuyến tính của @math{n} và do đó được xác định bởi hai hằng số. Để in ra thống kê, bạn sẽ phải bổ sung máy tính giai thừa với các lệnh để khởi tạo ngăn xếp và in thống kê. Bạn có thể muốn sửa đổi máy để nó liên tục đọc một giá trị cho @math{n}, tính giai thừa, và in kết quả (như ta đã làm cho máy @abbr{GCD} trong @ref{Figure 5.4}), để bạn không phải liên tục gọi @code{get-register-contents}, @code{set-register-contents!}, và @code{start}.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.15}Bài tập 5.15:} Thêm @newterm{đếm lệnh} vào mô phỏng máy thanh ghi. Tức là, hãy để mô hình máy theo dõi số lệnh đã thực thi. Mở rộng giao diện của mô hình máy để chấp nhận một thông điệp mới in giá trị của bộ đếm lệnh và đặt lại bộ đếm về không.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.16}Bài tập 5.16:} Bổ sung bộ mô phỏng để cung cấp @newterm{theo dõi lệnh}. Tức là, trước khi mỗi lệnh được thực thi, bộ mô phỏng nên in văn bản của lệnh. Làm cho mô hình máy chấp nhận các thông điệp @code{trace-on} và @code{trace-off} để bật và tắt theo dõi.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.17}Bài tập 5.17:} Mở rộng tính năng theo dõi lệnh của @ref{Exercise 5.16} để trước khi in một lệnh, bộ mô phỏng in các nhãn nào ngay đứng trước lệnh đó trong chuỗi bộ điều khiển. Hãy cẩn thận để thực hiện điều này theo cách không cản trở việc đếm lệnh (@ref{Exercise 5.15}). Bạn sẽ phải làm cho bộ mô phỏng lưu giữ thông tin nhãn cần thiết.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.18}Bài tập 5.18:} Sửa đổi thủ tục @code{make-register} trong @ref{5.2.1} để các thanh ghi có thể được theo dõi. Các thanh ghi nên chấp nhận các thông điệp để bật và tắt theo dõi. Khi một thanh ghi được theo dõi, việc gán một giá trị cho thanh ghi nên in tên của thanh ghi, nội dung cũ của thanh ghi, và nội dung mới đang được gán. Mở rộng giao diện với mô hình máy để cho phép bạn bật và tắt theo dõi cho các thanh ghi máy được chỉ định.
+@end quotation
+
+@quotation
+@strong{@anchor{Exercise 5.19}Bài tập 5.19:} Alyssa P. Hacker muốn có tính năng @newterm{điểm dừng} trong bộ mô phỏng để giúp cô ấy gỡ lỗi các thiết kế máy của mình. Bạn đã được thuê để cài đặt tính năng này cho cô ấy. Cô ấy muốn có thể chỉ định một vị trí trong chuỗi bộ điều khiển nơi bộ mô phỏng sẽ dừng lại và cho phép cô ấy kiểm tra trạng thái của máy. Bạn phải hiện thực hóa một thủ tục
+
+@lisp
+(set-breakpoint ⟨@var{machine}⟩ ⟨@var{label}⟩ ⟨@var{n}⟩)
+@end lisp
+
+@noindent
+đặt một điểm dừng ngay trước lệnh thứ @math{n^{\text{th}}} sau nhãn đã cho. Ví dụ,
+
+@lisp
+(set-breakpoint gcd-machine 'test-b 4)
+@end lisp
+
+@noindent
+cài đặt một điểm dừng trong @code{gcd-machine} ngay trước lệnh gán cho thanh ghi @code{a}. Khi bộ mô phỏng đến điểm dừng, nó nên in nhãn và độ lệch của điểm dừng và ngừng thực thi các lệnh. Alyssa sau đó có thể dùng @code{get-register-contents} và @code{set-register-contents!} để thao tác trạng thái của máy mô phỏng. Sau đó cô ấy nên có thể tiếp tục thực thi bằng cách nói
+
+@lisp
+(proceed-machine ⟨@var{machine}⟩)
+@end lisp
+
+Cô ấy cũng nên có thể xóa một điểm dừng cụ thể bằng
+
+@lisp
+(cancel-breakpoint ⟨@var{machine}⟩ ⟨@var{label}⟩ ⟨@var{n}⟩)
+@end lisp
+
+@noindent
+hoặc xóa tất cả các điểm dừng bằng
+
+@lisp
+(cancel-all-breakpoints ⟨@var{machine}⟩)
+@end lisp
+@end quotation
