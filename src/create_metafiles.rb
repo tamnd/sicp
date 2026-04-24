@@ -7,7 +7,7 @@
 require 'nokogiri'
 
 # Files
-DIR = "en_US/"             # directory where the book files are
+DIR = (ENV['LANG_DIR'] || "en_US/")  # directory where the book files are
 IDX = DIR + "index.xhtml"  # index file containing table of contents
 NAV = "toc.xhtml"          # epub3 navigation file (generated toc)
 OPF = "content.opf"        # epub3 metadata, manifest, and spine

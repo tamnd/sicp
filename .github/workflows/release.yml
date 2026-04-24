@@ -9,40 +9,62 @@ permissions:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BUILD_IMAGE: ghcr.io/tamnd/sicp-docker:latest
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
       - name: Pull build image
-        run: docker pull ghcr.io/tamnd/sicp-docker:latest
+        run: docker pull ${{ env.BUILD_IMAGE }}
 
-      - name: Build PDF
+      - name: Build all language editions
+        # For each language in languages.conf:
+        #   - Build PDF  → src/pdf/sicp-<lang>.pdf
+        #   - Build HTML (non-en_US only; en_US is pre-built)
+        #   - Build EPUB → sicp-<lang>.epub
+        #   - Zip HTML   → sicp-<lang>-html.zip
         run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            ghcr.io/tamnd/sicp-docker:latest \
-            make -C /workspace/src/pdf
+          LANGUAGES=$(grep -v '^\s*#' languages.conf | grep -v '^\s*$')
+          for lang in $LANGUAGES; do
+            echo "=== Building PDF: $lang ==="
+            docker run --rm \
+              -v "${{ github.workspace }}:/workspace" \
+              ${{ env.BUILD_IMAGE }} \
+              make -C /workspace/src/pdf LANG=$lang
 
-      - name: Build epub
+            if [ "$lang" != "en_US" ]; then
+              echo "=== Building HTML: $lang ==="
+              docker run --rm \
+                -v "${{ github.workspace }}:/workspace" \
+                ${{ env.BUILD_IMAGE }} \
+                make -C /workspace/src LANG=$lang html
+            fi
+
+            echo "=== Building EPUB: $lang ==="
+            # Touch HTML files so make doesn't skip epub packaging
+            touch src/$lang/*.xhtml 2>/dev/null || true
+            docker run --rm \
+              -v "${{ github.workspace }}:/workspace" \
+              ${{ env.BUILD_IMAGE }} \
+              make -C /workspace/src LANG=$lang epub
+
+            echo "=== Packaging HTML zip: $lang ==="
+            (cd src && zip -r "../sicp-${lang}-html.zip" "${lang}/")
+          done
+
+      - name: Upload release assets
         run: |
-          touch src/en_US/*.xhtml
-          docker run --rm \
-            -v "${{ github.workspace }}:/workspace" \
-            ghcr.io/tamnd/sicp-docker:latest \
-            make -C /workspace/src epub
-
-      - name: Package HTML
-        run: cd src && zip -r ../sicp-html.zip en_US/
-
-      - name: Attach assets to release
-        run: |
-          gh release upload "${{ github.ref_name }}" \
-            src/pdf/sicp.pdf \
-            sicp.epub \
-            sicp-html.zip
+          LANGUAGES=$(grep -v '^\s*#' languages.conf | grep -v '^\s*$')
+          ASSETS=()
+          for lang in $LANGUAGES; do
+            [ -f "src/pdf/sicp-${lang}.pdf" ] && ASSETS+=("src/pdf/sicp-${lang}.pdf")
+            [ -f "sicp-${lang}.epub" ]        && ASSETS+=("sicp-${lang}.epub")
+            [ -f "sicp-${lang}-html.zip" ]    && ASSETS+=("sicp-${lang}-html.zip")
+          done
+          gh release upload "${{ github.ref_name }}" "${ASSETS[@]}"
         env:
           GH_TOKEN: ${{ github.token }}

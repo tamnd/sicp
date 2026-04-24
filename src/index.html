@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Structure and Interpretation of Computer Programs</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Linux Libertine", "Georgia", serif;
+  background: #f5f5f5;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.card {
+  background: #fff;
+  max-width: 600px;
+  width: 100%;
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  overflow: hidden;
+}
+
+.card-header {
+  background: #262626;
+  color: #e8e8e8;
+  padding: 2.2rem 2.4rem 1.8rem;
+}
+
+.card-header h1 {
+  font-size: 1.45rem;
+  font-weight: normal;
+  line-height: 1.4;
+  color: #f0f0f0;
+}
+
+.card-header .subtitle {
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+  color: #9090c0;
+  letter-spacing: 0.02em;
+}
+
+.card-header .authors {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: #888;
+}
+
+.card-body {
+  padding: 1.8rem 2.4rem 2rem;
+}
+
+.card-body h2 {
+  font-size: 0.8rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  margin-bottom: 1rem;
+}
+
+.lang-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.lang-list a {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 3px;
+  text-decoration: none;
+  color: #262626;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lang-list a:hover {
+  border-color: #9090c0;
+  background: #f8f7ff;
+}
+
+.lang-flag {
+  font-size: 1.6rem;
+  line-height: 1;
+  min-width: 2rem;
+  text-align: center;
+}
+
+.lang-info .lang-name {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #262626;
+}
+
+.lang-info .lang-native {
+  font-size: 0.82rem;
+  color: #686868;
+  margin-top: 0.1rem;
+}
+
+.card-footer {
+  padding: 1rem 2.4rem;
+  border-top: 1px solid #f0f0f0;
+  font-size: 0.78rem;
+  color: #aaa;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-footer a {
+  color: #9090c0;
+  text-decoration: none;
+}
+
+.card-footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 480px) {
+  .card-header { padding: 1.6rem 1.4rem 1.2rem; }
+  .card-body   { padding: 1.4rem 1.4rem 1.6rem; }
+  .card-footer { padding: 0.8rem 1.4rem; }
+}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-header">
+    <h1>Structure and Interpretation<br>of Computer Programs</h1>
+    <div class="subtitle">Second Edition</div>
+    <div class="authors">Harold Abelson &amp; Gerald Jay Sussman with Julie Sussman</div>
+  </div>
+
+  <div class="card-body">
+    <h2>Choose your language</h2>
+    <ul class="lang-list">
+      <li>
+        <a href="en_US/index.xhtml">
+          <span class="lang-flag">🇺🇸</span>
+          <div class="lang-info">
+            <div class="lang-name">English</div>
+            <div class="lang-native">Original edition</div>
+          </div>
+        </a>
+      </li>
+      <li>
+        <a href="vi/index.xhtml">
+          <span class="lang-flag">🇻🇳</span>
+          <div class="lang-info">
+            <div class="lang-name">Vietnamese</div>
+            <div class="lang-native">Tiếng Việt — Cấu Trúc và Diễn Giải Chương Trình Máy Tính</div>
+          </div>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <div class="card-footer">
+    <span>MIT Press · McGraw-Hill</span>
+    <a href="https://github.com/tamnd/sicp">GitHub</a>
+  </div>
+</div>
+</body>
+</html>

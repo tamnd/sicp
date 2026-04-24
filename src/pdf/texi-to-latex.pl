@@ -28,7 +28,7 @@ my $textrigger = '~';
 
 # Latex preamble containing declarations 
 # and ending with \begin{document}
-my $preamble = swallow('preamble.tex');
+my $preamble = swallow($ENV{SICP_PREAMBLE} // 'preamble.tex');
 
 # Postamble containing \end{document} etc.
 my $postamble = swallow('postamble.tex');

@@ -16,16 +16,31 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  BUILD_IMAGE: ghcr.io/tamnd/sicp-docker:latest
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+
+      - name: Pull build image
+        run: docker pull ${{ env.BUILD_IMAGE }}
+
+      - name: Build HTML for non-English languages
+        # English HTML is pre-built and committed to src/en_US/.
+        # Other languages are generated here from their books/ sources.
+        run: |
+          LANGUAGES=$(grep -v '^\s*#' languages.conf | grep -v '^\s*$')
+          for lang in $LANGUAGES; do
+            if [ "$lang" = "en_US" ]; then continue; fi
+            echo "=== Building HTML: $lang ==="
+            docker run --rm \
+              -v "${{ github.workspace }}:/workspace" \
+              ${{ env.BUILD_IMAGE }} \
+              make -C /workspace/src LANG=$lang html
+          done
 
       - name: Add .nojekyll
         run: touch src/.nojekyll
@@ -38,6 +53,13 @@ jobs:
         with:
           path: src
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
