@@ -90,12 +90,13 @@ ifeq ($(LANG),en_US)
 	@./texi2any --no-warn --html --split=section --no-headers --iftex \
 	  --output $(DIR) $(SRC)
 else
-	@# cd into book dir so nested @include paths resolve relative to the includer.
+	@# texi2any 7.x only searches CWD + -I dirs for @include, not the
+	@# includer's directory — so pass every subdir of the book as -I.
 	@# --force writes output even with errors (e.g., @ref to untranslated nodes).
-	@cd ../books/$(LANG) && texi2any --no-warn --html --split=section \
-	  --no-headers --iftex --force \
+	@texi2any --no-warn --html --split=section --no-headers --iftex --force \
 	  --set-customization-variable EXTENSION=xhtml \
-	  --output $(abspath $(DIR)) sicp.texi
+	  $(addprefix -I ,$(shell find ../books/$(LANG) -type d 2>/dev/null)) \
+	  --output $(DIR) $(SRC)
 endif
 	@grep -lZ 'This file redirects' $(HTML) | xargs -0 rm -f --
 	@echo "Replacing LaTeX with MathML..."
