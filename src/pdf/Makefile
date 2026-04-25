@@ -34,13 +34,10 @@ $(TEX_OUT): $(TEXI_SRC) $(PREAMBLE) postamble.tex texi-to-latex.pl
 
 # Flatten @include directives and remap figures to those that exist in
 # src/pdf/fig/ (book chapter texis use HTML figure conventions).
-# The perl pass rewrites MathJax-style \lt and \gt aliases (used in book
-# @tex blocks) to plain < and >, matching the en_US src/pdf/sicp.texi
-# convention.
 sicp-$(LANG)-flat.texi: ../../books/$(LANG)/sicp.texi
 	../../scripts/flatten-texi.pl $< \
 	  | ../../scripts/remap-figs-for-pdf.pl . \
-	  | perl -pe 's/\\lt\b/</g; s/\\gt\b/>/g' > $@
+	  | ../../scripts/normalize-tex-for-pdf.pl > $@
 
 exercises.tex figures.tex: ex-fig-ref.pl
 	./ex-fig-ref.pl -e > exercises.tex; \
