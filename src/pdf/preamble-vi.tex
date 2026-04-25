@@ -44,6 +44,12 @@
 \usepackage[usenames,dvipsnames,x11names]{xcolor}
 \usepackage{amsmath}
 
+% MathJax-style \lt and \gt aliases (the book chapter texis use them
+% directly; the en_US PDF dodges this because it builds from a separate
+% src/pdf/sicp.texi that has < and >).
+\providecommand{\lt}{<}
+\providecommand{\gt}{>}
+
 % To use Libertine letters and numbers,
 % but tx-style operators in math environment:
 \usepackage[libertine]{newtxmath}
