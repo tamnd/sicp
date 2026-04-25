@@ -76,6 +76,7 @@ ifneq ($(LANG),en_US)
 	@[ -d $(DIR)css ] || cp -r en_US/css $(DIR)
 	@[ -d $(DIR)js  ] || cp -r en_US/js  $(DIR)
 	@[ -d $(DIR)fig ] || cp -r en_US/fig $(DIR)
+	@if [ -d lang/$(LANG)/css ]; then cp -r lang/$(LANG)/css/. $(DIR)css/; fi
 endif
 
 $(NEXUS): $(SRC) $(CONV) $(MATH)
@@ -117,6 +118,21 @@ $(NEXUS): $(SRC) $(CONV) $(MATH)
 	done
 	@perl -0p -i -e \
 	  's{\.\./dir/index\.xhtml}{../index.xhtml}g' $(NEXUS)
+ifneq ($(LANG),en_US)
+	@# texi2any 5.2 double-encodes UTF-8 in <title> and <meta>: source
+	@# bytes are interpreted as Latin-1 then re-encoded as UTF-8, giving
+	@# mojibake like "Cáº¥u" for "Cấu". Body text is fine. Round-trip
+	@# decode-utf8 / encode-latin1 recovers the original UTF-8 bytes.
+	@# Also link lang.css for language-specific font overrides.
+	@for file in $(HTML); do \
+	  perl -CSD -0p -i -e 'use Encode; \
+	    my $$fix = sub { Encode::decode("UTF-8", Encode::encode("latin-1", $$_[0])) }; \
+	    s{(<title>)([^<]+)(</title>)}{$$1.$$fix->($$2).$$3}ge; \
+	    s{(<meta name="(?:description|keywords)" content=")([^"]+)(")}{$$1.$$fix->($$2).$$3}ge; \
+	    s{(<link href="css/prettify\.css"[^>]*?/>)}{$$1\n<link href="css/lang.css" rel="stylesheet" type="text/css" />};' \
+	    $$file; \
+	done
+endif
 
 # ============================================================
 # EPUB build
