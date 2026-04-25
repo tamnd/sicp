@@ -24,6 +24,17 @@ my $text = do { local $/; <STDIN> };
 $text =~ s/\\lt\b/</g;
 $text =~ s/\\gt\b/>/g;
 
+# Escape stray & in prose (e.g. "Harper & Row") outside @tex...@end tex
+# blocks, where & is the alignment-tab character and must be left alone.
+{
+    my @parts = split /(\@tex\b.*?\@end\s+tex\b)/s, $text;
+    for (my $i = 0; $i < @parts; $i++) {
+        next if $i % 2;  # odd indexes are the @tex blocks themselves
+        $parts[$i] =~ s/(?<!\\)&/\\&/g;
+    }
+    $text = join '', @parts;
+}
+
 $text =~ s{\@ref\{((?:[^{}]|\{[^{}]*\})*)\}}{
     my $body = $1;
     my ($depth, $cut) = (0, -1);
