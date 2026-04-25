@@ -32,9 +32,10 @@ $(PDF_OUT): $(TEX_OUT) exercises.tex figures.tex coverpage.pdf ${FIG}
 $(TEX_OUT): $(TEXI_SRC) $(PREAMBLE) postamble.tex texi-to-latex.pl
 	SICP_PREAMBLE=$(PREAMBLE) ./texi-to-latex.pl -o $@ $<
 
-# Flatten @include directives for non-en_US editions
+# Flatten @include directives and remap figures to those that exist in
+# src/pdf/fig/ (book chapter texis use HTML figure conventions).
 sicp-$(LANG)-flat.texi: ../../books/$(LANG)/sicp.texi
-	../../scripts/flatten-texi.pl $< > $@
+	../../scripts/flatten-texi.pl $< | ../../scripts/remap-figs-for-pdf.pl . > $@
 
 exercises.tex figures.tex: ex-fig-ref.pl
 	./ex-fig-ref.pl -e > exercises.tex; \

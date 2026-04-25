@@ -29,9 +29,23 @@ jobs:
             ${{ env.BUILD_IMAGE }} \
             make -C /workspace/src/pdf LANG=${{ inputs.lang }}
 
+      - name: Build EPUB
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/workspace" \
+            ${{ env.BUILD_IMAGE }} \
+            make -C /workspace/src LANG=${{ inputs.lang }} epub
+
       - name: Upload PDF artifact
         uses: actions/upload-artifact@v4
         with:
           name: sicp-${{ inputs.lang }}-pdf
           path: src/pdf/sicp-${{ inputs.lang }}.pdf
+          retention-days: 7
+
+      - name: Upload EPUB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sicp-${{ inputs.lang }}-epub
+          path: sicp-${{ inputs.lang }}.epub
           retention-days: 7
