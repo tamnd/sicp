@@ -126,8 +126,11 @@ ifneq ($(LANG),en_US)
 	@# Also link lang.css for language-specific font overrides.
 	@for file in $(HTML); do \
 	  perl -CSD -0p -i -e 'use Encode; \
-	    s{(<title>)([^<]+)(</title>)}{my $$t=$$2; $$1 . Encode::decode("UTF-8", Encode::encode("latin-1", $$t)) . $$3}ge; \
-	    s{(<meta name="(?:description|keywords)" content=")([^"]+)(")}{my $$t=$$2; $$1 . Encode::decode("UTF-8", Encode::encode("latin-1", $$t)) . $$3}ge; \
+	    sub fixenc { my $$s = shift; $$s =~ s/&(?:nbsp|\#160);/\xa0/g; \
+	      $$s =~ s/([\x80-\xff]+)/Encode::decode("UTF-8", Encode::encode("latin-1", $$1), Encode::FB_DEFAULT)/ge; \
+	      $$s } \
+	    s{(<title>)([^<]+)(</title>)}{$$1.fixenc($$2).$$3}ge; \
+	    s{(<meta name="(?:description|keywords)" content=")([^"]+)(")}{$$1.fixenc($$2).$$3}ge; \
 	    s{(<link href="css/prettify\.css"[^>]*?/>)}{$$1 . "\n" . q(<link href="css/lang.css" rel="stylesheet" type="text/css" />)}ge;' \
 	    $$file; \
 	done
